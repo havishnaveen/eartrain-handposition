@@ -585,7 +585,7 @@ export function PathwayRouter({
 
   const staffRef = useRef<StaffCueHandle>(null);
   const exerciseViewRef = useRef<ExerciseViewHandle>(null);
-  const [memorySecondsRemaining, setMemorySecondsRemaining] = useState(3);
+  const [memorySecondsRemaining, setMemorySecondsRemaining] = useState(6);
   const [orientationNotice, setOrientationNotice] = useState<OrientationNotice | null>(
     () => firstUnseenOrientationNotice(question),
   );
@@ -668,6 +668,7 @@ export function PathwayRouter({
       anchorShift: active.anchorShift,
       spatialChord: active.spatialChord,
       spatialPerformance,
+      exerciseMode: active.exerciseMode,
     });
 
     // Audio analysis is genuinely complete here. Keep the visual transition
@@ -866,7 +867,7 @@ export function PathwayRouter({
         memoryStartingRef.current = false;
         if (!ready || questionRef.current.id !== questionId) return;
         clearMemoryTimers();
-        const previewSeconds = active.blindMemory?.previewSeconds ?? 3;
+        const previewSeconds = active.blindMemory?.previewSeconds ?? 6;
         const deadline = performance.now() + previewSeconds * 1000;
         setMemorySecondsRemaining(previewSeconds);
         dispatch({ type: 'MEMORY_START', questionId });

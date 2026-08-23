@@ -47,6 +47,7 @@ import type { Contour } from './melody';
 
 const BASE_QUESTIONS = 3;
 const MAX_QUESTIONS = 9;
+const MEMORY_PREVIEW_SECONDS = 6;
 
 const C = positionById('C');
 const G = positionById('G');
@@ -621,29 +622,28 @@ function contextualProgression(
   target: [string, string, string],
   quality: ChordQuality,
   length: SpatialChordRecipe['progressionLength'],
+  variant = 0,
 ): string[][] {
-  const degrees: Record<
-    SpatialChordRecipe['progressionLength'],
-    readonly { semitones: number; role: 'tonic' | 'subdominant' | 'dominant' }[]
-  > = {
-    1: [{ semitones: 0, role: 'tonic' }],
-    2: [
-      { semitones: 7, role: 'dominant' },
-      { semitones: 0, role: 'tonic' },
-    ],
+  type HarmonicStep = { semitones: number; role: 'tonic' | 'subdominant' | 'dominant' };
+  const tonic: HarmonicStep = { semitones: 0, role: 'tonic' };
+  const subdominant: HarmonicStep = { semitones: 5, role: 'subdominant' };
+  const dominant: HarmonicStep = { semitones: 7, role: 'dominant' };
+  const banks: Record<SpatialChordRecipe['progressionLength'], readonly HarmonicStep[][]> = {
+    1: [[tonic]],
+    2: [[dominant, tonic], [subdominant, tonic]],
     3: [
-      { semitones: 5, role: 'subdominant' },
-      { semitones: 7, role: 'dominant' },
-      { semitones: 0, role: 'tonic' },
+      [subdominant, dominant, tonic],
+      [dominant, subdominant, tonic],
+      [tonic, dominant, tonic],
     ],
     4: [
-      { semitones: 0, role: 'tonic' },
-      { semitones: 5, role: 'subdominant' },
-      { semitones: 7, role: 'dominant' },
-      { semitones: 0, role: 'tonic' },
+      [tonic, subdominant, dominant, tonic],
+      [subdominant, tonic, dominant, tonic],
+      [tonic, dominant, subdominant, tonic],
     ],
   };
-  return degrees[length].map((degree, index, all) => (
+  const degrees = cyclePick(banks[length], variant);
+  return degrees.map((degree, index, all) => (
     index === all.length - 1
       ? [...target]
       : chordPitches(
@@ -691,7 +691,12 @@ function spatialChordQuestion(
     finger: fingers[pitchIndex],
     anchor: pitchIndex === 0,
   }));
-  const progression = contextualProgression(pitches, quality, recipe.progressionLength);
+  const progression = contextualProgression(
+    pitches,
+    quality,
+    recipe.progressionLength,
+    ordinal + lesson.index,
+  );
   const spatialChord: SpatialChordSpec = {
     chordName,
     hand,
@@ -788,6 +793,9 @@ function questionFor(
       [0, 1, 2],
       [2, 1, 0],
       [0, 2, 1],
+      [1, 0, 2],
+      [2, 0, 1],
+      [0, 1, 3],
     ];
     const landingPool: readonly Contour[] = [
       // Six landing notes leave enough room for an eighth/sixteenth group
@@ -797,9 +805,13 @@ function questionFor(
       [0, 2, 1, 3, 2, 0],
       [2, 3, 1, 4, 2, 0],
       [0, 3, 2, 1, 2, 0],
+      [4, 2, 3, 1, 2, 0],
+      [1, 3, 2, 4, 2, 0],
+      [0, 2, 4, 3, 1, 0],
+      [3, 1, 2, 4, 2, 0],
     ];
-    const opening = cyclePick(openingPool, ordinal);
-    const landing = cyclePick(landingPool, Math.floor(ordinal / openingPool.length));
+    const opening = variedPick(openingPool, modeDifficulty, ordinal + lesson.index);
+    const landing = variedPick(landingPool, modeDifficulty, ordinal * 2 + lesson.index);
     const splitIndex = opening.length;
     const degrees = [...opening, ...landing];
     const notes: CueNote[] = degrees.map((degree, index) => {
@@ -891,7 +903,9 @@ function questionFor(
     conceptId: lesson.id,
     exerciseMode: lesson.exerciseMode,
     handScope: hand,
-    instruction: lesson.instruction,
+    instruction: lesson.exerciseMode === 'blind-memory'
+      ? `Look for ${MEMORY_PREVIEW_SECONDS} seconds. Then play from memory.`
+      : lesson.instruction,
     cue: {
       keySignature: lesson.showKeySignature ? position.template.keySignature : 'C',
       timeSignature: `${beatsPerBar}/4`,
@@ -927,7 +941,7 @@ function questionFor(
         }
       : {}),
     ...(lesson.exerciseMode === 'blind-memory'
-      ? { blindMemory: { previewSeconds: 3, hideStyle: 'vanish' as const } }
+      ? { blindMemory: { previewSeconds: MEMORY_PREVIEW_SECONDS, hideStyle: 'vanish' as const } }
       : {}),
   };
 }

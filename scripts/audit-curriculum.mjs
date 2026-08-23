@@ -139,7 +139,8 @@ try {
                 `Lesson ${concept.index}, drill ${questionNumber} must build the position cumulatively.`);
             }
             if (question.exerciseMode === 'blind-memory') {
-              assert.equal(question.blindMemory?.previewSeconds, 3);
+              assert.equal(question.blindMemory?.previewSeconds, 6);
+              assert.match(question.instruction, /6 seconds/);
             }
             if (question.exerciseMode === 'anchor-shift') {
               assert.ok(question.anchorShift);
@@ -197,6 +198,7 @@ try {
                 lessonLevel: concept.index,
                 totalLessons,
                 anchorShift: question.anchorShift,
+                exerciseMode: question.exerciseMode,
               };
               const perfectGrade = gradeSequence(question.expectedSequence, perfect, gradeOptions);
               assert.equal(perfectGrade.passed, true,
@@ -207,6 +209,21 @@ try {
                 cleanliness: 5,
                 overall: 5,
               });
+
+              const offlineOnlyFinish = perfect.map((note, index) => (
+                index === perfect.length - 1
+                  ? { ...note, analysisSource: 'offline-recovered' }
+                  : note
+              ));
+              const offlineOnlyGrade = gradeSequence(
+                question.expectedSequence,
+                offlineOnlyFinish,
+                gradeOptions,
+              );
+              assert.equal(offlineOnlyGrade.matched, perfect.length,
+                'Offline recovery should retain partial credit for a supported quiet note.');
+              assert.ok(offlineOnlyGrade.scores.pitch < 5 && offlineOnlyGrade.scores.overall < 5,
+                `A note missed by the live detector incorrectly produced 5.0 in Lesson ${concept.index}.`);
 
               const humanPerfect = perfect.map((note, index) => {
                 const attackJitter = (index % 2 === 0 ? -0.12 : 0.12) * plan.secondsPerBeat;
@@ -386,6 +403,8 @@ try {
               assert.equal(grade.passed, true);
               assert.equal(grade.matched, 3);
               assert.equal(grade.scores.pitch, 5);
+              assert.equal(grade.scores.timing, 5,
+                'A clean chord built comfortably inside its search windows should earn 5.0.');
               assert.equal(grade.scores.cleanliness, 5);
               const exploratoryGrade = gradeSpatialChord(spec, detected, {
                 ...spatialPerformance,
@@ -408,6 +427,10 @@ try {
     for (let index = 1; index < cleanSignatures.length; index += 1) {
       assert.notEqual(cleanSignatures[index], cleanSignatures[index - 1],
         `Lesson ${concept.index} repeats identical adjacent drills.`);
+    }
+    if (concept.index >= 5 && concept.index <= 18) {
+      assert.ok(new Set(cleanSignatures).size >= 6,
+        `Later Lesson ${concept.index} does not provide enough distinct exercise material.`);
     }
     if (concept.index <= 5) assert.equal(rhythms.eighth + rhythms.sixteenth, 0);
     if (concept.index >= 6 && concept.index <= 12) assert.equal(rhythms.sixteenth, 0);
@@ -659,6 +682,41 @@ try {
   // Repeated/stale actions must not skip the preview or restart it underneath
   // an active take.
   const memoryQuestion = generateFor(5, 1, 12, 0.25, route.signal, 20260802);
+  const laterMemoryQuestion = generateFor(12, 1, 44, 0.5, route.signal, 20260812);
+  const laterMemoryPlan = planForQuestion(laterMemoryQuestion, 75);
+  const memoryTimingTake = laterMemoryPlan.expectedNotes.map((slot, index) => ({
+    midi: pitchToMidi(slot.pitch),
+    time: 10 + (slot.beat + [0, 0.9, 0.12, 0.94, 0.16, 0.98][index % 6]) *
+      laterMemoryPlan.secondsPerBeat,
+    clarity: 0.92,
+    strength: 2,
+  }));
+  const sharedMemoryGradeOptions = {
+    plan: laterMemoryPlan,
+    playStartTime: 10,
+    lessonLevel: 12,
+    totalLessons,
+  };
+  const memoryTimingGrade = gradeSequence(
+    laterMemoryQuestion.expectedSequence,
+    memoryTimingTake,
+    { ...sharedMemoryGradeOptions, exerciseMode: 'blind-memory' },
+  );
+  const standardTimingGrade = gradeSequence(
+    laterMemoryQuestion.expectedSequence,
+    memoryTimingTake,
+    { ...sharedMemoryGradeOptions, exerciseMode: 'standard' },
+  );
+  assert.equal(memoryTimingGrade.scores.pitch, 5,
+    'Memory timing leniency must never change note accuracy.');
+  assert.ok(
+    (memoryTimingGrade.scores.timing ?? 0) > (standardTimingGrade.scores.timing ?? 0),
+    `Blind Memory should grade the same notes less harshly for rhythm and timing: ${JSON.stringify({
+      memory: memoryTimingGrade.scores,
+      standard: standardTimingGrade.scores,
+      rhythm: memoryTimingGrade.rhythm,
+    })}`,
+  );
   let memoryRoute = {
     ...route,
     lesson: 5,

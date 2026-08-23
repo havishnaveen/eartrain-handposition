@@ -1151,7 +1151,24 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               isCredibleProofRelease(data.reason, releaseConfidence) &&
               Number.isFinite(releaseTime)
             ) {
+              const proof = proofRef.current;
+              const releasedIndex = proof.targetMidi.indexOf(proofMidi);
               hold.releasedAt = releaseTime;
+              // Report a proven key-up immediately. Waiting for the child to
+              // add another finger made the personalized error intermittent,
+              // and a release during final verification could feel ignored.
+              if (releasedIndex >= 0 && releasedIndex < proof.nextIndex) {
+                clearProofCompletionTimer();
+                proof.nextIndex = 0;
+                proof.firstHeardAt = null;
+                proof.verifying = false;
+                clearProofHolds();
+                safeSet(setProofProgress, 0);
+                safeSet(setProofHoldFailure, {
+                  releasedNoteIndices: [releasedIndex as ProofNoteIndex],
+                });
+                worklet.port.postMessage({ type: 'watch-pitch', midi: proof.targetMidi[0] });
+              }
             }
             return;
           }

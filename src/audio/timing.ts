@@ -1,6 +1,7 @@
 import type {
   AnchorShiftSpec,
   CueSpec,
+  ExerciseMode,
   Question,
   SpatialChordSpec,
 } from '../curriculum/types';
@@ -385,6 +386,8 @@ export interface GradeOptions {
   /** Enables search-efficiency grading instead of metronomic rhythm grading. */
   spatialChord?: SpatialChordSpec;
   spatialPerformance?: SpatialChordPerformance;
+  /** Memory drills keep pitch strict but receive wider rhythm tolerance. */
+  exerciseMode?: ExerciseMode;
 }
 
 export interface TimingLeniencyProfile {
@@ -430,6 +433,18 @@ export function timingLeniencyForLesson(
     fullCreditOnsetWindow: mix(0.24, 0.17, progress),
     fullCreditDurationWindow: mix(0.38, 0.25, progress),
     zeroScoreWindow: mix(1.80, 1.20, progress),
+  };
+}
+
+function timingProfileForOptions(options: GradeOptions): TimingLeniencyProfile {
+  const profile = timingLeniencyForLesson(options.lessonLevel, options.totalLessons);
+  if (options.exerciseMode !== 'blind-memory') return profile;
+  return {
+    onBeatWindow: Math.min(0.9, profile.onBeatWindow * 1.4),
+    startOffsetAllowance: Math.min(1.2, profile.startOffsetAllowance * 1.3),
+    fullCreditOnsetWindow: profile.fullCreditOnsetWindow * 1.55,
+    fullCreditDurationWindow: profile.fullCreditDurationWindow * 1.4,
+    zeroScoreWindow: profile.zeroScoreWindow * 1.25,
   };
 }
 
@@ -641,10 +656,7 @@ function buildRhythm(
     deviations.push((time - expectedTime) / plan.secondsPerBeat);
   });
 
-  const profile = timingLeniencyForLesson(
-    options.lessonLevel,
-    options.totalLessons,
-  );
+  const profile = timingProfileForOptions(options);
 
   // A student who enters a fraction late but keeps the whole phrase steady
   // has a starting/reaction error, not a broken rhythm. Remove only the
@@ -802,10 +814,11 @@ function buildTransition(
   const excessBeats = Math.max(0, transitionBeats - writtenGapBeats);
   // A transition is the difference between two independently detected
   // attacks, so its technical uncertainty is twice the single-onset window.
-  const fullCreditWindow = timingLeniencyForLesson(
-    options.lessonLevel,
-    options.totalLessons,
-  ).fullCreditOnsetWindow * 2;
+  const profile = timingProfileForOptions(options);
+  const fullCreditWindow = Math.max(
+    profile.fullCreditOnsetWindow * 2,
+    allowedExtraBeats * 0.35,
+  );
   const gradedExcessBeats = Math.max(0, excessBeats - fullCreditWindow);
   const score = Math.max(
     0,
@@ -930,7 +943,7 @@ export function gradeSpatialChord(
     : Math.max(0, 1 - colorToneLatencySec / Math.max(1, spec.shapeSearchSeconds * 0.48));
   const guessPenalty =
     performance.wrongRootGuesses * 0.12 + performance.wrongShapeGuesses * 0.68;
-  const efficiencyScore = scoreToFive(
+  const rawEfficiencyScore = scoreToFive(
     // Root matching is readiness, not the main skill. Eighty-five percent of
     // this score belongs to building and retaining the physical chord shape.
     5 * (
@@ -940,6 +953,18 @@ export function gradeSpatialChord(
       shapeCoverage * 0.15
     ) - guessPenalty,
   );
+  const secureCleanShape = Boolean(
+    completed &&
+    performance.wrongRootGuesses === 0 &&
+    performance.wrongShapeGuesses === 0 &&
+    rootLatencySec !== null &&
+    rootLatencySec <= Math.max(1.5, spec.rootSearchSeconds * 0.6) &&
+    shellLatencySec !== null &&
+    shellLatencySec <= spec.shapeSearchSeconds * 0.55 &&
+    colorToneLatencySec !== null &&
+    colorToneLatencySec <= spec.shapeSearchSeconds * 0.5
+  );
+  const efficiencyScore = secureCleanShape ? 5 : rawEfficiencyScore;
   const pitchScore = scoreToFive(expectedCount === 0 ? 0 : 5 * matched / expectedCount);
   const cleanlinessScore = detected.length === 0
     ? 0
@@ -1176,17 +1201,21 @@ export function gradeSequence(
   const clamp5 = scoreToFive;
 
   // Pitch: proportion of the written notes actually produced, in order.
+  // Offline recovery can rescue a real quiet key, but a note that never
+  // cleared the live detector remains provisional evidence. It may earn
+  // substantial credit, but it cannot turn an incomplete live take into 5.0.
+  const offlineOnlyMatches = matches.filter(
+    ({ note }) => note.analysisSource === 'offline-recovered',
+  ).length;
+  const pitchEvidence = matches.length - offlineOnlyMatches * 0.35;
   const pitchScore = clamp5(
-    expectedCount === 0 ? 0 : (5 * matches.length) / expectedCount,
+    expectedCount === 0 ? 0 : (5 * pitchEvidence) / expectedCount,
   );
 
   // Timing: a curved, lesson-aware falloff. Early readers get space to find
   // the beat; later readers are asked for more precision, without the old
   // cliff where a modest error abruptly became zero.
-  const timingProfile = timingLeniencyForLesson(
-    options.lessonLevel,
-    options.totalLessons,
-  );
+  const timingProfile = timingProfileForOptions(options);
   const baseTimingScore = rhythm === null
     ? null
     : (() => {
