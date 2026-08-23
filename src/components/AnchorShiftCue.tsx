@@ -68,6 +68,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
       };
     }, [cue, split, staff]);
     const waitSeconds = Math.max(0, shift.timedShift?.waitSeconds ?? 0);
+    const stagedReveal = shift.timedShift?.revealSecond === true;
     const waitBeats = waitSeconds / Math.max(0.01, secondsPerBeat);
 
     const showCountdown = useCallback((remaining: number) => {
@@ -125,7 +126,10 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         ref={rootRef}
         className="et-anchor-cue"
         data-active-position="from"
-        aria-label={`Timed switch. Step 1: play ${shift.fromPositionName}. Step 2: use the ${waitSeconds}-second pause to move your hand. Step 3: land in ${shift.toPositionName}.`}
+        data-staged-reveal={stagedReveal ? 'true' : 'false'}
+        aria-label={stagedReveal
+          ? `Phrase reveal. Step 1: play ${shift.fromPositionName}. Step 2: study the new phrase for ${waitSeconds} seconds while moving. Step 3: play ${shift.toPositionName}.`
+          : `Hand-position switch. First play ${shift.fromPositionName}, then move and play ${shift.toPositionName}.`}
       >
         <section className="et-anchor-cue__half et-anchor-cue__half--from" aria-label={`${shift.fromPositionName} music`}>
           <header className="et-anchor-cue__label">
@@ -135,15 +139,19 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} minimumTimelineBeats={sharedPanelBeats} />
         </section>
 
-        <div className="et-anchor-cue__bridge" aria-label={`${waitSeconds}-second hand-movement countdown`}>
+        <div className="et-anchor-cue__bridge" aria-label={waitSeconds > 0 ? `${waitSeconds}-second phrase-preview countdown` : 'Move your hand'}>
           <span className="et-anchor-cue__step">2</span>
-          <b>Timed switch</b>
+          <b>{waitSeconds > 0 ? 'Study & move' : 'Move hand'}</b>
           <i className="et-anchor-cue__arrow" aria-hidden="true">→</i>
-          <strong ref={countdownRef} className="et-anchor-cue__countdown">{waitSeconds.toFixed(1)}s</strong>
-          <span className="et-anchor-cue__countdown-track" aria-hidden="true">
-            <i ref={countdownFillRef} />
-          </span>
-          <small>Move while silent</small>
+          {waitSeconds > 0 ? (
+            <>
+              <strong ref={countdownRef} className="et-anchor-cue__countdown">{waitSeconds.toFixed(1)}s</strong>
+              <span className="et-anchor-cue__countdown-track" aria-hidden="true">
+                <i ref={countdownFillRef} />
+              </span>
+              <small>See the new phrase</small>
+            </>
+          ) : <small>Keep the beat</small>}
         </div>
 
         <section className="et-anchor-cue__half et-anchor-cue__half--to" aria-label={`${shift.toPositionName} music`}>

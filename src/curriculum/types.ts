@@ -109,8 +109,8 @@ export interface SpatialChordSpec {
   intervals: [number, number];
   /** The anchor is given or replayed in isolation; it is never blind-guessed. */
   rootSupport: SpatialRootSupport;
-  /** Chord-tone indices in learning order: root, outer fifth, then color third. */
-  buildOrder: [0, 2, 1];
+  /** Chord-tone indices in standard learning order: root, third, fifth. */
+  buildOrder: [0, 1, 2];
   context: SpatialChordContext;
   rootSearchSeconds: number;
   shapeSearchSeconds: number;
@@ -150,6 +150,8 @@ export interface AnchorShiftSpec {
   /** Optional silent movement window inserted between the two notation panels. */
   timedShift?: {
     waitSeconds: number;
+    /** Hide Position 2 until its observation window begins. */
+    revealSecond?: boolean;
   };
 }
 

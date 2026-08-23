@@ -30,6 +30,8 @@ export type DrillPhase = 'idle' | 'countin' | 'playing';
 export interface UseDrillAudioOptions {
   /** Path to the worklet module. Vite serves `public/` at the root. */
   workletUrl?: string;
+  /** Dedicated expected-tone analyzer used only for simultaneous chords. */
+  chordWorkletUrl?: string;
   /** Fired once on the downbeat, with its AudioContext time. */
   onPlayStart?: (audioTime: number) => void;
   /** Fired after final deferred pitch frames flush, with everything heard. */
@@ -578,9 +580,9 @@ export interface SpatialChordAdvance {
  * Anchor-first chord construction with monotonic progress.
  *
  * The anchor is supplied by name or isolated playback, so this is not an
- * absolute-pitch test. After it locks, the learner builds the outer fifth
- * before adding the quality-defining third. That sequence makes the motor
- * strategy explicit and prevents random chord-tone hunting.
+ * absolute-pitch test. After it locks, the learner builds the conventional
+ * root-third-fifth shape. Progress remains monotonic when several chord tones
+ * arrive in the same analysis frame.
  */
 export function advanceSpatialChord(
   active: ActiveSpatialChord,
@@ -665,7 +667,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // The worklet lives in public/ and is otherwise easy for a browser/CDN to
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
-  const { workletUrl = '/audio/pitch-processor.js?v=upper-register-v16-2026-08-23' } = options;
+  const {
+    workletUrl = '/audio/pitch-processor.js?v=proof-recovery-v17-2026-08-23',
+    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v1-2026-08-23',
+  } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
   const [phase, setPhase] = useState<DrillPhase>('idle');
@@ -687,6 +692,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const ctxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
+  const chordWorkletRef = useRef<AudioWorkletNode | null>(null);
+  const chordReadyResolveRef = useRef<(() => void) | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const clickGainRef = useRef<GainNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -957,6 +964,20 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       workletRef.current = null;
     }
 
+    const chordWorklet = chordWorkletRef.current;
+    if (chordWorklet) {
+      chordWorklet.port.onmessage = null;
+      try {
+        chordWorklet.port.postMessage({ type: 'idle' });
+      } catch {
+        /* port may already be closed */
+      }
+      chordWorklet.disconnect();
+      chordWorkletRef.current = null;
+    }
+    chordReadyResolveRef.current?.();
+    chordReadyResolveRef.current = null;
+
     sourceRef.current?.disconnect();
     sourceRef.current = null;
 
@@ -985,7 +1006,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
   /** Creates the graph on first use and reuses it for every later drill. */
   const ensureGraph = useCallback(async (): Promise<AudioContext | null> => {
-    if (ctxRef.current && workletRef.current) {
+    if (ctxRef.current && workletRef.current && chordWorkletRef.current) {
       if (ctxRef.current.state === 'suspended') await ctxRef.current.resume();
       return ctxRef.current;
     }
@@ -1012,11 +1033,15 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       ctxRef.current = ctx;
       if (ctx.state === 'suspended') await ctx.resume();
 
-      await ctx.audioWorklet.addModule(workletUrl);
+      await Promise.all([
+        ctx.audioWorklet.addModule(workletUrl),
+        ctx.audioWorklet.addModule(chordWorkletUrl),
+      ]);
       if (!mountedRef.current) return null;
 
       const source = ctx.createMediaStreamSource(stream);
       const worklet = new AudioWorkletNode(ctx, 'pitch-processor');
+      const chordWorklet = new AudioWorkletNode(ctx, 'chord-processor');
 
       worklet.port.onmessage = (event: MessageEvent) => {
         const data = event.data;
@@ -1218,6 +1243,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         if (data.type === 'note-onset' || data.type === 'note-candidate') {
           const isCandidate = data.type === 'note-candidate';
           const proofWanted = proofRef.current?.targetMidi[proofRef.current.nextIndex];
+          const proofCandidate = Boolean(isCandidate && Number.isFinite(proofWanted));
           const quietBassProofCandidate = Boolean(
             isCandidate && Number.isFinite(proofWanted) && (proofWanted as number) <= 55
           );
@@ -1240,7 +1266,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             Number.isFinite(data.peakRms) &&
             Number.isFinite(data.gate) &&
             data.peakRms < data.gate * (
-              quietBassProofCandidate ? 0.44 : isCandidate ? 0.6 : 1
+              quietBassProofCandidate ? 0.44 : proofCandidate ? 0.5 : isCandidate ? 0.6 : 1
             )
           ) {
             if (isCandidate) diagnosticsRef.current.candidatesIgnored += 1;
@@ -1248,16 +1274,16 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           }
           if (
             Number.isFinite(data.clarity) &&
-            data.clarity < (quietBassProofCandidate ? 0.14 : isCandidate ? 0.18 : 0.25)
+            data.clarity < (quietBassProofCandidate ? 0.14 : proofCandidate ? 0.15 : isCandidate ? 0.18 : 0.25)
           ) return;
           if (
             Number.isFinite(data.consensus) &&
-            data.consensus < (quietBassProofCandidate ? 0.38 : isCandidate ? 0.42 : 0.5)
+            data.consensus < (quietBassProofCandidate ? 0.38 : proofCandidate ? 0.4 : isCandidate ? 0.42 : 0.5)
           ) return;
           if (
             isCandidate &&
             Number.isFinite(data.pianoAttackConfidence) &&
-            data.pianoAttackConfidence < (quietBassProofCandidate ? 0.27 : 0.4)
+            data.pianoAttackConfidence < (quietBassProofCandidate ? 0.27 : proofCandidate ? 0.3 : 0.4)
           ) {
             diagnosticsRef.current.candidatesIgnored += 1;
             return;
@@ -1713,10 +1739,74 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         }
       };
 
+      chordWorklet.port.onmessage = (event: MessageEvent) => {
+        const data = event.data;
+        if (!data) return;
+        if (data.type === 'chord-ready') {
+          chordReadyResolveRef.current?.();
+          chordReadyResolveRef.current = null;
+          return;
+        }
+        if (data.type === 'chord-level') {
+          if (spatialRef.current) safeSet(setInputLevel, Number(data.level) || 0);
+          return;
+        }
+        if (data.type !== 'chord-tones' || !spatialRef.current) return;
+
+        const active = spatialRef.current;
+        const heard = new Set(
+          (Array.isArray(data.midi) ? data.midi : [])
+            .map(Number)
+            .filter(Number.isFinite)
+            .map(Math.round),
+        );
+        const baseTime = Number.isFinite(data.time) ? Number(data.time) : ctx.currentTime;
+        const orderedMidi = active.spec.buildOrder
+          .map((index) => active.targetMidi[index])
+          .filter((midi) => heard.has(midi) && !active.foundMidi.has(midi));
+        if (orderedMidi.length === 0) return;
+
+        orderedMidi.forEach((midi, index) => {
+          const nextTarget = active.spec.buildOrder
+            .map((targetIndex) => active.targetMidi[targetIndex])[active.foundMidi.size];
+          if (midi !== nextTarget) return;
+          // Preserve root–third–fifth teaching order even when all tones are
+          // present in one FFT frame. Tiny offsets keep result ordering stable.
+          const time = baseTime + index * 0.001;
+          const note: DetectedNote = {
+            midi,
+            time,
+            clarity: 1,
+            strength: 2,
+            sustain: 1,
+            detectorLane: 'strict',
+            scoreContextAccepted: true,
+          };
+          onsetsRef.current.push(note);
+          diagnosticsRef.current.strictAccepted += 1;
+          const result = advanceSpatialChord(active, midi, time);
+          safeSet(setSpatialProgress, result.progress);
+          safeSet(setSpatialFoundMidi, [...active.foundMidi]);
+          if (result.rootJustFound) {
+            armSpatialDeadlineRef.current?.(active.spec.shapeSearchSeconds * 1000);
+            cbRef.current.onSpatialRootFound?.();
+          }
+          if (result.complete) {
+            active.completedAt = time;
+            playProofSuccessChime(ctx);
+            finishSpatialRef.current?.(false);
+          }
+        });
+        onsetsRef.current.sort((a, b) => a.time - b.time);
+        safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
+      };
+
       // Analysis only — never routed to the speakers, so no feedback path.
       source.connect(worklet);
+      source.connect(chordWorklet);
       sourceRef.current = source;
       workletRef.current = worklet;
+      chordWorkletRef.current = chordWorklet;
       graphConnectedAtRef.current = performance.now();
 
       // Metronome output bus.
@@ -1735,7 +1825,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       teardown();
       return null;
     }
-  }, [workletUrl, safeSet, teardown, clearProofCompletionTimer]);
+  }, [workletUrl, chordWorkletUrl, safeSet, teardown, clearProofCompletionTimer]);
 
   /**
    * Short rim click, scheduled on the audio clock.
@@ -1803,10 +1893,15 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     const progression = spec.context.progression.length > 0
       ? spec.context.progression
       : [spec.chordPitches];
+    const rootParts = splitPianoPitch(spec.rootPitch);
+    const tonicResolution = rootParts
+      ? `${rootParts.note}${rootParts.octave + 1}`
+      : spec.rootPitch;
     const allPitches = new Set([
       ...progression.flat(),
       ...spec.chordPitches,
       spec.rootPitch,
+      tonicResolution,
     ]);
     await Promise.all([...allPitches].map((pitch) => {
       const parsed = splitPianoPitch(pitch);
@@ -1847,6 +1942,15 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       // example into three disconnected guide notes. The tonic is held long
       // enough for the cadence to sound finished before the teaching replay.
       schedulePitches(chord, offset, duration, resolvesToTonic ? 0.98 : 0.88, 0.035);
+      // Let the top voice sing independently above each block. The last
+      // gesture resolves upward to tonic, so the phrase sounds finished.
+      const melodicPitch = resolvesToTonic ? tonicResolution : chord[chord.length - 1];
+      schedulePitches(
+        [melodicPitch],
+        offset + chordDuration * 0.48,
+        resolvesToTonic ? chordDuration * 0.9 : chordDuration * 0.48,
+        resolvesToTonic ? 0.42 : 0.28,
+      );
       offset += resolvesToTonic ? chordDuration * 1.35 : chordDuration;
     });
 
@@ -1893,6 +1997,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     detectorArmedRef.current = false;
     finishedRef.current = true;
     workletRef.current?.port.postMessage({ type: 'idle' });
+    chordWorkletRef.current?.port.postMessage({ type: 'idle' });
     safeSet(setPhase, 'idle' as DrillPhase);
     safeSet(setBeatLabel, '');
     safeSet(setIsDownbeat, false);
@@ -1900,7 +2005,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
   const prepare = useCallback(async (): Promise<boolean> => {
     const ctx = await ensureGraph();
-    return Boolean(ctx && workletRef.current && mountedRef.current);
+    return Boolean(ctx && workletRef.current && chordWorkletRef.current && mountedRef.current);
   }, [ensureGraph]);
 
   const beginProof = useCallback(
@@ -1939,6 +2044,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       cancelMicRecording();
       cancelPcmCapture();
       replaceRecordingUrl(null);
+      chordWorkletRef.current?.port.postMessage({ type: 'idle' });
       onsetsRef.current = [];
       onsetByDetectorIdRef.current.clear();
       occupiedExpectedSlotsRef.current.clear();
@@ -1997,7 +2103,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
       const ctx = await ensureGraph();
       const worklet = workletRef.current;
-      if (!ctx || !worklet || !mountedRef.current || runTokenRef.current !== runToken) return false;
+      const chordWorklet = chordWorkletRef.current;
+      if (!ctx || !worklet || !chordWorklet || !mountedRef.current || runTokenRef.current !== runToken) return false;
 
       const warmupRemaining = proofDetectorWarmupRemaining(
         graphConnectedAtRef.current,
@@ -2006,7 +2113,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       if (warmupRemaining > 0) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, warmupRemaining));
       }
-      if (!mountedRef.current || workletRef.current !== worklet || runTokenRef.current !== runToken) {
+      if (!mountedRef.current || workletRef.current !== worklet || chordWorkletRef.current !== chordWorklet || runTokenRef.current !== runToken) {
         return false;
       }
 
@@ -2041,7 +2148,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const clueEndTime = await scheduleSpatialContext(ctx, target);
       const waitMs = Math.max(0, (clueEndTime - ctx.currentTime + 0.16) * 1000);
       await new Promise<void>((resolve) => window.setTimeout(resolve, waitMs));
-      if (!mountedRef.current || runTokenRef.current !== runToken || workletRef.current !== worklet) {
+      if (!mountedRef.current || runTokenRef.current !== runToken || workletRef.current !== worklet || chordWorkletRef.current !== chordWorklet) {
         return false;
       }
 
@@ -2059,13 +2166,25 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         totalGuesses: 0,
       };
       spatialRef.current = active;
-      playStartRef.current = startedAt;
+      const chordReady = new Promise<void>((resolve) => {
+        chordReadyResolveRef.current = resolve;
+      });
+      chordWorklet.port.postMessage({ type: 'listen-chord', targetMidi });
+      await Promise.race([
+        chordReady,
+        new Promise<void>((resolve) => window.setTimeout(resolve, 700)),
+      ]);
+      chordReadyResolveRef.current = null;
+      if (!mountedRef.current || runTokenRef.current !== runToken || spatialRef.current !== active) {
+        return false;
+      }
+      active.startedAt = ctx.currentTime;
+      playStartRef.current = active.startedAt;
       listeningRef.current = true;
       detectorArmedRef.current = true;
       safeSet(setPhase, 'playing' as DrillPhase);
       startMicRecording();
-      worklet.port.postMessage({ type: 'listen' });
-      cbRef.current.onSpatialListenStart?.(startedAt);
+      cbRef.current.onSpatialListenStart?.(active.startedAt);
 
       const finish = (timedOut: boolean) => {
         if (runTokenRef.current !== runToken || finishedRef.current) return;
@@ -2100,7 +2219,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         });
         window.setTimeout(() => {
           if (runTokenRef.current !== runToken) return;
-          worklet.port.postMessage({ type: 'idle' });
+          chordWorklet.port.postMessage({ type: 'idle' });
           detectorArmedRef.current = false;
           void Promise.race([recordingDone, recordingFallback]).then(() => {
             if (!mountedRef.current || runTokenRef.current !== runToken) return;
@@ -2151,6 +2270,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       cancelMicRecording();
       cancelPcmCapture();
       replaceRecordingUrl(null);
+      chordWorkletRef.current?.port.postMessage({ type: 'idle' });
 
       planRef.current = plan;
       proofRef.current = null;

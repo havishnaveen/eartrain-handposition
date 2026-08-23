@@ -334,8 +334,8 @@ const LESSONS: readonly LessonRecipe[] = [
   },
   {
     id: 'c19-anchor-and-shell', index: 19, phase: 6, phaseLabel: 'Chord shapes by touch',
-    title: 'Anchor, then reach', focus: 'Start from a supplied root and build the stable root-to-fifth outer shell.',
-    instruction: 'Place the anchor. Reach the outside note.',
+    title: 'Anchor, then build', focus: 'Start from a supplied root, add the third, then complete the chord with the fifth.',
+    instruction: 'Place the anchor. Add the middle, then the outside note.',
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D],
     rightOctaves: [4], leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 14, tempoHard: 13,
@@ -347,8 +347,8 @@ const LESSONS: readonly LessonRecipe[] = [
   },
   {
     id: 'c20-complete-the-frame', index: 20, phase: 6, phaseLabel: 'Chord shapes by touch',
-    title: 'Complete the chord frame', focus: 'Keep the outer shell still, then place finger 3 into the middle space.',
-    instruction: 'Build the outside. Add the middle.',
+    title: 'Complete the chord frame', focus: 'Build every chord in the familiar 1-3-5 order.',
+    instruction: 'Build from the root: 1, 3, 5.',
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A],
     rightOctaves: [4], leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 13.5, tempoHard: 12.5,
@@ -360,8 +360,8 @@ const LESSONS: readonly LessonRecipe[] = [
   },
   {
     id: 'c21-major-minor-space', index: 21, phase: 6, phaseLabel: 'Chord shapes by touch',
-    title: 'Move the middle tone', focus: 'Keep root and fifth fixed; major and minor differ only in the middle finger space.',
-    instruction: 'Keep the outside. Place the middle.',
+    title: 'Move the middle tone', focus: 'Hear how the third changes while the root-to-third-to-fifth order stays familiar.',
+    instruction: 'Build 1, 3, 5. Listen to the middle.',
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A],
     rightOctaves: TREBLE, leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 13, tempoHard: 12,
@@ -373,7 +373,7 @@ const LESSONS: readonly LessonRecipe[] = [
   },
   {
     id: 'c22-match-anchor-in-texture', index: 22, phase: 6, phaseLabel: 'Chord shapes by touch',
-    title: 'Match an anchor in texture', focus: 'Match an isolated reference note, then reuse the same outer-shell-first process.',
+    title: 'Match an anchor in texture', focus: 'Match an isolated reference note, then rebuild the chord in 1-3-5 order.',
     instruction: 'Match the anchor. Build the same shape.',
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [D, A, E, B],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
@@ -748,10 +748,8 @@ function spatialChordQuestion(
   const chordName = `${rootName} ${quality === 'major' ? 'Major' : 'Minor'}`;
   const fingers = hand === 'right' ? ([1, 3, 5] as const) : ([5, 3, 1] as const);
   // The screen, piano demonstration, and staff all use the same physical
-  // order: anchor, outside shell, then the quality-defining middle tone.
-  // Previously the staff showed root-third-fifth while the child was asked
-  // for root-fifth-third, making a correct response look contradictory.
-  const buildOrder = [0, 2, 1] as const;
+  // order: root, third, fifth—the conventional 1-3-5 chord shape.
+  const buildOrder = [0, 1, 2] as const;
   const cueNotes: CueNote[] = buildOrder.map((pitchIndex) => ({
     keys: [scientificToVex(pitches[pitchIndex])],
     duration: 'q',
@@ -772,8 +770,7 @@ function spatialChordQuestion(
     chordPitches: pitches,
     intervals: [quality === 'major' ? 4 : 3, 7],
     rootSupport: recipe.rootSupport,
-    // Learn the stable outer shell before placing the quality-defining third.
-    buildOrder: [0, 2, 1],
+    buildOrder: [0, 1, 2],
     context: {
       targetInstrument: 'piano',
       layers: [...recipe.layers],
@@ -899,7 +896,8 @@ function questionFor(
       0.42,
       1.1 - (lesson.index - 13) * 0.12 - modeDifficulty * 0.18,
     );
-    const waitSeconds = lesson.index <= 14 ? 4 : lesson.index <= 16 ? 3 : 2;
+    const waitSeconds = lesson.index === 15 ? 4 : lesson.index === 16 ? 3 : 2;
+    const stagedReveal = lesson.index >= 15;
 
     return {
       id: `${lesson.id}#${ordinal}`,
@@ -909,7 +907,9 @@ function questionFor(
       // reserved for a question that genuinely presents both hands at once;
       // alternating hands across a lesson must not mislabel the current rep.
       handScope: hand,
-      instruction: `Timed switch: play ${fromName}, use the ${waitSeconds}-second pause to move, then play ${toName}.`,
+      instruction: stagedReveal
+        ? `Play ${fromName}. Then study the newly revealed ${toName} phrase for ${waitSeconds} seconds before playing it.`
+        : lesson.instruction,
       cue: {
         // The destination signature covers the sharper landing. Naturals are
         // applied automatically when the opening position needs one.
@@ -940,7 +940,9 @@ function questionFor(
         toPositionName: toName,
         splitIndex,
         allowedExtraBeats,
-        timedShift: { waitSeconds },
+        ...(stagedReveal
+          ? { timedShift: { waitSeconds, revealSecond: true } }
+          : {}),
       },
     };
   }

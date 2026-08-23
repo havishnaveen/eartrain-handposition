@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "audit:curriculum": "node scripts/audit-curriculum.mjs",
-    "audit:audio": "node scripts/audit-pitch-processor.mjs",
+    "audit:audio": "node scripts/audit-pitch-processor.mjs && node scripts/audit-chord-processor.mjs",
     "audit:score": "node scripts/audit-score-analyzer.mjs && node scripts/audit-pcm-capture.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"

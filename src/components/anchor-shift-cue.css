@@ -37,6 +37,20 @@
   opacity: 0.62;
 }
 
+.et-anchor-cue[data-staged-reveal='true'][data-active-position='move'] .et-anchor-cue__half--to {
+  opacity: 1;
+}
+
+.et-anchor-cue[data-staged-reveal='true'][data-active-position='from'] .et-anchor-cue__half--to {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.et-anchor-cue__half--to {
+  transition: opacity 220ms ease, transform 220ms ease, visibility 220ms;
+}
+
 .et-anchor-cue[data-active-position='move'] .et-anchor-cue__bridge {
   color: #fff;
   border-color: #ef6a47;

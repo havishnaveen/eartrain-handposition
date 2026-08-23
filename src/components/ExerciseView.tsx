@@ -108,34 +108,31 @@ const RecordDot = () => (
   </svg>
 );
 
-const AnalysisMark = () => (
-  <svg viewBox="0 0 72 72" width="72" height="72" fill="none" aria-hidden="true">
-    <path d="M13 44c7-18 13 11 21-10s13 15 25-8" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
-    <circle cx="13" cy="44" r="4" fill="currentColor" />
-    <circle cx="34" cy="34" r="4" fill="currentColor" />
-    <circle cx="59" cy="26" r="4" fill="currentColor" />
-  </svg>
-);
-
 function PerformanceAnalysis() {
   return (
     <section className="et-analysis" role="status" aria-live="polite" aria-label="Analyzing your performance">
-      <div className="et-analysis__visual" aria-hidden="true">
-        <svg className="et-analysis__ring" viewBox="0 0 224 224">
-          <circle cx="112" cy="112" r="108" className="et-analysis__ring-track" />
-          <circle cx="112" cy="112" r="108" className="et-analysis__ring-progress" />
-        </svg>
-        <span className="et-analysis__orbit et-analysis__orbit--one"><i /></span>
-        <span className="et-analysis__orbit et-analysis__orbit--two"><i /></span>
-        <span className="et-analysis__orbit et-analysis__orbit--three"><i /></span>
-        <span className="et-analysis__pulse" />
-        <span className="et-analysis__core"><AnalysisMark /></span>
-      </div>
-
-      <div className="et-analysis__copy">
-        <p>Checking</p>
-        <h2>Checking your notes</h2>
-        <span>One moment…</span>
+      <div className="et-analysis__card">
+        <header className="et-analysis__header">
+          <span><i /> Performance review</span>
+          <small>Listening back</small>
+        </header>
+        <div className="et-analysis__score" aria-hidden="true">
+          <span className="et-analysis__staff"><i /><i /><i /><i /><i /></span>
+          <b className="et-analysis__note et-analysis__note--one">♪</b>
+          <b className="et-analysis__note et-analysis__note--two">♪</b>
+          <b className="et-analysis__note et-analysis__note--three">♫</b>
+          <span className="et-analysis__scan" />
+        </div>
+        <div className="et-analysis__copy">
+          <h2>Shaping your feedback</h2>
+          <p>Checking the details that make your playing musical.</p>
+        </div>
+        <div className="et-analysis__checks" aria-hidden="true">
+          <span><i /> Pitch</span>
+          <span><i /> Rhythm</span>
+          <span><i /> Clarity</span>
+        </div>
+        <span className="et-analysis__progress" aria-hidden="true"><i /></span>
       </div>
     </section>
   );
@@ -311,14 +308,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     }
 
     if (status === 'grading') {
-      return exerciseMode === 'spatial-chord' ? (
-        <section className="et-spatial et-spatial--checking" role="status" aria-live="polite">
-          <div className="et-spatial__ambient" aria-hidden="true"><i /><i /><i /></div>
-          <div className="et-spatial__checkmark" aria-hidden="true">✓</div>
-          <h2>Shape heard</h2>
-          <p>Saving your progress…</p>
-        </section>
-      ) : <PerformanceAnalysis />;
+      return <PerformanceAnalysis />;
     }
 
     const level = Math.min(1, Math.max(0, inputLevel));
@@ -351,22 +341,22 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           ? `Copy the first note with Finger ${rootFinger}`
           : `Play ${rootName} with Finger ${rootFinger}`
         : activeStep === 1
-          ? `Keep ${rootName}. Reach with Finger ${activeTone?.finger ?? outerFinger}`
+          ? `Keep ${rootName}. Add the middle with Finger 3`
           : activeStep === 2
-            ? 'Keep the outside shape. Add Finger 3.'
+            ? `Keep Fingers ${rootFinger} and 3 down. Add Finger ${outerFinger}.`
             : '';
       const activeAnswer = activeStep === 0 && matchedAnchor
         ? '♪'
         : activeStep === 0
           ? rootName
           : activeStep === 1
-            ? `${rootFinger} — ${outerFinger}`
+            ? `${rootFinger} — 3`
             : '1 · 3 · 5';
       const activeHint = activeStep === 0
         ? `${handName} · Finger ${rootFinger}`
         : activeStep === 1
           ? 'Leave the anchor in place'
-          : 'The middle note fits inside the shape';
+          : 'Finish the outside of the shape';
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">
@@ -601,7 +591,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           : 'Ready to remember?'
       : exerciseMode === 'anchor-shift'
         ? shiftWaitSeconds
-          ? `Timed switch: play the first card, then use the ${shiftWaitSeconds}-second pause to move before the second card starts.`
+          ? `Phrase reveal: play the first card, then study the new card for ${shiftWaitSeconds} seconds before playing it.`
           : 'Play the first card. Move when the arrow lights up.'
         : instruction;
 

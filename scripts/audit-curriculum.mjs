@@ -86,10 +86,10 @@ try {
       { index: 16, phase: 4, title: 'Leap from A to E', focus: 'Keep orientation while moving into a four-sharp position.' },
       { index: 17, phase: 5, title: 'Map B and F-sharp', focus: 'Place both new hand maps before asking the hand to jump between them.' },
       { index: 18, phase: 5, title: 'Move from B to F-sharp', focus: 'Move only after both five- and six-sharp hand maps have been established.' },
-      { index: 19, phase: 6, title: 'Anchor, then reach', focus: 'Start from a supplied root and build the stable root-to-fifth outer shell.' },
-      { index: 20, phase: 6, title: 'Complete the chord frame', focus: 'Keep the outer shell still, then place finger 3 into the middle space.' },
-      { index: 21, phase: 6, title: 'Move the middle tone', focus: 'Keep root and fifth fixed; major and minor differ only in the middle finger space.' },
-      { index: 22, phase: 6, title: 'Match an anchor in texture', focus: 'Match an isolated reference note, then reuse the same outer-shell-first process.' },
+      { index: 19, phase: 6, title: 'Anchor, then build', focus: 'Start from a supplied root, add the third, then complete the chord with the fifth.' },
+      { index: 20, phase: 6, title: 'Complete the chord frame', focus: 'Build every chord in the familiar 1-3-5 order.' },
+      { index: 21, phase: 6, title: 'Move the middle tone', focus: 'Hear how the third changes while the root-to-third-to-fifth order stays familiar.' },
+      { index: 22, phase: 6, title: 'Match an anchor in texture', focus: 'Match an isolated reference note, then rebuild the chord in 1-3-5 order.' },
       { index: 23, phase: 7, title: 'Separate the background piano', focus: 'Track the centered piano through a mix, match its anchor, and rebuild by shape.' },
       { index: 24, phase: 7, title: 'Carry the shape through a song', focus: 'Retain the piano target through four chords and rebuild it without chord-name guessing.' },
     ],
@@ -150,27 +150,37 @@ try {
               `Lesson ${concept.index}, drill ${questionNumber} timeline must include its exact shift pause.`);
 
             if (question.exerciseMode === 'anchor-shift') {
-              const expectedWaitSeconds = concept.index <= 14 ? 4 : concept.index <= 16 ? 3 : 2;
-              assert.equal(question.anchorShift?.timedShift?.waitSeconds, expectedWaitSeconds,
-                `Lesson ${concept.index} must use its progressive timed-switch window.`);
-              assert.equal(plan.timedShift?.waitSeconds, expectedWaitSeconds);
-              assert.ok(question.instruction.includes('Timed switch'));
+              const stagedReveal = concept.index >= 15;
+              const expectedWaitSeconds = concept.index === 15 ? 4 : concept.index === 16 ? 3 : 2;
+              if (!stagedReveal) {
+                assert.equal(question.anchorShift?.timedShift, undefined,
+                  `Lesson ${concept.index} must preserve the original always-visible switch.`);
+                assert.equal(plan.timedShift, undefined);
+              } else {
+                assert.equal(question.anchorShift?.timedShift?.waitSeconds, expectedWaitSeconds,
+                  `Lesson ${concept.index} must use its progressive phrase-reveal window.`);
+                assert.equal(question.anchorShift?.timedShift?.revealSecond, true);
+                assert.equal(plan.timedShift?.waitSeconds, expectedWaitSeconds);
+                assert.ok(question.instruction.includes('newly revealed'));
+              }
               const splitIndex = question.anchorShift.splitIndex;
               const writtenSplitBeat = staff.notes.slice(0, splitIndex).reduce(
                 (sum, note) => sum + beatsForDuration(note.duration),
                 0,
               );
-              assert.ok(Math.abs(plan.timedShift.startBeat - writtenSplitBeat) < 1e-8);
-              assert.ok(Math.abs(
-                plan.expectedNotes[splitIndex].beat - plan.timedShift.endBeat,
-              ) < 1e-8, 'The second staff must start only after the full movement window.');
-              const clickBeats = metronomeBeatPositions(plan);
-              assert.ok(clickBeats.every((beat) => (
-                beat < plan.timedShift.startBeat || beat >= plan.timedShift.endBeat
-              )), 'The metronome must be silent throughout the hand-movement window.');
-              assert.ok(clickBeats.some((beat) => (
-                Math.abs(beat - plan.timedShift.endBeat) < 1e-8
-              )), 'The metronome must resume exactly with the second staff.');
+              if (plan.timedShift) {
+                assert.ok(Math.abs(plan.timedShift.startBeat - writtenSplitBeat) < 1e-8);
+                assert.ok(Math.abs(
+                  plan.expectedNotes[splitIndex].beat - plan.timedShift.endBeat,
+                ) < 1e-8, 'The second staff must start only after the full reveal window.');
+                const clickBeats = metronomeBeatPositions(plan);
+                assert.ok(clickBeats.every((beat) => (
+                  beat < plan.timedShift.startBeat || beat >= plan.timedShift.endBeat
+                )), 'The metronome must be silent throughout the phrase-reveal window.');
+                assert.ok(clickBeats.some((beat) => (
+                  Math.abs(beat - plan.timedShift.endBeat) < 1e-8
+                )), 'The metronome must resume exactly with the second staff.');
+              }
             }
 
             const writtenPitches = staff.notes
@@ -225,7 +235,7 @@ try {
             }
             if (question.exerciseMode === 'spatial-chord') {
               assert.ok(question.spatialChord);
-              assert.deepEqual(question.spatialChord.buildOrder, [0, 2, 1]);
+              assert.deepEqual(question.spatialChord.buildOrder, [0, 1, 2]);
               assert.deepEqual(
                 question.expectedSequence,
                 question.spatialChord.buildOrder.map(
@@ -664,10 +674,10 @@ try {
   };
   assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[1], 1.1).progress, 0);
   assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[0], 1.2).rootJustFound, true);
-  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[1], 1.3).progress, 1,
-    'The middle tone must not skip the outer-shell step.');
-  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[2], 1.5).progress, 2);
-  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[1], 1.8).complete, true);
+  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[2], 1.3).progress, 1,
+    'The fifth must not skip the middle-tone step.');
+  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[1], 1.5).progress, 2);
+  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[2], 1.8).complete, true);
 
   assert.equal(isClearSamePitchRetrigger(
     { time: 1, peakRms: 0.1 },
@@ -910,24 +920,25 @@ try {
       `Perfect reducer performance failed at Lesson ${fullRoute.lesson}, drill ${fullRoute.question}.`);
     if (fullRoute.current.exerciseMode === 'anchor-shift') {
       assert.equal(grade.scores.overall, 5,
-        'A perfect timed switch must retain full mastery credit.');
+        'A perfect hand-position switch must retain full mastery credit.');
       assert.equal(grade.transition?.score, 5,
         'The planned movement window must not count as extra transition delay.');
-      const splitIndex = fullRoute.current.anchorShift.splitIndex;
-      const unpausedTake = performed.map((note, index) => (
-        index >= splitIndex
-          ? { ...note, time: note.time - fullRoute.current.anchorShift.timedShift.waitSeconds }
-          : note
-      ));
-      const unpausedGrade = gradeSequence(fullRoute.current.expectedSequence, unpausedTake, {
-        plan: currentPlan,
-        playStartTime: playStart,
-        lessonLevel: fullRoute.lesson,
-        totalLessons,
-        anchorShift: fullRoute.current.anchorShift,
-      });
-      assert.ok((unpausedGrade.scores.timing ?? 5) < 5,
-        'Playing the second staff before its timed restart must not receive perfect timing.');
+      const waitSeconds = fullRoute.current.anchorShift.timedShift?.waitSeconds;
+      if (waitSeconds) {
+        const splitIndex = fullRoute.current.anchorShift.splitIndex;
+        const unpausedTake = performed.map((note, index) => (
+          index >= splitIndex ? { ...note, time: note.time - waitSeconds } : note
+        ));
+        const unpausedGrade = gradeSequence(fullRoute.current.expectedSequence, unpausedTake, {
+          plan: currentPlan,
+          playStartTime: playStart,
+          lessonLevel: fullRoute.lesson,
+          totalLessons,
+          anchorShift: fullRoute.current.anchorShift,
+        });
+        assert.ok((unpausedGrade.scores.timing ?? 5) < 5,
+          'Playing the second staff before its reveal window ends must not receive perfect timing.');
+      }
     }
     fullRoute = {
       ...fullRoute,
