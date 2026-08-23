@@ -354,6 +354,31 @@ const PITCH_FLUSH_MS = 380;
 /** Quiet frames needed before the first Prove It attack can be judged. */
 const PROOF_DETECTOR_WARMUP_MS = 260;
 
+/**
+ * Read-only diagnostic switch for the Prove It note pipeline. Off by default
+ * for every real student. Flip it on with `?debugAudio=1` in the URL, or
+ * `localStorage.setItem('eartrain.debug-audio', '1')`, then open devtools —
+ * every raw worklet decision (peak/subthreshold, pitch-rejected reasons,
+ * onsets, release-profile) and every candidate this hook itself discards
+ * (and exactly which gate discarded it) is logged with a `[proof-audio]`
+ * prefix. This changes no thresholds and no behavior; it only makes the
+ * existing (already-computed) rejection reasons visible, so a real failure
+ * can be diagnosed from console output instead of guessed at blind.
+ */
+function isProofAudioDebugEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (new URLSearchParams(window.location.search).get('debugAudio') === '1') return true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    return window.localStorage.getItem('eartrain.debug-audio') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function proofDetectorWarmupRemaining(
   connectedAtMs: number,
   nowMs: number,
@@ -744,6 +769,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     quality: number;
   }>());
   const diagnosticsRef = useRef<RecognitionDiagnostics>({ ...EMPTY_DIAGNOSTICS });
+  const proofAudioDebugRef = useRef(false);
+  if (proofAudioDebugRef.current === false) proofAudioDebugRef.current = isProofAudioDebugEnabled();
   const lastBeatKeyRef = useRef('');
   const noiseFloorRef = useRef(0);
   const graphConnectedAtRef = useRef(0);
@@ -1042,10 +1069,21 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const source = ctx.createMediaStreamSource(stream);
       const worklet = new AudioWorkletNode(ctx, 'pitch-processor');
       const chordWorklet = new AudioWorkletNode(ctx, 'chord-processor');
+      if (proofAudioDebugRef.current) {
+        worklet.port.postMessage({ type: 'debug', enabled: true });
+      }
 
       worklet.port.onmessage = (event: MessageEvent) => {
         const data = event.data;
         if (!data) return;
+
+        if (typeof data.type === 'string' && data.type.indexOf('debug-') === 0) {
+          if (proofAudioDebugRef.current) {
+            // eslint-disable-next-line no-console
+            console.log('[proof-audio]', data.type.slice('debug-'.length), data);
+          }
+          return;
+        }
 
         if (data.type === 'capture-chunk') {
           const capture = pcmCaptureRef.current;
@@ -1085,7 +1123,13 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         ): boolean => {
           const proof = proofRef.current;
           if (!proof) return false;
-          if (proof.verifying) return false;
+          if (proof.verifying) {
+            if (proofAudioDebugRef.current) {
+              // eslint-disable-next-line no-console
+              console.log('[proof-audio] acceptProofNote: ignored, already verifying', { midi, time });
+            }
+            return false;
+          }
 
           const expired = Boolean(
             proof.nextIndex > 0 &&
@@ -1116,6 +1160,17 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           }
 
           const result = advancePositionProof(proof, midi, time);
+          if (proofAudioDebugRef.current) {
+            // eslint-disable-next-line no-console
+            console.log('[proof-audio] acceptProofNote', {
+              heardMidi: midi,
+              targetMidi: proof.targetMidi,
+              nextIndexBefore: proof.nextIndex,
+              matched: midi === proof.targetMidi[result.progress > 0 ? result.progress - 1 : proof.nextIndex],
+              progress: result.progress,
+              complete: result.complete,
+            });
+          }
           safeSet(setProofProgress, result.progress);
           if (result.progress > 0 && midi === proof.targetMidi[result.progress - 1]) {
             safeSet(setProofHoldFailure, null);
@@ -1247,6 +1302,24 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           const quietBassProofCandidate = Boolean(
             isCandidate && Number.isFinite(proofWanted) && (proofWanted as number) <= 55
           );
+          // See isProofAudioDebugEnabled() above. Only logs while a Prove It
+          // is actually in progress, so it stays silent during every other
+          // exercise even with the flag on.
+          const logProofVeto = (reason: string, extra?: Record<string, unknown>) => {
+            if (!proofAudioDebugRef.current || !proofRef.current) return;
+            // eslint-disable-next-line no-console
+            console.log('[proof-audio] rejected', reason, {
+              lane: isCandidate ? 'candidate' : 'strict',
+              wanted: proofWanted,
+              frequency: data.frequency,
+              clarity: data.clarity,
+              consensus: data.consensus,
+              peakRms: data.peakRms,
+              gate: data.gate,
+              pianoAttackConfidence: data.pianoAttackConfidence,
+              ...extra,
+            });
+          };
           /* An established voice burst is never allowed into score context.
            * A single direct voice-like estimate is normally rejected too,
            * but one narrow exception is handled below: during a known click,
@@ -1255,6 +1328,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           const establishedVoiceBurst = data.voiceBurst === true;
           const directVoiceVeto = data.voiceVeto === true && !establishedVoiceBurst;
           if (establishedVoiceBurst) {
+            logProofVeto('established-voice-burst');
             if (isCandidate) diagnosticsRef.current.candidatesIgnored += 1;
             else diagnosticsRef.current.pitchRejected += 1;
             return;
@@ -1269,22 +1343,30 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               quietBassProofCandidate ? 0.44 : proofCandidate ? 0.5 : isCandidate ? 0.6 : 1
             )
           ) {
+            logProofVeto('peakRms-below-gate');
             if (isCandidate) diagnosticsRef.current.candidatesIgnored += 1;
             return;
           }
           if (
             Number.isFinite(data.clarity) &&
             data.clarity < (quietBassProofCandidate ? 0.14 : proofCandidate ? 0.15 : isCandidate ? 0.18 : 0.25)
-          ) return;
+          ) {
+            logProofVeto('clarity-too-low');
+            return;
+          }
           if (
             Number.isFinite(data.consensus) &&
             data.consensus < (quietBassProofCandidate ? 0.38 : proofCandidate ? 0.4 : isCandidate ? 0.42 : 0.5)
-          ) return;
+          ) {
+            logProofVeto('consensus-too-low');
+            return;
+          }
           if (
             isCandidate &&
             Number.isFinite(data.pianoAttackConfidence) &&
             data.pianoAttackConfidence < (quietBassProofCandidate ? 0.27 : proofCandidate ? 0.3 : 0.4)
           ) {
+            logProofVeto('pianoAttackConfidence-too-low');
             diagnosticsRef.current.candidatesIgnored += 1;
             return;
           }
@@ -1443,6 +1525,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               Number(data.pianoAttackConfidence) >= 0.72
             );
             if (directVoiceVeto && !referenceOctaveRescue) {
+              logProofVeto('direct-voice-veto', { midi, wanted });
               diagnosticsRef.current.candidatesIgnored += 1;
               return;
             }
@@ -1450,6 +1533,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               (hypothesis) => supportsExpectedPitch(hypothesis, midi, false),
             );
             if (isCandidate && (midi !== wanted || !recoverySupported)) {
+              logProofVeto('candidate-not-recovery-supported', { midi, wanted, recoverySupported });
               diagnosticsRef.current.candidatesIgnored += 1;
               return;
             }
@@ -1457,11 +1541,15 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             // the pitch requested next (C's third partial is G). It counts
             // only when the worklet also found a fresh hammer articulation.
             if (data.harmonicShadow === true && data.harmonicIndependentAttack !== true) {
+              logProofVeto('harmonic-shadow', { midi, wanted });
               diagnosticsRef.current.candidatesIgnored += 1;
               return;
             }
             const detectorId = Number(data.id);
-            if (!Number.isFinite(detectorId)) return;
+            if (!Number.isFinite(detectorId)) {
+              logProofVeto('no-detector-id', { midi, wanted });
+              return;
+            }
             if (isCandidate) {
               diagnosticsRef.current.expectedRecovered += 1;
               worklet.port.postMessage({

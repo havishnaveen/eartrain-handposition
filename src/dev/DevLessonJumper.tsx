@@ -28,9 +28,13 @@ import { TOTAL_CONCEPTS, getConcept } from '../curriculum/curriculum';
  *    new lesson's PathwayRouter instance mounts fresh. There is no
  *    hand-rolled "reset state" call to keep in sync with the reducer — the
  *    remount *is* the reset.
- *  - `initialProofCompleted: true` is threaded through so a jumped-to
- *    "prove-it" lesson opens straight on the normal prompt screen instead of
- *    gating on the position-proof mic check.
+ *  - `initialProofCompleted` is threaded through as `true` only once you've
+ *    actually used `[`/`]` or a button at least once (`jumpSeq > 0`) — a
+ *    jumped-to "prove-it" lesson then opens straight on the normal prompt
+ *    screen instead of gating on the position-proof mic check. Landing on
+ *    lesson 1 without ever jumping still goes through the real Prove It
+ *    flow untouched, so `npm run dev` remains useful for testing/debugging
+ *    Prove It itself, not just for skipping past it.
  */
 
 
@@ -101,6 +105,12 @@ export function DevLessonJumper({ baseInitialLesson, children }: DevLessonJumper
     return <>{children({ initialLesson: baseInitialLesson, initialProofCompleted: false, remountKey: 'live' })}</>;
   }
 
+  // Only bypass Prove It on lessons actually reached via a jump. Plain
+  // dev-mode page loads (jumpSeq === 0) must still hit the real Prove It
+  // flow untouched — otherwise `npm run dev` could never be used to test or
+  // debug Prove It itself, which defeats the point of running it locally.
+  const bypassProofThisRender = jumpSeq > 0;
+
   const concept = getConcept(lesson);
   const panel = (
     <div style={panelStyle} role="region" aria-label="Dev lesson jumper">
@@ -116,7 +126,9 @@ export function DevLessonJumper({ baseInitialLesson, children }: DevLessonJumper
       <div style={labelStyle}>
         <strong style={{ fontSize: 15 }}>DEV — Lesson {lesson}/{TOTAL_CONCEPTS}</strong>
         <span style={{ fontSize: 12, opacity: 0.85 }}>{concept.title}</span>
-        <span style={{ fontSize: 11, opacity: 0.65 }}>[ / ] to jump · Prove It skipped</span>
+        <span style={{ fontSize: 11, opacity: 0.65 }}>
+          [ / ] to jump{bypassProofThisRender ? ' · Prove It skipped' : ' · Prove It active (jump once to skip)'}
+        </span>
       </div>
       <button
         type="button"
@@ -134,7 +146,7 @@ export function DevLessonJumper({ baseInitialLesson, children }: DevLessonJumper
     <>
       {children({
         initialLesson: lesson,
-        initialProofCompleted: true,
+        initialProofCompleted: bypassProofThisRender,
         remountKey: `dev-${lesson}-${jumpSeq}`,
       })}
       {createPortal(panel, document.body)}

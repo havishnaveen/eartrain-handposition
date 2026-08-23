@@ -2271,6 +2271,17 @@
   font-weight: 820;
   line-height: 0.95;
   letter-spacing: -0.06em;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.et-proof__key-register {
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
 }
 
 .et-proof__key i {
@@ -2284,7 +2295,10 @@
   font-size: 15px;
   font-style: normal;
   font-weight: 900;
+  background: var(--et-ink-faint, #cbc6d6);
 }
+
+.et-proof__key--active i { background: var(--et-orange, #ef6a47); }
 
 .et-proof__key--active {
   color: var(--et-orange-deep);

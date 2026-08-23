@@ -3,7 +3,7 @@ import {
   useImperativeHandle,
   useRef,
 } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Hand } from 'lucide-react';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
 import type { ProofHoldFailure } from '../audio/useDrillAudio';
@@ -217,6 +217,28 @@ function OrientationCallout({
   );
 }
 
+/**
+ * Small, deliberately terse text styles for the Prove It panel — a young
+ * reader should be able to take in the whole instruction in one glance
+ * rather than parsing a full sentence while also trying to hold keys down.
+ */
+function proofEyebrowStyle(color: string): CSSProperties {
+  return { fontSize: '13px', fontWeight: 820, color, marginBottom: '10px', letterSpacing: '0.11em' };
+}
+const proofHeadlineStyle: CSSProperties = {
+  fontSize: '24px',
+  fontWeight: 860,
+  color: '#ef6a47',
+  lineHeight: 1.2,
+};
+const proofSubStyle: CSSProperties = {
+  fontSize: '15px',
+  fontWeight: 700,
+  color: '#6f687b',
+  lineHeight: 1.35,
+  marginTop: '10px',
+};
+
 /** Child-friendly register name for the position's first (anchor) note. */
 export function proofRegisterLabel(pitch: string): string {
   const match = /^([A-G](?:#|b)?)(-?\d+)$/.exec(pitch.trim());
@@ -225,6 +247,19 @@ export function proofRegisterLabel(pitch: string): string {
   const octave = Number(octaveText);
   const register = octave <= 3 ? 'Bass' : octave >= 5 ? 'Treble' : 'Middle';
   return `${register} ${noteName}`;
+}
+
+/** Same split as `proofRegisterLabel`, kept separate so the checklist can
+ * size the register word and the note letter independently — "Middle C" set
+ * at one huge font size wraps onto two lines and reads worse than either
+ * part alone. */
+function proofRegisterParts(pitch: string): { register: string; noteName: string } {
+  const match = /^([A-G](?:#|b)?)(-?\d+)$/.exec(pitch.trim());
+  if (!match) return { register: '', noteName: proofPitchName(pitch) };
+  const [, noteName, octaveText] = match;
+  const octave = Number(octaveText);
+  const register = octave <= 3 ? 'Bass' : octave >= 5 ? 'Treble' : 'Middle';
+  return { register, noteName };
 }
 
 /**
@@ -497,7 +532,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
         ...note,
         finger: proofFingers[index] ?? note.finger,
       }));
-      const anchorRegister = proofRegisterLabel(proofNotes[0].pitch);
 
       const proofHandLabel = requiredHands === 'left' ? 'Left Hand' : 'Right Hand';
       const releasedKeyMessage = proofHoldFailure
@@ -534,37 +568,51 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             </div>
 
             <div className="et-proof__task" style={{ alignSelf: 'center' }}>
-              <div className="et-proof__dynamic-step" style={{ textAlign: 'center', background: 'rgba(255, 253, 251, 0.96)', padding: '40px 20px', borderRadius: '24px 24px 24px 9px', border: '1px solid rgba(239, 106, 71, 0.3)', boxShadow: '0 14px 34px rgba(81, 51, 40, 0.1)', width: '100%' }}>
+              <div className="et-proof__dynamic-step" style={{ textAlign: 'center', background: 'rgba(255, 253, 251, 0.96)', padding: '32px 24px', borderRadius: '24px 24px 24px 9px', border: '1px solid rgba(239, 106, 71, 0.3)', boxShadow: '0 14px 34px rgba(81, 51, 40, 0.1)', width: '100%' }}>
                 {status === 'proof-success' ? (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>SUCCESS</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Shape complete. You can let go!</div>
+                    <div style={proofEyebrowStyle('#c74a27')}>DONE</div>
+                    <div style={proofHeadlineStyle}>Let go — nice work! 🎉</div>
                   </>
                 ) : proofHoldFailure ? (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#f84c4c', marginBottom: '12px', letterSpacing: '0.11em' }}>TRY AGAIN</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>You let go of <strong>{releasedKeyMessage}</strong> too soon.</div>
-                    <div style={{ fontSize: '18px', fontWeight: 760, color: '#6f687b', lineHeight: 1.4, marginTop: '18px' }}>Start again with the first finger. Press each key and keep it down until all three are held.</div>
-                  </>
-                ) : proofProgress === 0 ? (
-                  <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 1</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Press <strong>{anchorRegister}</strong> with <strong>{proofHandLabel} Finger {proofNotes[0].finger}</strong>.<br/><br/>Keep the key down.</div>
-                  </>
-                ) : proofProgress === 1 ? (
-                  <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 2</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep Finger {proofNotes[0].finger} down.<br/><br/>Press and hold <strong>{proofRegisterLabel(proofNotes[1].pitch)}</strong> with <strong>Finger {proofNotes[1].finger}</strong>.</div>
-                  </>
-                ) : proofProgress === 2 ? (
-                  <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 3</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep both keys down.<br/><br/>Press and hold <strong>{proofRegisterLabel(proofNotes[2].pitch)}</strong> with <strong>Finger {proofNotes[2].finger}</strong>.</div>
+                    <div style={proofEyebrowStyle('#f84c4c')}>OOPS</div>
+                    <div style={proofHeadlineStyle}><strong>{releasedKeyMessage}</strong> let go</div>
+                    <div style={proofSubStyle}>Start over — Finger {proofNotes[0].finger} first.</div>
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>HOLD STEADY</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep all three keys down until you hear the success sound.</div>
+                    <div style={proofEyebrowStyle('#c74a27')}>
+                      {proofProgress >= proofNotes.length ? 'HOLD STEADY' : `STEP ${proofProgress + 1} OF ${proofNotes.length}`}
+                    </div>
+                    <div style={proofHeadlineStyle}>
+                      {proofProgress >= proofNotes.length
+                        ? 'Keep all three down!'
+                        : `${proofProgress === 0 ? 'Press' : 'Add'} Finger ${proofNotes[proofProgress].finger}`}
+                    </div>
+                    <ul className="et-proof__keys">
+                      {proofNotes.map((note, index) => {
+                        const keyState = index < proofProgress || proofProgress >= proofNotes.length
+                          ? 'done'
+                          : index === proofProgress
+                            ? 'active'
+                            : null;
+                        const { register, noteName } = proofRegisterParts(note.pitch);
+                        return (
+                          <li
+                            key={note.pitch + index}
+                            className={keyState ? `et-proof__key et-proof__key--${keyState}` : 'et-proof__key'}
+                          >
+                            <strong>
+                              {register ? <small className="et-proof__key-register">{register}</small> : null}
+                              {noteName}
+                            </strong>
+                            <span>Finger {note.finger}</span>
+                            <i aria-hidden="true">{keyState === 'done' ? '✓' : note.finger}</i>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </>
                 )}
               </div>
@@ -684,7 +732,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
           <div className={`et-panel${status === 'memory-preview' ? ' et-panel--on' : ''}`} aria-hidden={status !== 'memory-preview'}>
             <div className="et-memory-count">
-              <span className="et-memory-count__ring" style={{ '--et-memory-progress': `${(memorySecondsRemaining / Math.max(1, blindMemory?.previewSeconds ?? 3)) * 360}deg` } as React.CSSProperties}>
+              <span className="et-memory-count__ring" style={{ '--et-memory-progress': `${(memorySecondsRemaining / Math.max(1, blindMemory?.previewSeconds ?? 3)) * 360}deg` } as CSSProperties}>
                 <strong>{memoryDigit}</strong>
               </span>
               <span>Look now — they will disappear.</span>
