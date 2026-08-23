@@ -64,6 +64,36 @@ try {
   const summary = [];
 
   assert.equal(totalLessons, 24, 'The live pathway must contain 24 lessons.');
+  assert.deepEqual(
+    PROGRESSIVE_CONCEPTS.map(({ index, phase, title, focus }) => ({ index, phase, title, focus })),
+    [
+      { index: 1, phase: 0, title: 'Meet C position', focus: 'Set the right hand once and use all five fingers.' },
+      { index: 2, phase: 0, title: 'Shape a right-hand phrase', focus: 'Read steps, turns, and gentle repeats without moving the hand.' },
+      { index: 3, phase: 0, title: 'Meet the left hand', focus: 'Learn bass-clef C position before adding any sharps.' },
+      { index: 4, phase: 0, title: 'White-key phrases', focus: 'Alternate hands while the pitch language stays familiar.' },
+      { index: 5, phase: 1, title: 'G major: one sharp', focus: 'Meet F-sharp in an otherwise familiar five-finger shape.' },
+      { index: 6, phase: 1, title: 'Sing in G major', focus: 'Use one sharp inside complete tonal phrases.' },
+      { index: 7, phase: 1, title: 'D major: two sharps', focus: 'Add C-sharp while keeping the phrase stepwise.' },
+      { index: 8, phase: 1, title: 'Shape D-major melodies', focus: 'Combine two sharps with turns, repeats, and gentle skips.' },
+      { index: 9, phase: 2, title: 'A major: three sharps', focus: 'Add G-sharp after G- and D-major feel secure.' },
+      { index: 10, phase: 2, title: 'Flow through A major', focus: 'Keep three sharps stable through a longer phrase.' },
+      { index: 11, phase: 2, title: 'E major: four sharps', focus: 'Add D-sharp with a calm, compact melodic path.' },
+      { index: 12, phase: 2, title: 'Color E-major phrases', focus: 'Read four sharps through repeated ideas and skips.' },
+      { index: 13, phase: 3, title: 'Leap from C to G', focus: 'Release one known position and land a fifth away without searching.' },
+      { index: 14, phase: 3, title: 'Leap from G to D', focus: 'Move between one- and two-sharp hand maps in time.' },
+      { index: 15, phase: 4, title: 'Leap from D to A', focus: 'Transfer the same tactile shape into a three-sharp landing.' },
+      { index: 16, phase: 4, title: 'Leap from A to E', focus: 'Keep orientation while moving into a four-sharp position.' },
+      { index: 17, phase: 5, title: 'Map B and F-sharp', focus: 'Place both new hand maps before asking the hand to jump between them.' },
+      { index: 18, phase: 5, title: 'Move from B to F-sharp', focus: 'Move only after both five- and six-sharp hand maps have been established.' },
+      { index: 19, phase: 6, title: 'Anchor, then reach', focus: 'Start from a supplied root and build the stable root-to-fifth outer shell.' },
+      { index: 20, phase: 6, title: 'Complete the chord frame', focus: 'Keep the outer shell still, then place finger 3 into the middle space.' },
+      { index: 21, phase: 6, title: 'Move the middle tone', focus: 'Keep root and fifth fixed; major and minor differ only in the middle finger space.' },
+      { index: 22, phase: 6, title: 'Match an anchor in texture', focus: 'Match an isolated reference note, then reuse the same outer-shell-first process.' },
+      { index: 23, phase: 7, title: 'Separate the background piano', focus: 'Track the centered piano through a mix, match its anchor, and rebuild by shape.' },
+      { index: 24, phase: 7, title: 'Carry the shape through a song', focus: 'Retain the piano target through four chords and rebuild it without chord-name guessing.' },
+    ],
+    'The deployed 24-lesson pathway must match the approved phase structure.',
+  );
   assert.ok(timingLeniencyForLesson(1, totalLessons).onBeatWindow >
     timingLeniencyForLesson(totalLessons, totalLessons).onBeatWindow,
   'Timing tolerance must tighten smoothly across the pathway.');
@@ -137,10 +167,17 @@ try {
                 `Lesson ${concept.index}, drill ${questionNumber} has invalid ${staff.hand}-hand proof fingers.`);
               assert.equal(question.positionProof.requireHeld, true,
                 `Lesson ${concept.index}, drill ${questionNumber} must build the position cumulatively.`);
+              assert.equal(question.positionProof.acceptWindowMs, 5500,
+                `Lesson ${concept.index}, drill ${questionNumber} must use the gently widened proof window.`);
             }
             if (question.exerciseMode === 'blind-memory') {
-              assert.equal(question.blindMemory?.previewSeconds, 6);
-              assert.match(question.instruction, /6 seconds/);
+              const noteCount = question.expectedSequence.length;
+              assert.ok(noteCount >= 8 && noteCount <= 15,
+                `Memory drill length ${noteCount} is outside the chunking range.`);
+              const expectedPreview = noteCount >= 10 ? 15 : 6;
+              assert.equal(question.blindMemory?.previewSeconds, expectedPreview);
+              assert.match(question.instruction, new RegExp(`${expectedPreview} seconds`));
+              assert.match(question.instruction, /pattern/i);
             }
             if (question.exerciseMode === 'anchor-shift') {
               assert.ok(question.anchorShift);
@@ -222,8 +259,10 @@ try {
               );
               assert.equal(offlineOnlyGrade.matched, perfect.length,
                 'Offline recovery should retain partial credit for a supported quiet note.');
-              assert.ok(offlineOnlyGrade.scores.pitch < 5 && offlineOnlyGrade.scores.overall < 5,
-                `A note missed by the live detector incorrectly produced 5.0 in Lesson ${concept.index}.`);
+              if (question.exerciseMode !== 'blind-memory') {
+                assert.ok(offlineOnlyGrade.scores.pitch < 5 && offlineOnlyGrade.scores.overall < 5,
+                  `A note missed by the live detector incorrectly produced 5.0 in Lesson ${concept.index}.`);
+              }
 
               const humanPerfect = perfect.map((note, index) => {
                 const attackJitter = (index % 2 === 0 ? -0.12 : 0.12) * plan.secondsPerBeat;
@@ -431,6 +470,19 @@ try {
     if (concept.index >= 5 && concept.index <= 18) {
       assert.ok(new Set(cleanSignatures).size >= 6,
         `Later Lesson ${concept.index} does not provide enough distinct exercise material.`);
+    }
+    if (concept.index >= 5 && concept.index <= 12) {
+      assert.ok(generatedModes.has('blind-memory') && generatedModes.has('standard'),
+        `Lesson ${concept.index} must mix memory with complementary reading work.`);
+      const baseModes = [1, 2, 3].map((questionNumber) => concept.generate(
+        globalOrdinal + questionNumber - 1,
+        makeRandom(5000 + concept.index * 10 + questionNumber),
+        0.5,
+        'normal',
+        questionNumber,
+      ).exerciseMode);
+      assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, 1,
+        `Lesson ${concept.index} should contain exactly one memory drill in its base loop.`);
     }
     if (concept.index <= 5) assert.equal(rhythms.eighth + rhythms.sixteenth, 0);
     if (concept.index >= 6 && concept.index <= 12) assert.equal(rhythms.sixteenth, 0);
@@ -682,7 +734,9 @@ try {
   // Repeated/stale actions must not skip the preview or restart it underneath
   // an active take.
   const memoryQuestion = generateFor(5, 1, 12, 0.25, route.signal, 20260802);
-  const laterMemoryQuestion = generateFor(12, 1, 44, 0.5, route.signal, 20260812);
+  const laterMemoryQuestion = generateFor(12, 2, 44, 0.5, route.signal, 20260812);
+  assert.equal(laterMemoryQuestion.exerciseMode, 'blind-memory');
+  assert.equal(laterMemoryQuestion.blindMemory?.previewSeconds, 15);
   const laterMemoryPlan = planForQuestion(laterMemoryQuestion, 75);
   const memoryTimingTake = laterMemoryPlan.expectedNotes.map((slot, index) => ({
     midi: pitchToMidi(slot.pitch),
@@ -717,6 +771,37 @@ try {
       rhythm: memoryTimingGrade.rhythm,
     })}`,
   );
+  const perfectMemoryTake = laterMemoryPlan.expectedNotes.map((slot) => ({
+    midi: pitchToMidi(slot.pitch),
+    time: 10 + slot.beat * laterMemoryPlan.secondsPerBeat,
+    clarity: 0.92,
+    strength: 2,
+  }));
+  const missedMemoryTake = perfectMemoryTake.filter(
+    (_, index) => index !== Math.floor(perfectMemoryTake.length / 2),
+  );
+  const missedMemoryGrade = gradeSequence(
+    laterMemoryQuestion.expectedSequence,
+    missedMemoryTake,
+    { ...sharedMemoryGradeOptions, exerciseMode: 'blind-memory' },
+  );
+  assert.equal(missedMemoryGrade.missed, 1);
+  assert.equal(missedMemoryGrade.scores.pitch, 5,
+    'One omitted memory note should still count as recognizing the chunk.');
+  assert.equal(missedMemoryGrade.scores.overall, 5,
+    'A cleanly recognized memory chunk with one omission should receive mastery credit.');
+  const wrongMemoryTake = perfectMemoryTake.map((note, index) => (
+    index === Math.floor(perfectMemoryTake.length / 2)
+      ? { ...note, midi: note.midi + 1 }
+      : note
+  ));
+  const wrongMemoryGrade = gradeSequence(
+    laterMemoryQuestion.expectedSequence,
+    wrongMemoryTake,
+    { ...sharedMemoryGradeOptions, exerciseMode: 'blind-memory' },
+  );
+  assert.ok(wrongMemoryGrade.scores.pitch < 5,
+    'Memory leniency must not turn a wrong note into pattern mastery.');
   let memoryRoute = {
     ...route,
     lesson: 5,

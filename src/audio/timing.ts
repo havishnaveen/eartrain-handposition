@@ -1065,6 +1065,7 @@ export function gradeSequence(
   if (options.spatialChord && options.spatialPerformance) {
     return gradeSpatialChord(options.spatialChord, detected, options.spatialPerformance);
   }
+  const isMemory = options.exerciseMode === 'blind-memory';
   const { ignoreOctave = false } = options;
   const norm = (midi: number) => (ignoreOctave ? ((midi % 12) + 12) % 12 : midi);
 
@@ -1076,6 +1077,7 @@ export function gradeSequence(
 
   const allowances = {
     ...allowancesFor(expectedCount),
+    ...(isMemory ? { misses: expectedCount >= 4 ? 1 : 0 } : {}),
     ...(options.allowedMisses !== undefined ? { misses: options.allowedMisses } : {}),
     ...(options.allowedHesitations !== undefined
       ? { hesitations: options.allowedHesitations }
@@ -1208,9 +1210,21 @@ export function gradeSequence(
     ({ note }) => note.analysisSource === 'offline-recovered',
   ).length;
   const pitchEvidence = matches.length - offlineOnlyMatches * 0.35;
-  const pitchScore = clamp5(
+  const exactPitchScore = clamp5(
     expectedCount === 0 ? 0 : (5 * pitchEvidence) / expectedCount,
   );
+  // Memory assesses whether the learner retained the musical chunk. One
+  // omitted note in an otherwise exact, ordered pattern still demonstrates
+  // recognition; wrong notes and reordered material remain fully visible.
+  const memoryPatternRecognized = Boolean(
+    isMemory &&
+    expectedCount >= 4 &&
+    totalMissed <= 1 &&
+    matches.length >= expectedCount - 1 &&
+    hard === 0 &&
+    hesitations === 0
+  );
+  const pitchScore = memoryPatternRecognized ? 5 : exactPitchScore;
 
   // Timing: a curved, lesson-aware falloff. Early readers get space to find
   // the beat; later readers are asked for more precision, without the old
@@ -1274,7 +1288,7 @@ export function gradeSequence(
   const transitionSupportsFullCredit =
     !transition || (transition.measured && transition.score === 5);
   const fullCreditTiming = Boolean(
-    completePitch &&
+    (completePitch || memoryPatternRecognized) &&
     rhythm &&
     rhythm.accuracy === 1 &&
     rhythm.meanIntervalErrorBeats <= timingProfile.onBeatWindow * 1.2 &&
@@ -1311,9 +1325,9 @@ export function gradeSequence(
         : clamp5(5 - 0.75 * hard - 0.25 * hesitations);
 
   // Pitch carries the most weight: this app exists to verify hand position.
-  const wPitch = 0.5;
-  const wTiming = 0.2;
-  const wClean = 0.3;
+  const wPitch = isMemory ? 0.7 : 0.5;
+  const wTiming = isMemory ? 0.1 : 0.2;
+  const wClean = isMemory ? 0.2 : 0.3;
   const overall = calculateOverallScore(
     pitchScore,
     timingScore,
@@ -1346,7 +1360,9 @@ export function gradeSequence(
 
   let detail: string;
   if (passed) {
-    if (transition?.measured) {
+    if (memoryPatternRecognized && totalMissed === 1) {
+      detail = 'Pattern recognized. One note dropped out, but the musical shape stayed clear.';
+    } else if (transition?.measured) {
       detail = transition.onTime
         ? `Clean landing — the hand shift took ${transition.transitionSeconds?.toFixed(2)} seconds.`
         : `The shift was measured at ${transition.transitionSeconds?.toFixed(2)} seconds. Keep the next position prepared.`;

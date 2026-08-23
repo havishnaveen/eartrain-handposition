@@ -585,11 +585,12 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       isBlindMemory &&
       (status === 'prompt' || status === 'leadin' || status === 'listening');
     const memoryWaiting = isBlindMemory && status === 'prompt';
+    const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
     const memoryDigit = Math.max(0, Math.ceil(memorySecondsRemaining));
     const showPieceProgress = status === 'listening';
     const visibleInstruction = isBlindMemory
       ? status === 'memory-preview'
-        ? 'Remember these notes.'
+        ? 'Find the pattern and remember it.'
         : status === 'leadin' || status === 'listening'
           ? 'Now play from memory.'
           : 'Ready to remember?'
@@ -614,7 +615,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
         </span>
         {isBlindMemory ? (
           <div className="et-kid-steps" aria-label="Remember it steps">
-            <span className={status === 'prompt' || status === 'memory-preview' ? 'is-active' : 'is-done'}><b>1</b> Look for 3 seconds</span>
+            <span className={status === 'prompt' || status === 'memory-preview' ? 'is-active' : 'is-done'}><b>1</b> Look for {memoryPreviewSeconds} seconds</span>
             <span className={status === 'leadin' ? 'is-active' : status === 'listening' ? 'is-done' : ''}><b>2</b> Notes hide</span>
             <span className={status === 'listening' ? 'is-active' : ''}><b>3</b> Play from memory</span>
           </div>
@@ -652,8 +653,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           <div className="et-cue__content" aria-hidden={memoryHidden}>{children}</div>
           {memoryHidden ? (
             <div className="et-memory-hidden" role="status">
-              <span className="et-memory-hidden__mark" aria-hidden="true">{memoryWaiting ? '3' : '✓'}</span>
-              <strong>{memoryWaiting ? 'Tap Start for a 3-second look.' : 'The notes are hidden.'}</strong>
+              <span className="et-memory-hidden__mark" aria-hidden="true">{memoryWaiting ? memoryPreviewSeconds : '✓'}</span>
+              <strong>{memoryWaiting ? `Tap Start for a ${memoryPreviewSeconds}-second look.` : 'The notes are hidden.'}</strong>
               <span>{memoryWaiting ? 'Then they disappear.' : 'Play what you remember.'}</span>
             </div>
           ) : null}

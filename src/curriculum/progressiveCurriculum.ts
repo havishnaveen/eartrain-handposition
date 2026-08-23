@@ -22,6 +22,8 @@ import {
   MUSICAL_GENTLE_SKIPS,
   MUSICAL_LATE,
   MUSICAL_REPEATED,
+  MEMORY_LONG_PATTERNS,
+  MEMORY_SHORT_PATTERNS,
   applyRhythm,
   fingerFor,
 } from './melody';
@@ -47,7 +49,8 @@ import type { Contour } from './melody';
 
 const BASE_QUESTIONS = 3;
 const MAX_QUESTIONS = 9;
-const MEMORY_PREVIEW_SECONDS = 6;
+const SHORT_MEMORY_PREVIEW_SECONDS = 6;
+const LONG_MEMORY_PREVIEW_SECONDS = 15;
 
 const C = positionById('C');
 const G = positionById('G');
@@ -170,7 +173,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c05-g-major-orientation', index: 5, phase: 1, phaseLabel: 'One sharp',
     title: 'G major: one sharp', focus: 'Meet F-sharp in an otherwise familiar five-finger shape.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
@@ -179,7 +182,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c06-g-major-phrases', index: 6, phase: 1, phaseLabel: 'One sharp',
     title: 'Sing in G major', focus: 'Use one sharp inside complete tonal phrases.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
@@ -193,7 +196,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c07-d-major-orientation', index: 7, phase: 1, phaseLabel: 'Two sharps',
     title: 'D major: two sharps', focus: 'Add C-sharp while keeping the phrase stepwise.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
@@ -202,7 +205,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c08-d-major-phrases', index: 8, phase: 1, phaseLabel: 'Two sharps',
     title: 'Shape D-major melodies', focus: 'Combine two sharps with turns, repeats, and gentle skips.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
@@ -216,7 +219,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c09-a-major-orientation', index: 9, phase: 2, phaseLabel: 'Three sharps',
     title: 'A major: three sharps', focus: 'Add G-sharp after G- and D-major feel secure.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
@@ -225,7 +228,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c10-a-major-phrases', index: 10, phase: 2, phaseLabel: 'Three sharps',
     title: 'Flow through A major', focus: 'Keep three sharps stable through a longer phrase.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
@@ -239,7 +242,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c11-e-major-orientation', index: 11, phase: 2, phaseLabel: 'Four sharps',
     title: 'E major: four sharps', focus: 'Add D-sharp with a calm, compact melodic path.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
@@ -248,7 +251,7 @@ const LESSONS: readonly LessonRecipe[] = [
   {
     id: 'c12-e-major-phrases', index: 12, phase: 2, phaseLabel: 'Four sharps',
     title: 'Color E-major phrases', focus: 'Read four sharps through repeated ideas and skips.',
-    instruction: 'Look for 3 seconds. Then play from memory.',
+    instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
@@ -888,7 +891,23 @@ function questionFor(
     Math.floor((questionNumber - 1) / lesson.positions.length),
   );
   const position = buildPosition(positionTemplate, octave);
-  const contour = variedPick(lesson.contours, modeDifficulty, ordinal);
+  // Memory is one complementary drill inside each applicable lesson, not the
+  // entire lesson. Orientation lessons lead with memory; phrase lessons place
+  // it second, with their third drill reserved for chord work where present.
+  const memoryRep = lesson.index % 2 === 1 ? 0 : 1;
+  const exerciseMode: ExerciseMode =
+    lesson.exerciseMode === 'blind-memory' && localRep !== memoryRep
+      ? 'standard'
+      : lesson.exerciseMode;
+  const memoryPool = lesson.index >= 9 ? MEMORY_LONG_PATTERNS : MEMORY_SHORT_PATTERNS;
+  const contour = variedPick(
+    exerciseMode === 'blind-memory' ? memoryPool : lesson.contours,
+    modeDifficulty,
+    ordinal + lesson.index,
+  );
+  const memoryPreviewSeconds = contour.length >= 10
+    ? LONG_MEMORY_PREVIEW_SECONDS
+    : SHORT_MEMORY_PREVIEW_SECONDS;
   const beatsPerBar = cyclePick(lesson.meters, ordinal);
 
   const notes: CueNote[] = contour.map((degree, index) => ({
@@ -901,11 +920,13 @@ function questionFor(
   return {
     id: `${lesson.id}#${ordinal}`,
     conceptId: lesson.id,
-    exerciseMode: lesson.exerciseMode,
+    exerciseMode,
     handScope: hand,
-    instruction: lesson.exerciseMode === 'blind-memory'
-      ? `Look for ${MEMORY_PREVIEW_SECONDS} seconds. Then play from memory.`
-      : lesson.instruction,
+    instruction: exerciseMode === 'blind-memory'
+      ? `Look for ${memoryPreviewSeconds} seconds. Find the pattern, then play it from memory.`
+      : lesson.exerciseMode === 'blind-memory'
+        ? 'Read the phrase and play it after the count-in.'
+        : lesson.instruction,
     cue: {
       keySignature: lesson.showKeySignature ? position.template.keySignature : 'C',
       timeSignature: `${beatsPerBar}/4`,
@@ -936,12 +957,12 @@ function questionFor(
                   { pitch: position.sci[4], finger: 1 as const },
                 ],
             requireHeld: true,
-            acceptWindowMs: 5000,
+            acceptWindowMs: 5500,
           },
         }
       : {}),
-    ...(lesson.exerciseMode === 'blind-memory'
-      ? { blindMemory: { previewSeconds: MEMORY_PREVIEW_SECONDS, hideStyle: 'vanish' as const } }
+    ...(exerciseMode === 'blind-memory'
+      ? { blindMemory: { previewSeconds: memoryPreviewSeconds, hideStyle: 'vanish' as const } }
       : {}),
   };
 }
