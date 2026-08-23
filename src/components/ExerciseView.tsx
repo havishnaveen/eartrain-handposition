@@ -543,7 +543,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <div className="et-proof__dynamic-step" style={{ textAlign: 'center', background: 'rgba(255, 253, 251, 0.96)', padding: '40px 20px', borderRadius: '24px 24px 24px 9px', border: '1px solid rgba(239, 106, 71, 0.3)', boxShadow: '0 14px 34px rgba(81, 51, 40, 0.1)', width: '100%' }}>
                 {status === 'proof-success' ? (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#918c9d', marginBottom: '12px', letterSpacing: '0.11em' }}>SUCCESS</div>
+                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>SUCCESS</div>
                     <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Great job!</div>
                   </>
                 ) : proofHoldFailure ? (
@@ -554,22 +554,22 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   </>
                 ) : proofProgress === 0 ? (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#918c9d', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 1</div>
+                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 1</div>
                     <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Hold <strong>{proofHandLabel} Finger {proofNotes[0].finger}</strong> on <strong>{anchorRegister}</strong></div>
                   </>
                 ) : proofProgress === 1 ? (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#918c9d', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 2</div>
+                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 2</div>
                     <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep holding that key.<br/><br/>Add <strong>Finger {proofNotes[1].finger}</strong> on <strong>{proofPitchName(proofNotes[1].pitch)}</strong></div>
                   </>
                 ) : proofProgress === 2 ? (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#918c9d', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 3</div>
+                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 3</div>
                     <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep holding both keys.<br/><br/>Add <strong>Finger {proofNotes[2].finger}</strong> on <strong>{proofPitchName(proofNotes[2].pitch)}</strong></div>
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#918c9d', marginBottom: '12px', letterSpacing: '0.11em' }}>HOLD STEADY</div>
+                    <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>HOLD STEADY</div>
                     <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Don't let go...</div>
                   </>
                 )}
