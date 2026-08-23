@@ -56,7 +56,7 @@ export interface DrillPlan {
   notes: PlannedNote[];
   /** Every played note, including notes implied by a guide-note cue. */
   expectedNotes: ExpectedNoteSlot[];
-  /** Beats of written material. */
+  /** Elapsed timeline beats, including any silent timed-shift window. */
   totalBeats: number;
   /** Grace beats after the last note before the recorder stops. */
   tailBeats: number;
@@ -65,6 +65,14 @@ export interface DrillPlan {
   /** Two full measures of count-in labels, e.g. 1–4 followed by 1–4. */
   countInLabels: string[];
   countInSeconds: number;
+  /** Exact silent hand-movement window on the shared audio timeline. */
+  timedShift?: {
+    splitIndex: number;
+    waitSeconds: number;
+    waitBeats: number;
+    startBeat: number;
+    endBeat: number;
+  };
   /**
    * True when the notation shows fewer notes than the student plays — the
    * guide-note drills, where one written note names a position and the
@@ -150,6 +158,17 @@ export function planFor(
     countInSeconds: beatsPerBar * 2 * secondsPerBeat,
     guideNote,
   };
+}
+
+/** Metronome beat positions, with the musical grid silent during a hand move. */
+export function metronomeBeatPositions(plan: DrillPlan): number[] {
+  const waitBeats = plan.timedShift?.waitBeats ?? 0;
+  const writtenPlayBeats = Math.ceil(plan.totalBeats - waitBeats);
+  return Array.from({ length: writtenPlayBeats }, (_, writtenBeat) => (
+    plan.timedShift && writtenBeat >= plan.timedShift.startBeat
+      ? writtenBeat + waitBeats
+      : writtenBeat
+  ));
 }
 
 /* ---------------------------------------------------------------------------
@@ -1426,5 +1445,34 @@ export function gradeSequence(
 }
 
 export function planForQuestion(question: Question, bpm: number = DEFAULT_BPM): DrillPlan {
-  return planFor(question.cue, question.expectedSequence, bpm);
+  const plan = planFor(question.cue, question.expectedSequence, bpm);
+  const waitSeconds = Math.max(0, question.anchorShift?.timedShift?.waitSeconds ?? 0);
+  if (waitSeconds === 0 || plan.expectedNotes.length < 2) return plan;
+
+  const splitIndex = Math.min(
+    Math.max(1, question.anchorShift?.splitIndex ?? 1),
+    plan.expectedNotes.length - 1,
+  );
+  const startBeat = plan.expectedNotes[splitIndex].beat;
+  const waitBeats = waitSeconds / plan.secondsPerBeat;
+  const endBeat = startBeat + waitBeats;
+
+  return {
+    ...plan,
+    notes: plan.notes.map((note) => (
+      note.beat >= startBeat ? { ...note, beat: note.beat + waitBeats } : note
+    )),
+    expectedNotes: plan.expectedNotes.map((note, index) => (
+      index >= splitIndex ? { ...note, beat: note.beat + waitBeats } : note
+    )),
+    totalBeats: plan.totalBeats + waitBeats,
+    recordSeconds: plan.recordSeconds + waitSeconds,
+    timedShift: {
+      splitIndex,
+      waitSeconds,
+      waitBeats,
+      startBeat,
+      endBeat,
+    },
+  };
 }

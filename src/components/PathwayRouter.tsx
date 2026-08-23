@@ -1124,6 +1124,7 @@ export function PathwayRouter({
             ref={staffRef}
             cue={question.cue}
             shift={question.anchorShift}
+            secondsPerBeat={60 / bpm}
             accentColor="#ef6a47"
             inkColor="#242237"
           />

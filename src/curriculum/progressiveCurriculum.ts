@@ -835,6 +835,7 @@ function questionFor(
       0.42,
       1.1 - (lesson.index - 13) * 0.12 - modeDifficulty * 0.18,
     );
+    const waitSeconds = lesson.index <= 14 ? 4 : lesson.index <= 16 ? 3 : 2;
 
     return {
       id: `${lesson.id}#${ordinal}`,
@@ -844,7 +845,7 @@ function questionFor(
       // reserved for a question that genuinely presents both hands at once;
       // alternating hands across a lesson must not mislabel the current rep.
       handScope: hand,
-      instruction: lesson.instruction,
+      instruction: `Timed switch: play ${fromName}, use the ${waitSeconds}-second pause to move, then play ${toName}.`,
       cue: {
         // The destination signature covers the sharper landing. Naturals are
         // applied automatically when the opening position needs one.
@@ -875,6 +876,7 @@ function questionFor(
         toPositionName: toName,
         splitIndex,
         allowedExtraBeats,
+        timedShift: { waitSeconds },
       },
     };
   }

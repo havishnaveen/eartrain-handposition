@@ -586,6 +586,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       (status === 'prompt' || status === 'leadin' || status === 'listening');
     const memoryWaiting = isBlindMemory && status === 'prompt';
     const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
+    const shiftWaitSeconds = anchorShift?.timedShift?.waitSeconds;
     const memoryDigit = Math.max(0, Math.ceil(memorySecondsRemaining));
     const showPieceProgress = status === 'listening';
     const visibleInstruction = isBlindMemory
@@ -595,7 +596,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           ? 'Now play from memory.'
           : 'Ready to remember?'
       : exerciseMode === 'anchor-shift'
-        ? 'Play the first card. Move when the arrow lights up.'
+        ? shiftWaitSeconds
+          ? `Timed switch: play the first card, then use the ${shiftWaitSeconds}-second pause to move before the second card starts.`
+          : 'Play the first card. Move when the arrow lights up.'
         : instruction;
 
     return (
@@ -620,9 +623,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <span className={status === 'listening' ? 'is-active' : ''}><b>3</b> Play from memory</span>
           </div>
         ) : exerciseMode === 'anchor-shift' ? (
-          <div className="et-kid-steps et-kid-steps--shift" aria-label="Move your hand steps">
+          <div className="et-kid-steps et-kid-steps--shift" aria-label="Timed hand switch steps">
             <span><b>1</b> Play the first box</span>
-            <span><b>2</b> Move at the arrow</span>
+            <span><b>2</b> {shiftWaitSeconds ? `Move during the ${shiftWaitSeconds}s timer` : 'Move at the arrow'}</span>
             <span><b>3</b> Play the second box</span>
           </div>
         ) : null}
@@ -677,7 +680,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 exerciseMode === 'blind-memory'
                   ? 'Tap once. Look carefully. Then play.'
                   : exerciseMode === 'anchor-shift'
-                    ? `Start in ${anchorShift?.fromPositionName ?? 'the first position'}. When MOVE lights up, land in ${anchorShift?.toPositionName ?? 'the second position'}.`
+                    ? shiftWaitSeconds
+                      ? `This is timed. Start in ${anchorShift?.fromPositionName ?? 'the first position'}, then move to ${anchorShift?.toPositionName ?? 'the second position'} during the ${shiftWaitSeconds}-second silent countdown.`
+                      : `Start in ${anchorShift?.fromPositionName ?? 'the first position'}. When MOVE lights up, land in ${anchorShift?.toPositionName ?? 'the second position'}.`
                     : 'Listen to the two-measure count in. Then play.'
               )}
             </p>

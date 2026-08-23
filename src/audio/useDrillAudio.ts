@@ -4,7 +4,12 @@ import type {
   DrillPlan,
   SpatialChordPerformance,
 } from './timing';
-import { frequencyToMidi, midiToName, pitchToMidi } from './timing';
+import {
+  frequencyToMidi,
+  metronomeBeatPositions,
+  midiToName,
+  pitchToMidi,
+} from './timing';
 import type { SpatialChordSpec } from '../curriculum/types';
 import {
   analyzeCapturedTake,
@@ -2186,13 +2191,12 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       for (let i = 0; i < countInBeats; i++) {
         clicks.push({ time: t0 + i * spb, accent: i % plan.beatsPerBar === 0 });
       }
-      const playBeats = Math.ceil(plan.totalBeats);
-      for (let j = 0; j < playBeats; j++) {
+      metronomeBeatPositions(plan).forEach((timelineBeat, writtenBeat) => {
         clicks.push({
-          time: playStart + j * spb,
-          accent: j % plan.beatsPerBar === 0,
+          time: playStart + timelineBeat * spb,
+          accent: writtenBeat % plan.beatsPerBar === 0,
         });
-      }
+      });
       clicksRef.current = clicks;
       nextClickRef.current = 0;
       // The worklet receives the exact audio-clock click schedule. It can
@@ -2268,11 +2272,20 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             cbRef.current.onPlayStart?.(playStartRef.current);
           }
 
-          const beatInBar = Math.floor(beatPosition) % currentPlan.beatsPerBar;
-          const key = `p${Math.floor(beatPosition)}`;
+          const timedShift = currentPlan.timedShift;
+          const moving = Boolean(
+            timedShift &&
+            beatPosition >= timedShift.startBeat &&
+            beatPosition < timedShift.endBeat
+          );
+          const writtenBeatPosition = timedShift && beatPosition >= timedShift.endBeat
+            ? beatPosition - timedShift.waitBeats
+            : beatPosition;
+          const beatInBar = Math.floor(writtenBeatPosition) % currentPlan.beatsPerBar;
+          const key = moving ? 'move' : `p${Math.floor(writtenBeatPosition)}`;
           if (key !== lastBeatKeyRef.current) {
             lastBeatKeyRef.current = key;
-            safeSet(setBeatLabel, String(beatInBar + 1));
+            safeSet(setBeatLabel, moving ? 'MOVE' : String(beatInBar + 1));
           }
 
           if (now >= recordEndRef.current) {

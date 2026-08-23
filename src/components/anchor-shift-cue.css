@@ -50,7 +50,7 @@
   background: #fff;
 }
 
-.et-anchor-cue[data-active-position='move'] .et-anchor-cue__bridge i {
+.et-anchor-cue[data-active-position='move'] .et-anchor-cue__arrow {
   animation: et-shift-arrow 420ms ease-in-out infinite alternate;
 }
 
@@ -127,11 +127,45 @@
   text-transform: uppercase;
 }
 
-.et-anchor-cue__bridge i {
+.et-anchor-cue__arrow {
   font-size: 40px;
   font-style: normal;
   font-weight: 800;
   line-height: 1;
+}
+
+.et-anchor-cue__countdown {
+  color: #5549b4;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.et-anchor-cue__countdown-track {
+  width: 68px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(85, 73, 180, 0.16);
+}
+
+.et-anchor-cue__countdown-track i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.et-anchor-cue[data-active-position='move'] .et-anchor-cue__countdown,
+.et-anchor-cue[data-active-position='move'] .et-anchor-cue__countdown-track {
+  color: #fff;
+}
+
+.et-anchor-cue[data-active-position='move'] .et-anchor-cue__countdown-track {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .et-anchor-cue__bridge small {
@@ -173,12 +207,15 @@
     padding: 5px 10px;
   }
 
-  .et-anchor-cue__bridge i {
+  .et-anchor-cue__arrow {
     font-size: 22px;
     transform: rotate(90deg);
   }
 
-  .et-anchor-cue[data-active-position='move'] .et-anchor-cue__bridge i {
+  .et-anchor-cue__countdown { font-size: 15px; }
+  .et-anchor-cue__countdown-track { width: 44px; }
+
+  .et-anchor-cue[data-active-position='move'] .et-anchor-cue__arrow {
     animation: none;
     transform: rotate(90deg) translateX(4px);
   }

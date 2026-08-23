@@ -33,6 +33,7 @@ try {
     beatsForDuration,
     gradeSequence,
     gradeSpatialChord,
+    metronomeBeatPositions,
     pitchToMidi,
     planForQuestion,
     timingLeniencyForLesson,
@@ -143,7 +144,34 @@ try {
             );
             assert.ok(Math.abs(totalBeats / plan.beatsPerBar - Math.round(totalBeats / plan.beatsPerBar)) < 1e-8,
               `Lesson ${concept.index}, drill ${questionNumber} must fill complete measures.`);
-            assert.equal(plan.totalBeats, totalBeats);
+            const timedWaitBeats = (question.anchorShift?.timedShift?.waitSeconds ?? 0) /
+              plan.secondsPerBeat;
+            assert.ok(Math.abs(plan.totalBeats - totalBeats - timedWaitBeats) < 1e-8,
+              `Lesson ${concept.index}, drill ${questionNumber} timeline must include its exact shift pause.`);
+
+            if (question.exerciseMode === 'anchor-shift') {
+              const expectedWaitSeconds = concept.index <= 14 ? 4 : concept.index <= 16 ? 3 : 2;
+              assert.equal(question.anchorShift?.timedShift?.waitSeconds, expectedWaitSeconds,
+                `Lesson ${concept.index} must use its progressive timed-switch window.`);
+              assert.equal(plan.timedShift?.waitSeconds, expectedWaitSeconds);
+              assert.ok(question.instruction.includes('Timed switch'));
+              const splitIndex = question.anchorShift.splitIndex;
+              const writtenSplitBeat = staff.notes.slice(0, splitIndex).reduce(
+                (sum, note) => sum + beatsForDuration(note.duration),
+                0,
+              );
+              assert.ok(Math.abs(plan.timedShift.startBeat - writtenSplitBeat) < 1e-8);
+              assert.ok(Math.abs(
+                plan.expectedNotes[splitIndex].beat - plan.timedShift.endBeat,
+              ) < 1e-8, 'The second staff must start only after the full movement window.');
+              const clickBeats = metronomeBeatPositions(plan);
+              assert.ok(clickBeats.every((beat) => (
+                beat < plan.timedShift.startBeat || beat >= plan.timedShift.endBeat
+              )), 'The metronome must be silent throughout the hand-movement window.');
+              assert.ok(clickBeats.some((beat) => (
+                Math.abs(beat - plan.timedShift.endBeat) < 1e-8
+              )), 'The metronome must resume exactly with the second staff.');
+            }
 
             const writtenPitches = staff.notes
               .filter((note) => !note.duration.endsWith('r'))
@@ -174,7 +202,7 @@ try {
               const noteCount = question.expectedSequence.length;
               assert.ok(noteCount >= 8 && noteCount <= 15,
                 `Memory drill length ${noteCount} is outside the chunking range.`);
-              const expectedPreview = noteCount >= 10 ? 15 : 6;
+              const expectedPreview = noteCount >= 10 ? 15 : 10;
               assert.equal(question.blindMemory?.previewSeconds, expectedPreview);
               assert.match(question.instruction, new RegExp(`${expectedPreview} seconds`));
               assert.match(question.instruction, /pattern/i);
@@ -865,6 +893,27 @@ try {
     });
     assert.equal(grade.passed, true,
       `Perfect reducer performance failed at Lesson ${fullRoute.lesson}, drill ${fullRoute.question}.`);
+    if (fullRoute.current.exerciseMode === 'anchor-shift') {
+      assert.equal(grade.scores.overall, 5,
+        'A perfect timed switch must retain full mastery credit.');
+      assert.equal(grade.transition?.score, 5,
+        'The planned movement window must not count as extra transition delay.');
+      const splitIndex = fullRoute.current.anchorShift.splitIndex;
+      const unpausedTake = performed.map((note, index) => (
+        index >= splitIndex
+          ? { ...note, time: note.time - fullRoute.current.anchorShift.timedShift.waitSeconds }
+          : note
+      ));
+      const unpausedGrade = gradeSequence(fullRoute.current.expectedSequence, unpausedTake, {
+        plan: currentPlan,
+        playStartTime: playStart,
+        lessonLevel: fullRoute.lesson,
+        totalLessons,
+        anchorShift: fullRoute.current.anchorShift,
+      });
+      assert.ok((unpausedGrade.scores.timing ?? 5) < 5,
+        'Playing the second staff before its timed restart must not receive perfect timing.');
+    }
     fullRoute = {
       ...fullRoute,
       status: 'grading',

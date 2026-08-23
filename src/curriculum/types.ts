@@ -147,6 +147,10 @@ export interface AnchorShiftSpec {
   splitIndex: number;
   /** Extra delay beyond the written onset gap that still earns some credit. */
   allowedExtraBeats: number;
+  /** Optional silent movement window inserted between the two notation panels. */
+  timedShift?: {
+    waitSeconds: number;
+  };
 }
 
 /** A single generated instance of a concept — one thing to play, once. */

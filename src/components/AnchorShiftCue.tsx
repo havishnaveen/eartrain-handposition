@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -13,6 +14,7 @@ import './anchor-shift-cue.css';
 export interface AnchorShiftCueProps {
   cue: CueSpec;
   shift: AnchorShiftSpec;
+  secondsPerBeat: number;
   accentColor?: string;
   inkColor?: string;
 }
@@ -29,6 +31,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
     {
       cue,
       shift,
+      secondsPerBeat,
       accentColor = '#ef6a47',
       inkColor = '#242237',
     },
@@ -37,6 +40,8 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
     const rootRef = useRef<HTMLDivElement>(null);
     const firstRef = useRef<StaffCueHandle>(null);
     const secondRef = useRef<StaffCueHandle>(null);
+    const countdownRef = useRef<HTMLElement>(null);
+    const countdownFillRef = useRef<HTMLElement>(null);
     const staff = cue.staves[0];
     const split = Math.min(
       Math.max(1, shift.splitIndex),
@@ -62,37 +67,54 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         sharedPanelBeats: Math.max(firstDuration, secondDuration),
       };
     }, [cue, split, staff]);
+    const waitSeconds = Math.max(0, shift.timedShift?.waitSeconds ?? 0);
+    const waitBeats = waitSeconds / Math.max(0.01, secondsPerBeat);
+
+    const showCountdown = useCallback((remaining: number) => {
+      const safeRemaining = Math.max(0, Math.min(waitSeconds, remaining));
+      if (countdownRef.current) {
+        countdownRef.current.textContent = `${safeRemaining.toFixed(1)}s`;
+      }
+      if (countdownFillRef.current) {
+        countdownFillRef.current.style.transform = `scaleX(${waitSeconds === 0 ? 1 : 1 - safeRemaining / waitSeconds})`;
+      }
+    }, [waitSeconds]);
 
     useImperativeHandle(ref, () => ({
       seekToBeat(beat: number) {
         if (beat < 0) {
           rootRef.current?.setAttribute('data-active-position', 'from');
+          showCountdown(waitSeconds);
           firstRef.current?.seekToBeat(-1);
           secondRef.current?.hide();
           return;
         }
         if (beat < firstBeats) {
-          // Light the travel cue half a beat before the landing. The written
-          // timeline and scrubber remain unchanged; this is only a visual
-          // preparation cue so a young learner knows exactly when to move.
-          rootRef.current?.setAttribute(
-            'data-active-position',
-            beat >= Math.max(0, firstBeats - 0.5) ? 'move' : 'from',
-          );
+          rootRef.current?.setAttribute('data-active-position', 'from');
+          showCountdown(waitSeconds);
           firstRef.current?.seekToBeat(beat);
           secondRef.current?.hide();
           return;
         }
+        if (beat < firstBeats + waitBeats) {
+          rootRef.current?.setAttribute('data-active-position', 'move');
+          showCountdown(waitSeconds - (beat - firstBeats) * secondsPerBeat);
+          firstRef.current?.hide();
+          secondRef.current?.hide();
+          return;
+        }
         rootRef.current?.setAttribute('data-active-position', 'to');
+        showCountdown(0);
         firstRef.current?.hide();
-        secondRef.current?.seekToBeat(beat - firstBeats);
+        secondRef.current?.seekToBeat(beat - firstBeats - waitBeats);
       },
       hide() {
         rootRef.current?.setAttribute('data-active-position', 'from');
+        showCountdown(waitSeconds);
         firstRef.current?.hide();
         secondRef.current?.hide();
       },
-    }), [firstBeats]);
+    }), [firstBeats, secondsPerBeat, showCountdown, waitBeats, waitSeconds]);
 
     if (!staff) {
       return <StaffCue ref={firstRef} cue={cue} accentColor={accentColor} inkColor={inkColor} />;
@@ -103,7 +125,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         ref={rootRef}
         className="et-anchor-cue"
         data-active-position="from"
-        aria-label={`Step 1: play ${shift.fromPositionName}. Step 2: move your hand. Step 3: land in ${shift.toPositionName}.`}
+        aria-label={`Timed switch. Step 1: play ${shift.fromPositionName}. Step 2: use the ${waitSeconds}-second pause to move your hand. Step 3: land in ${shift.toPositionName}.`}
       >
         <section className="et-anchor-cue__half et-anchor-cue__half--from" aria-label={`${shift.fromPositionName} music`}>
           <header className="et-anchor-cue__label">
@@ -113,11 +135,15 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} minimumTimelineBeats={sharedPanelBeats} />
         </section>
 
-        <div className="et-anchor-cue__bridge" aria-label="Move your hand">
+        <div className="et-anchor-cue__bridge" aria-label={`${waitSeconds}-second hand-movement countdown`}>
           <span className="et-anchor-cue__step">2</span>
-          <b>Move hand</b>
-          <i aria-hidden="true">→</i>
-          <small>Keep the beat</small>
+          <b>Timed switch</b>
+          <i className="et-anchor-cue__arrow" aria-hidden="true">→</i>
+          <strong ref={countdownRef} className="et-anchor-cue__countdown">{waitSeconds.toFixed(1)}s</strong>
+          <span className="et-anchor-cue__countdown-track" aria-hidden="true">
+            <i ref={countdownFillRef} />
+          </span>
+          <small>Move while silent</small>
         </div>
 
         <section className="et-anchor-cue__half et-anchor-cue__half--to" aria-label={`${shift.toPositionName} music`}>
