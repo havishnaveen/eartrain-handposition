@@ -728,9 +728,7 @@ function spatialChordQuestion(
     conceptId: lesson.id,
     exerciseMode: 'spatial-chord',
     handScope: hand,
-    instruction: recipe.rootSupport === 'shown'
-      ? 'Place the anchor. Build the outside, then the middle.'
-      : 'Match the anchor. Build the outside, then the middle.',
+    instruction: lesson.instruction,
     cue: {
       keySignature: quality === 'major' ? position.template.keySignature : 'C',
       timeSignature: '3/4',

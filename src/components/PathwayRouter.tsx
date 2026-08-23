@@ -249,10 +249,18 @@ export function createInitialPathwayState({
   seed,
   cap,
   initialLesson = 1,
+  initialProofCompleted = false,
 }: {
   seed: number;
   cap: number;
   initialLesson?: number;
+  /**
+   * Dev-only escape hatch (see src/dev/DevLessonJumper.tsx): seeds
+   * `proofCompleted` so a jumped-to `prove-it` lesson opens straight on
+   * `prompt` instead of gating on `position-prompt`. Always false in the
+   * normal student flow.
+   */
+  initialProofCompleted?: boolean;
 }): PathwayState {
   const lesson = Math.min(TOTAL_CONCEPTS, Math.max(1, Math.round(initialLesson)));
   const current = generateFor(lesson, 1, 0, 0, INITIAL_SIGNAL, seed);
@@ -261,11 +269,11 @@ export function createInitialPathwayState({
     question: 1,
     loopSize: getConcept(lesson).baseQuestionCount,
     attempt: 1,
-    status: initialStatusFor(current),
+    status: initialStatusFor(current, initialProofCompleted),
     report: null,
     performedNotes: [],
     repeatQuestion: false,
-    proofCompleted: false,
+    proofCompleted: initialProofCompleted,
     ordinal: 0,
     difficulty: 0,
     current,
@@ -536,6 +544,8 @@ export interface PathwayRouterProps {
   returnUrl?: string;
   bpm?: number;
   initialLesson?: number;
+  /** Dev-only: see `createInitialPathwayState`. Always false for students. */
+  initialProofCompleted?: boolean;
   externalLaunch?: ResolvedStudentLaunch;
 }
 
@@ -559,12 +569,13 @@ export function PathwayRouter({
   returnUrl,
   bpm = DEFAULT_BPM,
   initialLesson = 1,
+  initialProofCompleted = false,
   externalLaunch,
 }: PathwayRouterProps) {
   const resolvedCap = sessionQuestionCap ?? DEFAULT_SESSION_QUESTION_CAP;
   const [state, dispatch] = useReducer(
     pathwayReducer,
-    { seed, cap: resolvedCap, initialLesson },
+    { seed, cap: resolvedCap, initialLesson, initialProofCompleted },
     createInitialPathwayState,
   );
   const attempts = useAttempts();
