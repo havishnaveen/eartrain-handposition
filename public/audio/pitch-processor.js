@@ -204,10 +204,12 @@ const STRICT_MIN_PIANO_ATTACK_CONFIDENCE = 0.52;
  * Pedal can keep the string alive after key-up, so no release is fabricated
  * when the collapse is not acoustically observable. */
 const RELEASE_MIN_AGE_SEC = 0.14;
-const RELEASE_CONFIRM_FRAMES = 2;
+const RELEASE_CONFIRM_FRAMES = 3;
 const RELEASE_FAST_SMOOTH_RATIO = 0.42;
 const RELEASE_SLOW_SMOOTH_RATIO = 0.9;
 const RELEASE_MAX_TRACK_SEC = 8;
+const RELEASE_OVERLAP_SETTLE_SEC = 0.16;
+const RELEASE_PROFILE_BANDS = 6;
 
 /* YIN */
 const YIN_THRESHOLD = 0.2;
@@ -467,6 +469,10 @@ class PitchProcessor extends AudioWorkletProcessor {
     this.referenceTransients = [];
     this.voiceActivityFrom = Infinity;
     this.voiceActivityUntil = -Infinity;
+    // Prove It supplies exactly one next pitch at a time. This does not grant
+    // acceptance; it only opens a quieter physical-onset lane whose result is
+    // still verified against independent pitch evidence on the main thread.
+    this.watchedMidi = null;
     this.nextOnsetId = 1;
     this.levelCounter = 0;
     this.listening = false;
@@ -489,6 +495,7 @@ class PitchProcessor extends AudioWorkletProcessor {
         this.activeNotes = [];
         this.voiceActivityFrom = Infinity;
         this.voiceActivityUntil = -Infinity;
+        this.watchedMidi = null;
         // Keep the continuously learned phase history. Clearing it here
         // makes ordinary room tone look like a sudden complex-domain attack
         // on the first listening frame and can manufacture a phantom note.
@@ -499,6 +506,14 @@ class PitchProcessor extends AudioWorkletProcessor {
         this.referenceTransients = [];
         this.voiceActivityFrom = Infinity;
         this.voiceActivityUntil = -Infinity;
+        this.watchedMidi = null;
+      } else if (data.type === 'watch-pitch') {
+        const midi = Number(data.midi);
+        this.watchedMidi = Number.isFinite(midi) && midi >= 21 && midi <= 108
+          ? Math.round(midi)
+          : null;
+      } else if (data.type === 'clear-watch-pitch') {
+        this.watchedMidi = null;
       } else if (data.type === 'reference-transients') {
         const times = Array.isArray(data.times) ? data.times : [];
         this.referenceTransients = times
@@ -536,7 +551,11 @@ class PitchProcessor extends AudioWorkletProcessor {
         ) {
           active.frequency = frequency;
           active.midi = Math.round(69 + 12 * Math.log2(frequency / 440));
-          const energy = Math.max(1e-9, this._harmonicEnergy(frequency));
+          const profile = this._harmonicProfile(frequency);
+          const energy = Math.max(
+            1e-9,
+            profile.reduce((sum, bandEnergy) => sum + bandEnergy, 0),
+          );
           active.peakEnergy = energy;
           active.fastEnergy = energy;
           active.slowEnergy = energy;
@@ -544,6 +563,12 @@ class PitchProcessor extends AudioWorkletProcessor {
           active.releaseFrames = 0;
           active.collapseStartedAt = null;
           active.minSmoothRatio = 1;
+          active.peakBandEnergy.set(profile);
+          active.fastBandEnergy.set(profile);
+          active.slowBandEnergy.set(profile);
+          active.previousFastBandEnergy.set(profile);
+          active.currentBandEnergy.fill(0);
+          active.lastOverlapAt = null;
         }
       } else if (data.type === 'capture-plan') {
         const id = Number(data.id);
@@ -631,11 +656,10 @@ class PitchProcessor extends AudioWorkletProcessor {
     return Math.sqrt(sum / buf.length);
   }
 
-  /** Harmonic energy for one known note in the current short FFT frame. */
-  _harmonicEnergy(frequency) {
+  _harmonicProfile(frequency, out = new Float32Array(RELEASE_PROFILE_BANDS)) {
+    out.fill(0);
     const binHz = sampleRate / FFT_SIZE;
-    let energy = 0;
-    for (let harmonic = 1; harmonic <= 6; harmonic++) {
+    for (let harmonic = 1; harmonic <= RELEASE_PROFILE_BANDS; harmonic++) {
       const target = frequency * harmonic;
       if (target >= FLUX_MAX_BAND_HZ) break;
       const x = target / binHz;
@@ -644,9 +668,19 @@ class PitchProcessor extends AudioWorkletProcessor {
       const fraction = x - index;
       const center = this.mag[index] * (1 - fraction) + this.mag[index + 1] * fraction;
       const shoulders = (this.mag[index - 1] + this.mag[index + 2]) * 0.12;
-      energy += (center + shoulders) / Math.sqrt(harmonic);
+      out[harmonic - 1] = (center + shoulders) / Math.sqrt(harmonic);
     }
-    return energy;
+    return out;
+  }
+
+  _markReleaseOverlap(onsetTime) {
+    for (const active of this.activeNotes) {
+      active.overlapped = true;
+      active.lastOverlapAt = onsetTime;
+      active.releaseFrames = 0;
+      active.collapseStartedAt = null;
+      active.minSmoothRatio = 1;
+    }
   }
 
   _emitRelease(note, time, confidence, reason) {
@@ -665,7 +699,7 @@ class PitchProcessor extends AudioWorkletProcessor {
   _startReleaseTracking(id, frequency, onsetTime) {
     const midi = Math.round(69 + 12 * Math.log2(frequency / 440));
     const beganOverExistingTone = this.activeNotes.length > 0;
-    for (const active of this.activeNotes) active.overlapped = true;
+    this._markReleaseOverlap(onsetTime);
     // A clear re-articulation of the same key proves the earlier hold ended,
     // even if pedal resonance prevented an amplitude release from appearing.
     for (let index = this.activeNotes.length - 1; index >= 0; index--) {
@@ -675,7 +709,9 @@ class PitchProcessor extends AudioWorkletProcessor {
       this.activeNotes.splice(index, 1);
     }
 
-    const energy = Math.max(1e-9, this._harmonicEnergy(frequency));
+    const profile = this._harmonicProfile(frequency);
+    const peakBandEnergy = Float32Array.from(profile, (energy) => Math.max(1e-9, energy));
+    const energy = peakBandEnergy.reduce((sum, bandEnergy) => sum + bandEnergy, 0);
     this.activeNotes.push({
       id,
       midi,
@@ -689,6 +725,12 @@ class PitchProcessor extends AudioWorkletProcessor {
       collapseStartedAt: null,
       minSmoothRatio: 1,
       overlapped: beganOverExistingTone,
+      lastOverlapAt: null,
+      peakBandEnergy,
+      fastBandEnergy: peakBandEnergy.slice(),
+      slowBandEnergy: peakBandEnergy.slice(),
+      previousFastBandEnergy: peakBandEnergy.slice(),
+      currentBandEnergy: new Float32Array(RELEASE_PROFILE_BANDS),
     });
   }
 
@@ -702,7 +744,13 @@ class PitchProcessor extends AudioWorkletProcessor {
         continue;
       }
 
-      const energy = Math.max(0, this._harmonicEnergy(note.frequency));
+      // Reuse the note-owned buffer: release tracking runs every FFT hop and
+      // must not allocate on the real-time audio thread.
+      this._harmonicProfile(note.frequency, note.currentBandEnergy);
+      let energy = 0;
+      for (let band = 0; band < RELEASE_PROFILE_BANDS; band++) {
+        energy += note.currentBandEnergy[band];
+      }
       const previousFast = Math.max(1e-9, note.fastEnergy);
       note.previousFastEnergy = previousFast;
       note.fastEnergy =
@@ -718,19 +766,82 @@ class PitchProcessor extends AudioWorkletProcessor {
       note.minSmoothRatio = Math.min(note.minSmoothRatio, smoothRatio);
 
       if (age < RELEASE_MIN_AGE_SEC) continue;
+      if (
+        Number.isFinite(note.lastOverlapAt) &&
+        currentTime - note.lastOverlapAt < RELEASE_OVERLAP_SETTLE_SEC
+      ) {
+        note.releaseFrames = 0;
+        note.collapseStartedAt = null;
+        continue;
+      }
+
+      // A chord can keep the total energy near this pitch high even after one
+      // key is released. Track each harmonic band independently so unrelated
+      // chord partials cannot hide a real key-up—or make one beating partial
+      // look like the whole note disappeared.
+      let strongestBand = 1e-9;
+      for (let band = 0; band < RELEASE_PROFILE_BANDS; band++) {
+        const previous = Math.max(1e-9, note.fastBandEnergy[band]);
+        const bandEnergy = note.currentBandEnergy[band];
+        note.previousFastBandEnergy[band] = previous;
+        note.fastBandEnergy[band] =
+          previous * RELEASE_FAST_SMOOTH_RATIO +
+          bandEnergy * (1 - RELEASE_FAST_SMOOTH_RATIO);
+        note.slowBandEnergy[band] =
+          Math.max(1e-9, note.slowBandEnergy[band]) * RELEASE_SLOW_SMOOTH_RATIO +
+          bandEnergy * (1 - RELEASE_SLOW_SMOOTH_RATIO);
+        note.peakBandEnergy[band] = Math.max(
+          note.peakBandEnergy[band],
+          note.fastBandEnergy[band],
+        );
+        strongestBand = Math.max(strongestBand, note.peakBandEnergy[band]);
+      }
+      let reliableBands = 0;
+      let collapsedBands = 0;
+      let nearlyGoneBands = 0;
+      let deepestBandDrop = 1;
+      for (let band = 0; band < RELEASE_PROFILE_BANDS; band++) {
+        const peak = note.peakBandEnergy[band];
+        if (peak < strongestBand * 0.035) continue;
+        reliableBands += 1;
+        const bandFast = note.fastBandEnergy[band];
+        const bandSmooth = bandFast / Math.max(1e-9, note.previousFastBandEnergy[band]);
+        const bandFastToSlow = bandFast / Math.max(1e-9, note.slowBandEnergy[band]);
+        const bandRelative = bandFast / Math.max(1e-9, peak);
+        deepestBandDrop = Math.min(deepestBandDrop, bandSmooth);
+        if (bandSmooth < 0.86 && bandFastToSlow < 0.74 && bandRelative < 0.8) {
+          collapsedBands += 1;
+        }
+        if (bandSmooth < 0.92 && bandFastToSlow < 0.64 && bandRelative < 0.025) {
+          nearlyGoneBands += 1;
+        }
+      }
+      const requiredCollapsedBands = Math.max(1, Math.ceil(reliableBands * 0.2));
+      if (this.debug) {
+        this._debug('release-profile', {
+          id: note.id,
+          midi: note.midi,
+          time: currentTime,
+          reliableBands,
+          collapsedBands,
+          nearlyGoneBands,
+          requiredCollapsedBands,
+          smoothRatio,
+          fastToSlow,
+          relativeEnergy,
+        });
+      }
       // Compare a fast envelope with a slow estimate of the natural decay.
       // Ordinary sustain makes both envelopes fall together. A damper close
       // pulls the fast envelope sharply below the slow one and also produces
       // a steep local drop. Requiring both rejects beating partials and room
       // fluctuations while retaining the actual acoustic offset edge.
       const collapsed =
-        smoothRatio < 0.86 &&
-        fastToSlow < 0.72 &&
-        relativeEnergy < 0.78;
+        reliableBands >= 2 &&
+        collapsedBands >= requiredCollapsedBands;
       const nearlyGone =
-        relativeEnergy < 0.018 &&
-        smoothRatio < 0.92 &&
-        fastToSlow < 0.62;
+        reliableBands >= 2 &&
+        nearlyGoneBands >= requiredCollapsedBands;
       if (collapsed || nearlyGone) {
         if (note.releaseFrames === 0) {
           // The FFT frame is centred roughly half a frame before currentTime.
@@ -749,7 +860,10 @@ class PitchProcessor extends AudioWorkletProcessor {
       );
       const confidence =
         0.48 +
-        Math.min(0.27, Math.max(0, (1 - note.minSmoothRatio) * 1.35)) +
+        Math.min(
+          0.27,
+          Math.max(0, (1 - Math.min(note.minSmoothRatio, deepestBandDrop)) * 1.35),
+        ) +
         Math.min(0.15, Math.max(0, (0.75 - fastToSlow) * 0.9)) +
         Math.min(0.1, Math.max(0, (0.65 - relativeEnergy) * 0.55));
       this._emitRelease(note, releaseTime, confidence, 'energy-drop');
@@ -1521,6 +1635,19 @@ class PitchProcessor extends AudioWorkletProcessor {
       // sustained note from producing a second event.
       const recoveryThreshold = Math.max(baseThreshold * 0.68, this.postOnset);
       const isRecoveryPeak = isLocalMaximum && this.odf1 > recoveryThreshold;
+      // A soft inner finger added over ringing outer notes can have a much
+      // smaller broadband flux peak than the first key. Prove It names the
+      // exact next pitch, so preserve a lower local maximum as a candidate.
+      // It remains candidate-only and receives no credit unless stable pitch
+      // evidence independently matches watchedMidi on the main thread.
+      const proofRecoveryThreshold = Math.max(
+        baseThreshold * 0.48,
+        this.postOnset * 0.72,
+      );
+      const isProofRecoveryPeak =
+        this.watchedMidi !== null &&
+        isLocalMaximum &&
+        this.odf1 > proofRecoveryThreshold;
 
       const gate = this.amplitudeGate;
       const loudEnough = this.rms1 >= gate;
@@ -1544,6 +1671,10 @@ class PitchProcessor extends AudioWorkletProcessor {
         (frameAttackRatio >= RECOVERY_FRAME_ATTACK_RATIO && this.novelty1 >= RECOVERY_ATTACK_NOVELTY) ||
         (frameAttackRatio >= RECOVERY_LEGATO_FRAME_RATIO && this.novelty1 >= RECOVERY_LEGATO_NOVELTY);
       const recoverableLevel = this.rms1 >= gate * RECOVERY_GATE_FRACTION;
+      const proofRecoverableAttack =
+        (frameAttackRatio >= 1.015 && this.novelty1 >= 0.1) ||
+        (frameAttackRatio >= 0.9 && this.novelty1 >= 0.22);
+      const proofRecoverableLevel = this.rms1 >= gate * 0.42;
       const onsetTime = currentTime - this.hopSeconds;
       // The app tells the worklet exactly when its own metronome will sound.
       // Keep coincident pitched evidence for score-aware recovery, but do not
@@ -1583,7 +1714,8 @@ class PitchProcessor extends AudioWorkletProcessor {
 
       const strictPhysicalAttack = isPeak && loudEnough && deliberateAttack;
       const recoveryPhysicalAttack =
-        (isPeak || isRecoveryPeak) && recoverableLevel && recoverableAttack;
+        ((isPeak || isRecoveryPeak) && recoverableLevel && recoverableAttack) ||
+        (isProofRecoveryPeak && proofRecoverableLevel && proofRecoverableAttack);
       /* A recovery-only peak is deliberately cheap enough to preserve a
        * very soft key for score-aware confirmation. It is therefore not
        * allowed to disarm the strict onset detector. Otherwise a harmless
@@ -1618,6 +1750,10 @@ class PitchProcessor extends AudioWorkletProcessor {
         // only the room / already-ringing strings—not this hammer transient.
         const pre = new Float32Array(PITCH_FFT / 2);
         this._spectrum(pre, HOP * 2);
+        // Pause release decisions from the physical onset onward. Waiting for
+        // deferred pitch voting would let the new chord tone disturb an older
+        // note's release envelope for several hundred milliseconds first.
+        this._markReleaseOverlap(onsetTime);
 
         this.pending.push({
           id: this.nextOnsetId++,

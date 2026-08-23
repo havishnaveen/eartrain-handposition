@@ -23,6 +23,7 @@ try {
     advancePositionProof,
     advanceSpatialChord,
     isClearSamePitchRetrigger,
+    isCredibleProofRelease,
     priorProofKeysStillHeld,
     proofDetectorWarmupRemaining,
     resolveContextualPitch,
@@ -440,6 +441,12 @@ try {
   }
   assert.equal(proofDetectorWarmupRemaining(1000, 1100), 160);
   assert.equal(proofDetectorWarmupRemaining(1000, 1400), 0);
+  assert.equal(isCredibleProofRelease('energy-drop', 0.65), false,
+    'A weak decay estimate must not reset a child who is still holding.');
+  assert.equal(isCredibleProofRelease('energy-drop', 0.66), true,
+    'A well-supported acoustic release must invalidate the hold.');
+  assert.equal(isCredibleProofRelease('reattack', 1), false,
+    'Detector-id handoff during re-articulation is not a Prove It key-up.');
 
   const sampleSpatialSpec = PROGRESSIVE_CONCEPTS[18].generate(
     54,

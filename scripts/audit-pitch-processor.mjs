@@ -14,7 +14,11 @@ function makeRandom(seed) {
   };
 }
 
-function makeProcessor(sampleRate = SAMPLE_RATE) {
+function makeProcessor(
+  sampleRate = SAMPLE_RATE,
+  resolveCandidateFrequency = (message) => message.frequency,
+  onAcceptedNote = () => undefined,
+) {
   const messages = [];
   let Processor = null;
   class MockAudioWorkletProcessor {
@@ -47,15 +51,30 @@ function makeProcessor(sampleRate = SAMPLE_RATE) {
   // intentionally accept every emitted musical event.
   processor.port.postMessage = (message) => {
     messages.push(message);
-    if (message.type === 'note-candidate') {
+    const candidateFrequency = message.type === 'note-candidate'
+      ? resolveCandidateFrequency(message)
+      : null;
+    const accepted =
+      message.type === 'note-onset' ||
+      (message.type === 'note-candidate' && Number.isFinite(candidateFrequency));
+    if (message.type === 'note-candidate' && accepted) {
       processor.port.onmessage({
         data: {
           type: 'accept-candidate',
           id: message.id,
-          frequency: message.frequency,
+          frequency: candidateFrequency,
           time: message.time,
         },
       });
+    }
+    if (accepted) {
+      onAcceptedNote(
+        message,
+        processor,
+        message.type === 'note-candidate'
+          ? Math.round(69 + 12 * Math.log2(candidateFrequency / 440))
+          : midiOf(message),
+      );
     }
   };
   return { context, messages, processor };
@@ -145,6 +164,20 @@ function speechSample(utterances, time, random) {
   return sample;
 }
 
+function supportsRecoveryPitch(hypothesis, wanted) {
+  if (hypothesis.midi !== wanted) return false;
+  const minimumClarity = hypothesis.source === 'yin' ? 0.48 : 0.26;
+  return (
+    hypothesis.frames >= 3 &&
+    hypothesis.consensus >= 0.54 &&
+    hypothesis.pitchMad <= 0.38 &&
+    hypothesis.clarity >= minimumClarity &&
+    hypothesis.tuningErrorCents <= 32 &&
+    hypothesis.pitchRange <= 0.38 &&
+    hypothesis.maxPitchStep <= 0.24
+  );
+}
+
 function runScenario({
   seconds,
   strikes = [],
@@ -157,11 +190,42 @@ function runScenario({
   sendClickSchedule = true,
   capturePlan = null,
   watchMidi = null,
+  acceptedCandidateMidi = null,
+  watchSequence = null,
+  debug = false,
 }) {
-  const { context, messages, processor } = makeProcessor(sampleRate);
+  let watchIndex = 0;
+  const wantedNow = () => watchSequence?.[watchIndex] ?? null;
+  const { context, messages, processor } = makeProcessor(
+    sampleRate,
+    (message) => {
+      const wanted = wantedNow();
+      const resolvedMidi = wanted !== null && message.hypotheses?.some(
+        (hypothesis) => supportsRecoveryPitch(hypothesis, wanted),
+      )
+        ? wanted
+        : midiOf(message);
+      if (acceptedCandidateMidi && !acceptedCandidateMidi.includes(resolvedMidi)) return null;
+      if (wanted !== null && resolvedMidi !== wanted) return null;
+      return 440 * Math.pow(2, (resolvedMidi - 69) / 12);
+    },
+    (_message, activeProcessor, acceptedMidi) => {
+      if (wantedNow() === null || acceptedMidi !== wantedNow()) return;
+      watchIndex += 1;
+      const nextMidi = wantedNow();
+      activeProcessor.port.onmessage({
+        data: nextMidi === null
+          ? { type: 'clear-watch-pitch' }
+          : { type: 'watch-pitch', midi: nextMidi },
+      });
+    },
+  );
   const random = makeRandom(seed);
   const totalSamples = Math.ceil(seconds * sampleRate);
   let listening = false;
+  if (debug) {
+    processor.port.onmessage({ data: { type: 'debug', enabled: true } });
+  }
   if (clicks.length > 0 && sendClickSchedule) {
     processor.port.onmessage({
       data: {
@@ -198,12 +262,13 @@ function runScenario({
     if (!listening && context.currentTime >= listenAt) {
       listening = true;
       processor.port.onmessage({ data: { type: 'listen' } });
-      if (Number.isFinite(watchMidi)) {
+      const initialWatchMidi = watchSequence?.[0] ?? watchMidi;
+      if (Number.isFinite(initialWatchMidi)) {
         processor.port.onmessage({
           data: {
             type: 'watch-pitch',
-            midi: watchMidi,
-            frequency: 440 * Math.pow(2, (watchMidi - 69) / 12),
+            midi: initialWatchMidi,
+            frequency: 440 * Math.pow(2, (initialWatchMidi - 69) / 12),
           },
         });
       }
@@ -221,6 +286,20 @@ const midiOf = (event) => Math.round(69 + 12 * Math.log2(event.frequency / 440))
 
 const quietRoom = noteEvents(runScenario({ seconds: 4.2, strikes: [] }));
 assert.equal(quietRoom.length, 0, 'Stationary room sound must not create notes.');
+for (const watchMidi of [48, 64, 79]) {
+  const watchedQuietRoom = noteEvents(runScenario({
+    seconds: 4.2,
+    strikes: [],
+    watchMidi,
+    roomAmplitude: 0.0002,
+    seed: 700 + watchMidi,
+  }));
+  assert.equal(
+    watchedQuietRoom.length,
+    0,
+    `Prove It's quieter watched-pitch lane must stay silent for room noise near MIDI ${watchMidi}.`,
+  );
+}
 
 const spokenWords = noteEvents(runScenario({
   seconds: 4.4,
@@ -262,6 +341,117 @@ assert.deepEqual(
   multiBeatSustain.map(midiOf),
   [55],
   'One held G across four seconds must not become a second note after 2–3 beats.',
+);
+
+// Prove It is cumulative: each new hammer attack arrives over every earlier
+// string. Exercise several positions/registers, with the middle tone made
+// deliberately quieter, because that is the hardest real-device case.
+for (const [name, targetMidi] of [
+  ['Bass C', [48, 52, 55]],
+  ['Middle C', [60, 64, 67]],
+  ['Middle G', [55, 59, 62]],
+  ['Middle E', [64, 68, 71]],
+]) {
+  const cumulativeMessages = runScenario({
+    seconds: 5.4,
+    watchMidi: targetMidi[0],
+    strikes: [
+      { midi: targetMidi[0], time: 2.02, duration: 4, amplitude: 0.011 },
+      { midi: targetMidi[1], time: 2.72, duration: 3.3, amplitude: 0.0046 },
+      { midi: targetMidi[2], time: 3.42, duration: 2.6, amplitude: 0.0085 },
+    ],
+    roomAmplitude: 0.00018,
+    seed: 900 + targetMidi[0],
+    acceptedCandidateMidi: targetMidi,
+    watchSequence: targetMidi,
+  });
+  const heardTargets = noteEvents(cumulativeMessages)
+    .flatMap((event) => targetMidi.filter((midi) =>
+      midiOf(event) === midi ||
+      event.hypotheses?.some((hypothesis) => supportsRecoveryPitch(hypothesis, midi)),
+    ));
+  for (const midi of targetMidi) {
+    assert.ok(
+      heardTargets.includes(midi),
+      `${name} Prove It must detect cumulative target MIDI ${midi}: ${JSON.stringify(
+        noteEvents(cumulativeMessages).map((event) => ({
+          id: event.id,
+          type: event.type,
+          midi: midiOf(event),
+          time: event.time,
+          hypotheses: event.hypotheses?.map((hypothesis) => ({
+            source: hypothesis.source,
+            midi: hypothesis.midi,
+            frames: hypothesis.frames,
+            clarity: hypothesis.clarity,
+          })),
+        })),
+      )}.`,
+    );
+  }
+  const prematureReleases = releases(cumulativeMessages).filter(
+    (release) =>
+      release.reason === 'energy-drop' &&
+      release.confidence >= 0.66 &&
+      release.time <= 4.3,
+  );
+  assert.equal(
+    prematureReleases.length,
+    0,
+    `${name} Prove It must not call natural chord decay a released key: ${JSON.stringify({
+      notes: noteEvents(cumulativeMessages).map((event) => ({
+        id: event.id,
+        type: event.type,
+        midi: midiOf(event),
+        time: event.time,
+      })),
+      releases: prematureReleases,
+    })}.`,
+  );
+}
+
+// The stronger hold guard must still catch a real inner-finger release after
+// the outside note has been added. Otherwise sequential taps could pass.
+const releasedMiddleTarget = [60, 64, 67];
+const releasedMiddleMessages = runScenario({
+  seconds: 4.8,
+  strikes: [
+    { midi: 60, time: 2.02, duration: 4, amplitude: 0.011 },
+    { midi: 64, time: 2.72, duration: 1.15, amplitude: 0.0065 },
+    { midi: 67, time: 3.42, duration: 2.4, amplitude: 0.0085 },
+  ],
+  roomAmplitude: 0.00018,
+  seed: 1064,
+  acceptedCandidateMidi: releasedMiddleTarget,
+  watchSequence: releasedMiddleTarget,
+  debug: true,
+});
+const releasedMiddleEvent = noteEvents(releasedMiddleMessages).find((event) =>
+  Math.abs(event.time - 2.72) < 0.16 &&
+  (
+    midiOf(event) === 64 ||
+    event.hypotheses?.some((hypothesis) => supportsRecoveryPitch(hypothesis, 64))
+  ),
+);
+assert.ok(releasedMiddleEvent, 'The cumulative proof fixture must first detect the middle E.');
+const releasedMiddle = releases(releasedMiddleMessages).find((release) =>
+  release.id === releasedMiddleEvent.id && release.reason === 'energy-drop',
+);
+assert.ok(
+  releasedMiddle,
+  `Releasing E while C and G continue must emit a release: ${JSON.stringify({
+    middleEvent: releasedMiddleEvent,
+    releases: releases(releasedMiddleMessages),
+    releaseProfile: releasedMiddleMessages.filter((message) =>
+      message.type === 'debug-release-profile' &&
+      message.id === releasedMiddleEvent.id &&
+      message.time >= 3.72,
+    ),
+  })}.`,
+);
+assert.ok(
+  releasedMiddle.confidence >= 0.66,
+  `A real cumulative-shape release must clear the Prove It confidence boundary (${releasedMiddle.confidence}).`,
 );
 
 const softSequence = noteEvents(runScenario({
@@ -471,6 +661,7 @@ assert.ok(
 
 console.log(
   'Pitch processor audit passed: room noise, speech quarantine, soft notes, sustained notes, release timing, ' +
-  're-attacks, scheduled click rejection, on/after-click piano recovery, 120-BPM sixteenths, ' +
+  'cumulative Prove It holds, watched inner-note recovery, re-attacks, scheduled click rejection, ' +
+  'on/after-click piano recovery, 120-BPM sixteenths, ' +
   'lossless PCM handoff, and 44.1/48-kHz devices.',
 );

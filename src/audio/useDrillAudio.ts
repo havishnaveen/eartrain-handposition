@@ -92,6 +92,8 @@ const EMPTY_DIAGNOSTICS: RecognitionDiagnostics = {
 
 /** The final three-note shape must remain acoustically present, not merely be tapped in sequence. */
 const PROOF_FINAL_HOLD_VERIFY_MS = 520;
+/** Prove It must not reset from a weak, ambiguous decay estimate. */
+const PROOF_RELEASE_MIN_CONFIDENCE = 0.66;
 const OUTPUT_GAIN_MULTIPLIER = 1.35;
 
 interface PcmCaptureSession {
@@ -468,6 +470,15 @@ export interface ProofHoldFailure {
   releasedNoteIndices: ProofNoteIndex[];
 }
 
+/** Pure boundary for the release events allowed to invalidate a held shape. */
+export function isCredibleProofRelease(reason: unknown, confidence: unknown): boolean {
+  return (
+    reason !== 'reattack' &&
+    Number.isFinite(confidence) &&
+    Number(confidence) >= PROOF_RELEASE_MIN_CONFIDENCE
+  );
+}
+
 export interface PositionProofAdvance {
   progress: 0 | 1 | 2 | 3;
   complete: boolean;
@@ -649,7 +660,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // The worklet lives in public/ and is otherwise easy for a browser/CDN to
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
-  const { workletUrl = '/audio/pitch-processor.js?v=score-aware-pcm-v14-2026-08-22' } = options;
+  const { workletUrl = '/audio/pitch-processor.js?v=prove-it-watch-v15-2026-08-23' } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
   const [phase, setPhase] = useState<DrillPhase>('idle');
@@ -1134,9 +1145,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           if (proofRef.current && proofMidi !== undefined) {
             const hold = proofHoldByMidiRef.current.get(proofMidi);
             const releaseTime = Number(data.time);
+            const releaseConfidence = Number(data.confidence);
             if (
               hold?.detectorId === id &&
-              data.reason !== 'reattack' &&
+              isCredibleProofRelease(data.reason, releaseConfidence) &&
               Number.isFinite(releaseTime)
             ) {
               hold.releasedAt = releaseTime;
