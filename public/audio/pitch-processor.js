@@ -48,6 +48,9 @@ const FFT_SIZE = 1024;
 const YIN_WINDOW = 2048;
 /** Longer window for the emergent-spectrum analysis: 10.8Hz bins at 44.1k. */
 const PITCH_FFT = 4096;
+/** Above B4, short stiff strings need stretched-partial spectral templates. */
+const UPPER_REGISTER_MIN_FREQ = 480;
+const UPPER_INHARMONICITY_BANK = [0, 0.0003, 0.0006, 0.00095];
 // Two pitch windows, so an onset can retain a genuinely pre-attack spectrum
 // while the current ringing spectrum is measured later.
 const RING = 8192;
@@ -816,7 +819,13 @@ class PitchProcessor extends AudioWorkletProcessor {
           nearlyGoneBands += 1;
         }
       }
-      const requiredCollapsedBands = Math.max(1, Math.ceil(reliableBands * 0.2));
+      // Treble partials decay quickly even while the key remains down. A
+      // single upper band disappearing is therefore not a trustworthy key-up;
+      // require corroboration from two bands in the B4-and-above register.
+      const requiredCollapsedBands = Math.max(
+        note.midi >= 71 ? 2 : 1,
+        Math.ceil(reliableBands * 0.2),
+      );
       if (this.debug) {
         this._debug('release-profile', {
           id: note.id,
@@ -1008,14 +1017,26 @@ class PitchProcessor extends AudioWorkletProcessor {
       const frac = x - i;
       return res[i] * (1 - frac) + res[i + 1] * frac;
     };
-    const score = (f0) => {
+    const harmonicScore = (f0, stretch = 0) => {
       let sum = 0;
       for (let k = 1; k <= 8; k++) {
-        const f = f0 * k;
+        // Piano-string stiffness pulls upper partials progressively sharp.
+        // Keep the fundamental fixed and test a small bank of coherent
+        // stretch profiles instead of widening every harmonic independently,
+        // which would make broadband noise look pitched.
+        const f = f0 * k * (1 + stretch * (k * k - 1));
         if (f > sampleRate / 2) break;
         sum += at(f) / Math.sqrt(k);
       }
       return sum;
+    };
+    const score = (f0) => {
+      if (f0 < UPPER_REGISTER_MIN_FREQ) return harmonicScore(f0);
+      let best = 0;
+      for (const stretch of UPPER_INHARMONICITY_BANK) {
+        best = Math.max(best, harmonicScore(f0, stretch));
+      }
+      return best;
     };
 
     // Log-spaced candidates: an eighth of a semitone across the piano range.
@@ -1640,9 +1661,10 @@ class PitchProcessor extends AudioWorkletProcessor {
       // exact next pitch, so preserve a lower local maximum as a candidate.
       // It remains candidate-only and receives no credit unless stable pitch
       // evidence independently matches watchedMidi on the main thread.
+      const upperRegisterProof = this.watchedMidi !== null && this.watchedMidi >= 71;
       const proofRecoveryThreshold = Math.max(
-        baseThreshold * 0.48,
-        this.postOnset * 0.72,
+        baseThreshold * (upperRegisterProof ? 0.4 : 0.48),
+        this.postOnset * (upperRegisterProof ? 0.56 : 0.72),
       );
       const isProofRecoveryPeak =
         this.watchedMidi !== null &&
@@ -1673,7 +1695,14 @@ class PitchProcessor extends AudioWorkletProcessor {
       const recoverableLevel = this.rms1 >= gate * RECOVERY_GATE_FRACTION;
       const proofRecoverableAttack =
         (frameAttackRatio >= 1.015 && this.novelty1 >= 0.1) ||
-        (frameAttackRatio >= 0.9 && this.novelty1 >= 0.22);
+        (frameAttackRatio >= 0.9 && this.novelty1 >= 0.22) ||
+        (
+          upperRegisterProof &&
+          frameAttackRatio >= 0.985 &&
+          this.novelty1 >= 0.13 &&
+          this.attackBandCoverage1 >= 3 &&
+          this.attackHighRatio1 >= 0.12
+        );
       const proofRecoverableLevel = this.rms1 >= gate * 0.42;
       const onsetTime = currentTime - this.hopSeconds;
       // The app tells the worklet exactly when its own metronome will sound.

@@ -621,39 +621,103 @@ function chordPitches(rootPitch: string, quality: ChordQuality): [string, string
   ];
 }
 
+type HarmonicRole = 'tonic' | 'supertonic' | 'subdominant' | 'dominant' | 'submediant';
+
+function functionalChord(
+  tonicPitch: string,
+  tonicQuality: ChordQuality,
+  semitones: number,
+  role: HarmonicRole,
+): [string, string, string] {
+  const root = transposePitch(tonicPitch, semitones);
+  const intervals = role === 'dominant'
+    ? [0, 4, 7]
+    : role === 'supertonic' && tonicQuality === 'minor'
+      ? [0, 3, 6]
+      : role === 'supertonic' || role === 'submediant'
+        ? [0, tonicQuality === 'major' ? 3 : 4, 7]
+        : [0, tonicQuality === 'major' ? 4 : 3, 7];
+  return intervals.map((interval) => transposePitch(root, interval)) as [string, string, string];
+}
+
+/** Choose a compact inversion whose three voices move minimally into `next`. */
+function voiceLeadInto(
+  chord: readonly string[],
+  next: readonly string[],
+  tonicMidi: number,
+): string[] {
+  const source = chord.map(localPitchToMidi);
+  const destination = next.map(localPitchToMidi).sort((a, b) => a - b);
+  let best: number[] | null = null;
+  let bestCost = Infinity;
+
+  for (const lowShift of [-12, 0, 12]) {
+    for (const middleShift of [-12, 0, 12]) {
+      for (const highShift of [-12, 0, 12]) {
+        const voiced = [
+          source[0] + lowShift,
+          source[1] + middleShift,
+          source[2] + highShift,
+        ].sort((a, b) => a - b);
+        if (
+          voiced[2] - voiced[0] > 12 ||
+          voiced[0] < tonicMidi - 7 ||
+          voiced[2] > tonicMidi + 14
+        ) continue;
+        const cost = voiced.reduce(
+          (sum, midi, index) => sum + Math.abs(midi - destination[index]),
+          0,
+        ) + Math.abs(voiced[2] - destination[2]) * 0.35;
+        if (cost < bestCost) {
+          best = voiced;
+          bestCost = cost;
+        }
+      }
+    }
+  }
+
+  return (best ?? source).map(midiToScientificPitch);
+}
+
 function contextualProgression(
   target: [string, string, string],
   quality: ChordQuality,
   length: SpatialChordRecipe['progressionLength'],
   variant = 0,
 ): string[][] {
-  type HarmonicStep = { semitones: number; role: 'tonic' | 'subdominant' | 'dominant' };
+  type HarmonicStep = { semitones: number; role: HarmonicRole };
   const tonic: HarmonicStep = { semitones: 0, role: 'tonic' };
+  const supertonic: HarmonicStep = { semitones: 2, role: 'supertonic' };
   const subdominant: HarmonicStep = { semitones: 5, role: 'subdominant' };
   const dominant: HarmonicStep = { semitones: 7, role: 'dominant' };
+  const submediant: HarmonicStep = { semitones: 9, role: 'submediant' };
   const banks: Record<SpatialChordRecipe['progressionLength'], readonly HarmonicStep[][]> = {
     1: [[tonic]],
     2: [[dominant, tonic], [subdominant, tonic]],
     3: [
       [subdominant, dominant, tonic],
-      [dominant, subdominant, tonic],
+      [supertonic, dominant, tonic],
       [tonic, dominant, tonic],
     ],
     4: [
+      [tonic, supertonic, dominant, tonic],
+      [submediant, subdominant, dominant, tonic],
       [tonic, subdominant, dominant, tonic],
-      [subdominant, tonic, dominant, tonic],
-      [tonic, dominant, subdominant, tonic],
     ],
   };
   const degrees = cyclePick(banks[length], variant);
-  return degrees.map((degree, index, all) => (
-    index === all.length - 1
+  const progression = degrees.map((degree, index) => (
+    index === degrees.length - 1
       ? [...target]
-      : chordPitches(
-          transposePitch(target[0], degree.semitones),
-          quality === 'minor' && degree.role !== 'dominant' ? 'minor' : 'major',
-        )
+      : functionalChord(target[0], quality, degree.semitones, degree.role)
   ));
+  const voiced: string[][] = new Array(progression.length);
+  voiced[voiced.length - 1] = [...target];
+  const tonicMidi = localPitchToMidi(target[0]);
+  for (let index = progression.length - 2; index >= 0; index -= 1) {
+    voiced[index] = voiceLeadInto(progression[index], voiced[index + 1], tonicMidi);
+  }
+  return voiced;
 }
 
 function spatialChordQuestion(

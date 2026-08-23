@@ -234,6 +234,21 @@ try {
               );
               assert.equal(question.spatialChord.context.targetChordIndex,
                 question.spatialChord.context.progression.length - 1);
+              const progression = question.spatialChord.context.progression;
+              assert.deepEqual(progression.at(-1), question.spatialChord.chordPitches,
+                'Every contextual progression must resolve to the exact tonic target.');
+              progression.forEach((chord, chordIndex) => {
+                const voicing = chord.map(pitchToMidi);
+                assert.equal(voicing.length, 3);
+                assert.ok(voicing[0] < voicing[1] && voicing[1] < voicing[2],
+                  'Context chords must use an ascending, non-crossing voicing.');
+                assert.ok(voicing[2] - voicing[0] <= 12,
+                  'Context chords must remain compact enough to sound like one hand shape.');
+                if (chordIndex === 0) return;
+                const previous = progression[chordIndex - 1].map(pitchToMidi);
+                assert.ok(voicing.every((midi, voice) => Math.abs(midi - previous[voice]) <= 5),
+                  'Each chord voice must move smoothly into the next harmony.');
+              });
             }
 
             if (mode === 'normal' && difficulty === 0.5 && seed === seeds[0]) {

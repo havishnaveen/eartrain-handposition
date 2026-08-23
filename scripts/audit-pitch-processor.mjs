@@ -98,7 +98,7 @@ function pianoSample(strikes, time) {
     const partials = [1, 0.48, 0.25, 0.14, 0.08, 0.045];
     partials.forEach((gain, index) => {
       const harmonic = index + 1;
-      const inharmonicity = 1 + 0.00012 * harmonic * harmonic;
+      const inharmonicity = 1 + (strike.inharmonicity ?? 0.00012) * harmonic * harmonic;
       sample += envelope * gain * Math.sin(
         2 * Math.PI * frequency * harmonic * inharmonicity * time,
       );
@@ -351,14 +351,20 @@ for (const [name, targetMidi] of [
   ['Middle C', [60, 64, 67]],
   ['Middle G', [55, 59, 62]],
   ['Middle E', [64, 68, 71]],
+  ['Treble B', [71, 75, 78]],
 ]) {
   const cumulativeMessages = runScenario({
     seconds: 5.4,
     watchMidi: targetMidi[0],
     strikes: [
-      { midi: targetMidi[0], time: 2.02, duration: 4, amplitude: 0.011 },
-      { midi: targetMidi[1], time: 2.72, duration: 3.3, amplitude: 0.0046 },
-      { midi: targetMidi[2], time: 3.42, duration: 2.6, amplitude: 0.0085 },
+      { midi: targetMidi[0], time: 2.02, duration: 4, amplitude: 0.011,
+        inharmonicity: name === 'Treble B' ? 0.0007 : undefined },
+      { midi: targetMidi[1], time: 2.72, duration: 3.3,
+        amplitude: name === 'Treble B' ? 0.0018 : 0.0046,
+        inharmonicity: name === 'Treble B' ? 0.0009 : undefined },
+      { midi: targetMidi[2], time: 3.42, duration: 2.6,
+        amplitude: name === 'Treble B' ? 0.0032 : 0.0085,
+        inharmonicity: name === 'Treble B' ? 0.0009 : undefined },
     ],
     roomAmplitude: 0.00018,
     seed: 900 + targetMidi[0],
@@ -387,6 +393,16 @@ for (const [name, targetMidi] of [
           })),
         })),
       )}.`,
+    );
+  }
+  if (name === 'Treble B') {
+    const fifthEvent = noteEvents(cumulativeMessages).find((event) =>
+      midiOf(event) === 78 ||
+      event.hypotheses?.some((hypothesis) => supportsRecoveryPitch(hypothesis, 78)),
+    );
+    assert.ok(
+      fifthEvent?.harmonicShadow !== true || fifthEvent?.harmonicIndependentAttack === true,
+      `A real quiet F#5 attack must not be discarded as B4's third partial: ${JSON.stringify(fifthEvent)}.`,
     );
   }
   const prematureReleases = releases(cumulativeMessages).filter(
@@ -624,6 +640,17 @@ assert.ok(
   Math.abs(release.time - 2.84) < 0.16,
   `Release time must track the acoustic decay (received ${release.time?.toFixed?.(3)}).`,
 );
+const trebleRelease = releases(runScenario({
+  seconds: 4.5,
+  strikes: [{ midi: 78, time: 2.02, duration: 0.82, amplitude: 0.012,
+    inharmonicity: 0.0009 }],
+  seed: 878,
+}))[0];
+assert.ok(trebleRelease, 'Treble release corroboration must still detect a real F#5 key-up.');
+assert.ok(
+  Math.abs(trebleRelease.time - 2.84) < 0.18,
+  `Treble release time must track the acoustic key-up (received ${trebleRelease.time?.toFixed?.(3)}).`,
+);
 
 const fortyEightKhz = noteEvents(runScenario({
   seconds: 4,
@@ -661,7 +688,7 @@ assert.ok(
 
 console.log(
   'Pitch processor audit passed: room noise, speech quarantine, soft notes, sustained notes, release timing, ' +
-  'cumulative Prove It holds, watched inner-note recovery, re-attacks, scheduled click rejection, ' +
+  'cumulative Prove It holds including inharmonic B4–F#5, watched inner-note recovery, re-attacks, scheduled click rejection, ' +
   'on/after-click piano recovery, 120-BPM sixteenths, ' +
   'lossless PCM handoff, and 44.1/48-kHz devices.',
 );

@@ -665,7 +665,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // The worklet lives in public/ and is otherwise easy for a browser/CDN to
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
-  const { workletUrl = '/audio/pitch-processor.js?v=prove-it-watch-v15-2026-08-23' } = options;
+  const { workletUrl = '/audio/pitch-processor.js?v=upper-register-v16-2026-08-23' } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
   const [phase, setPhase] = useState<DrillPhase>('idle');
@@ -1840,9 +1840,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     };
 
     let offset = 0;
-    progression.forEach((chord) => {
-      schedulePitches(chord, offset, chordDuration * 0.84, 0.9);
-      offset += chordDuration;
+    progression.forEach((chord, index) => {
+      const resolvesToTonic = index === progression.length - 1;
+      const duration = resolvesToTonic ? chordDuration * 1.35 : chordDuration * 0.88;
+      // A subtle roll exposes the smoothly moving voices without turning the
+      // example into three disconnected guide notes. The tonic is held long
+      // enough for the cadence to sound finished before the teaching replay.
+      schedulePitches(chord, offset, duration, resolvesToTonic ? 0.98 : 0.88, 0.035);
+      offset += resolvesToTonic ? chordDuration * 1.35 : chordDuration;
     });
 
     // End every clue with the target in the two forms a young learner needs:
