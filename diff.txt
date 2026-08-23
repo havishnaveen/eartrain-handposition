@@ -1,0 +1,115 @@
+--- /Users/havish/Downloads/eartrain-child-clarity-audio-fix/src/audio/useDrillAudio.ts	2026-08-04 20:42:17
++++ /Users/havish/Downloads/eartrain-variety-fingering-update/src/audio/useDrillAudio.ts	2026-08-04 21:10:19
+@@ -25,7 +25,11 @@
+ }
+ 
+ export interface PositionProofTarget {
+-  outerPitches: [string, string];
++  proofNotes: [
++    { pitch: string; finger: number },
++    { pitch: string; finger: number },
++    { pitch: string; finger: number },
++  ];
+   acceptWindowMs?: number;
+ }
+ 
+@@ -38,8 +42,8 @@
+   isDownbeat: boolean;
+   inputLevel: number;
+   detectedNames: string[];
+-  /** 0 before the low note, 1 after it, and 2 when both notes are correct. */
+-  proofProgress: 0 | 1 | 2;
++  /** Number of correct position notes heard so far. */
++  proofProgress: 0 | 1 | 2 | 3;
+   /** Object URL for the most recently completed microphone take. */
+   recordingUrl: string | null;
+   /** Room noise estimate, for diagnostics. */
+@@ -126,21 +130,22 @@
+ }
+ 
+ export interface ActiveProof {
+-  outerMidi: [number, number];
++  targetMidi: [number, number, number];
+   acceptWindowSec: number;
+-  nextIndex: 0 | 1;
++  nextIndex: 0 | 1 | 2;
+   firstHeardAt: number | null;
+ }
+ 
+ export interface PositionProofAdvance {
+-  progress: 0 | 1 | 2;
++  progress: 0 | 1 | 2 | 3;
+   complete: boolean;
+ }
+ 
+ /**
+  * Prove It is intentionally a tiny, deterministic state machine. The first
+- * named pitch must be heard before the second; other notes never count as a
+- * partial match. Replaying the first note simply restarts the short window.
++ * named pitch must be heard before the middle and final notes; other notes
++ * never count as a partial match. Replaying the first note restarts the
++ * short window.
+  */
+ export function advancePositionProof(
+   proof: ActiveProof,
+@@ -148,7 +153,7 @@
+   time: number,
+ ): PositionProofAdvance {
+   if (
+-    proof.nextIndex === 1 &&
++    proof.nextIndex > 0 &&
+     proof.firstHeardAt !== null &&
+     time - proof.firstHeardAt > proof.acceptWindowSec
+   ) {
+@@ -156,14 +161,19 @@
+     proof.firstHeardAt = null;
+   }
+ 
+-  if (midi === proof.outerMidi[0]) {
++  if (midi === proof.targetMidi[0]) {
+     proof.nextIndex = 1;
+     proof.firstHeardAt = time;
+     return { progress: 1, complete: false };
+   }
+ 
+-  if (proof.nextIndex === 1 && midi === proof.outerMidi[1]) {
+-    return { progress: 2, complete: true };
++  if (midi === proof.targetMidi[proof.nextIndex]) {
++    const progress = (proof.nextIndex + 1) as 2 | 3;
++    if (progress === proof.targetMidi.length) {
++      return { progress: 3, complete: true };
++    }
++    proof.nextIndex = progress;
++    return { progress, complete: false };
+   }
+ 
+   return { progress: proof.nextIndex, complete: false };
+@@ -196,7 +206,7 @@
+   const [isDownbeat, setIsDownbeat] = useState(false);
+   const [inputLevel, setInputLevel] = useState(0);
+   const [detectedNames, setDetectedNames] = useState<string[]>([]);
+-  const [proofProgress, setProofProgress] = useState<0 | 1 | 2>(0);
++  const [proofProgress, setProofProgress] = useState<0 | 1 | 2 | 3>(0);
+   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+ 
+   // Callbacks via refs so a re-render never restarts the audio graph.
+@@ -587,8 +597,8 @@
+ 
+   const beginProof = useCallback(
+     async (target: PositionProofTarget): Promise<boolean> => {
+-      const outer = target.outerPitches.map(pitchToMidi);
+-      if (outer[0] === null || outer[1] === null) return false;
++      const targetMidi = target.proofNotes.map((note) => pitchToMidi(note.pitch));
++      if (targetMidi.some((midi) => midi === null)) return false;
+ 
+       const ctx = await ensureGraph();
+       const worklet = workletRef.current;
+@@ -600,7 +610,7 @@
+       onsetsRef.current = [];
+       lastStrikeByMidiRef.current.clear();
+       proofRef.current = {
+-        outerMidi: [outer[0], outer[1]],
++        targetMidi: targetMidi as [number, number, number],
+         acceptWindowSec: Math.max(1.2, (target.acceptWindowMs ?? 2800) / 1000),
+         nextIndex: 0,
+         firstHeardAt: null,

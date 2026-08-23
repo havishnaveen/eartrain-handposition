@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ts/
+
+# Environment
+.env*
+
+# Vercel
+.vercel
+
+# OS files
+.DS_Store

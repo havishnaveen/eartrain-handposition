@@ -1,0 +1,195 @@
+import { useState, useRef } from "react";
+import { PianoKeyboard } from "./PianoKeyboard";
+import { Button } from "@/components/ui/button";
+import { Play, Check, X, ChevronRight } from "lucide-react";
+import { playSequenceWithUI, SequenceEvent } from "@/lib/audio";
+import { Link } from "react-router-dom";
+
+export function NoteDirectionLesson() {
+  const [activeNotes, setActiveNotes] = useState<string[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Try It State
+  const [unlocked, setUnlocked] = useState(false);
+  const [quizStatus, setQuizStatus] = useState<"idle" | "playing" | "wrong" | "correct">("idle");
+  const targetDirection = useRef<"UP" | "DOWN">("UP");
+
+  const playDemoUp = async () => {
+    if (isPlaying) return;
+    setIsPlaying(true);
+    const events: SequenceEvent[] = [
+      { notes: [{ note: "C", octave: 4 }], duration: 1, gapAfter: 0 },
+      { notes: [{ note: "D", octave: 4 }], duration: 1, gapAfter: 0 },
+      { notes: [{ note: "E", octave: 4 }], duration: 1, gapAfter: 0.5 }
+    ];
+    await playSequenceWithUI(events, setActiveNotes);
+    setIsPlaying(false);
+  };
+
+  const playDemoDown = async () => {
+    if (isPlaying) return;
+    setIsPlaying(true);
+    const events: SequenceEvent[] = [
+      { notes: [{ note: "G", octave: 4 }], duration: 1, gapAfter: 0 },
+      { notes: [{ note: "F", octave: 4 }], duration: 1, gapAfter: 0 },
+      { notes: [{ note: "E", octave: 4 }], duration: 1, gapAfter: 0.5 }
+    ];
+    await playSequenceWithUI(events, setActiveNotes);
+    setIsPlaying(false);
+  };
+
+  const currentSequence = useRef<SequenceEvent[]>([]);
+
+  const generateQuiz = () => {
+      const isUp = Math.random() > 0.5;
+      targetDirection.current = isUp ? "UP" : "DOWN";
+      
+      const startOctave = Math.random() > 0.5 ? 3 : 4;
+      const notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+      let idx = Math.floor(Math.random() * 5); // 0 to 4 so we can go up
+      if (!isUp) idx = Math.floor(Math.random() * 5) + 2; // 2 to 6 so we can go down
+      
+      const events: SequenceEvent[] = [
+        { notes: [{ note: notes[idx], octave: startOctave }], duration: 1, gapAfter: 0 },
+        { notes: [{ note: notes[isUp ? idx + 1 : idx - 1], octave: startOctave }], duration: 1, gapAfter: 0 },
+        { notes: [{ note: notes[isUp ? idx + 2 : idx - 2], octave: startOctave }], duration: 1, gapAfter: 0.5 }
+      ];
+      currentSequence.current = events;
+  };
+
+  const playTryIt = async () => {
+    if (isPlaying) return;
+    setIsPlaying(true);
+    setQuizStatus("playing");
+    
+    if (currentSequence.current.length === 0) {
+      generateQuiz();
+    }
+    
+    // Hide keyboard highlights during the test!
+    await playSequenceWithUI(currentSequence.current, () => {}); 
+    
+    setIsPlaying(false);
+    // If it was previously wrong and they are re-listening, keep the "wrong" status so they see the error text.
+    setQuizStatus(prev => prev === "wrong" ? "wrong" : "idle");
+  };
+
+  const handleGuess = (guess: "UP" | "DOWN") => {
+    if (quizStatus === "playing" || isPlaying) return;
+    if (guess === targetDirection.current) {
+      setQuizStatus("correct");
+      setUnlocked(true);
+      setTimeout(() => {
+        generateQuiz();
+        setQuizStatus("idle");
+      }, 1500);
+    } else {
+      setQuizStatus("wrong");
+    }
+  };
+
+  return (
+    <div className="space-y-10">
+      
+      {/* Brief Text */}
+      <div className="prose prose-orange dark:prose-invert max-w-none">
+        <p className="text-lg md:text-xl leading-relaxed text-stone-700 dark:text-stone-300 mb-6">
+          Before we can identify complex chords and scales, we must first learn to track the movement of a single pitch. This is known as <strong>Note Direction</strong> or melodic contour.
+          <br /><br />
+          <strong>Theory:</strong> Pitch direction refers to whether the frequency of the sound waves is increasing or decreasing. In Western music, ascending intervals jump to a higher frequency, while descending intervals jump to a lower frequency.
+        </p>
+      </div>
+
+      {/* Visual Anchor */}
+      <div className="bg-stone-100 dark:bg-stone-900/50 rounded-2xl p-6 border border-stone-200 dark:border-stone-800">
+        <PianoKeyboard startNote="C3" endNote="B4" activeNotes={activeNotes} />
+      </div>
+
+      {/* Audio Demos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Button 
+          variant="outline" 
+          className="h-auto p-6 flex flex-col items-center justify-center gap-3 border-orange-200 dark:border-orange-900 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+          onClick={playDemoUp}
+          disabled={isPlaying}
+        >
+          <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center text-orange-600 dark:text-orange-400">
+            <Play className="w-6 h-6 ml-1" />
+          </div>
+          <span className="font-bold text-lg">Audio Demo: UP</span>
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          className="h-auto p-6 flex flex-col items-center justify-center gap-3 border-amber-200 dark:border-amber-900 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+          onClick={playDemoDown}
+          disabled={isPlaying}
+        >
+          <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <Play className="w-6 h-6 ml-1" />
+          </div>
+          <span className="font-bold text-lg">Audio Demo: DOWN</span>
+        </Button>
+      </div>
+
+      {/* Try It Mechanic */}
+      <div className="mt-12 pt-8 border-t border-stone-200 dark:border-stone-800">
+        <h3 className="text-2xl font-bold mb-4">Try It Yourself!</h3>
+        <p className="text-stone-600 dark:text-stone-400 mb-6">Press play to hear a hidden sequence, then identify if the pitch went up or down to unlock this lesson.</p>
+        
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <Button 
+            size="lg"
+            onClick={playTryIt}
+            disabled={isPlaying}
+            className="w-full sm:w-auto gap-2 bg-stone-800 hover:bg-stone-700 text-white"
+          >
+            <Play className="w-4 h-4" /> Hear Sequence
+          </Button>
+          
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button 
+              size="lg"
+              variant="outline"
+              disabled={isPlaying}
+              className={`flex-1 sm:w-32 border-2 ${quizStatus === 'correct' && targetDirection.current === 'UP' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : quizStatus === 'wrong' && targetDirection.current === 'UP' ? 'border-amber-500 bg-amber-50 text-amber-600' : 'hover:border-orange-500'}`}
+              onClick={() => handleGuess("UP")}
+            >
+              UP
+            </Button>
+            <Button 
+              size="lg"
+              variant="outline"
+              disabled={isPlaying}
+              className={`flex-1 sm:w-32 border-2 ${quizStatus === 'correct' && targetDirection.current === 'DOWN' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : quizStatus === 'wrong' && targetDirection.current === 'DOWN' ? 'border-amber-500 bg-amber-50 text-amber-600' : 'hover:border-amber-500'}`}
+              onClick={() => handleGuess("DOWN")}
+            >
+              DOWN
+            </Button>
+          </div>
+        </div>
+        
+        {quizStatus === "wrong" && (
+           <div className="mt-4 text-amber-600 font-medium animate-in fade-in slide-in-from-top-2">
+             <p className="font-bold mb-1"><X className="w-4 h-4 inline-block mr-1 mb-0.5" /> Incorrect! Let's break it down.</p>
+             <p className="text-sm">If you thought it went {targetDirection.current === "UP" ? "DOWN" : "UP"}, try focusing on the very last note. Replay the audio and hum the first note, then hold it in your head while the last note plays. Did the pitch become brighter and higher (UP), or darker and deeper (DOWN)? Try listening to it again!</p>
+           </div>
+        )}
+
+        {unlocked && (
+          <div className="mt-8 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-bottom-4">
+            <div className="text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-2">
+              <Check className="w-5 h-5" /> Lesson Unlocked! Great ear!
+            </div>
+            <Link to="/exercises">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                Go to Exercise <ChevronRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
