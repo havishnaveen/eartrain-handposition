@@ -520,7 +520,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <LessonPanel
                 keyName={proofPositionTitle(positionProof?.positionName)}
                 hands={requiredHands === 'both' ? ['left', 'right'] : [requiredHands]}
-                subtitle={instruction}
+                subtitle="Build one three-key shape. Keep each key down as you add the next finger."
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
               />
@@ -544,33 +544,33 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 {status === 'proof-success' ? (
                   <>
                     <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>SUCCESS</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Great job!</div>
+                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Shape complete. You can let go!</div>
                   </>
                 ) : proofHoldFailure ? (
                   <>
                     <div style={{ fontSize: '14px', fontWeight: 820, color: '#f84c4c', marginBottom: '12px', letterSpacing: '0.11em' }}>TRY AGAIN</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>You didn&apos;t hold <strong>{releasedKeyMessage}</strong>.</div>
-                    <div style={{ fontSize: '18px', fontWeight: 760, color: '#6f687b', lineHeight: 1.4, marginTop: '18px' }}>Start again. Keep every key down while you add the next finger.</div>
+                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>You let go of <strong>{releasedKeyMessage}</strong> too soon.</div>
+                    <div style={{ fontSize: '18px', fontWeight: 760, color: '#6f687b', lineHeight: 1.4, marginTop: '18px' }}>Start again with the first finger. Press each key and keep it down until all three are held.</div>
                   </>
                 ) : proofProgress === 0 ? (
                   <>
                     <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 1</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Hold <strong>{proofHandLabel} Finger {proofNotes[0].finger}</strong> on <strong>{anchorRegister}</strong></div>
+                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Press <strong>{anchorRegister}</strong> with <strong>{proofHandLabel} Finger {proofNotes[0].finger}</strong>.<br/><br/>Keep the key down.</div>
                   </>
                 ) : proofProgress === 1 ? (
                   <>
                     <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 2</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep holding that key.<br/><br/>Add <strong>Finger {proofNotes[1].finger}</strong> on <strong>{proofPitchName(proofNotes[1].pitch)}</strong></div>
+                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep Finger {proofNotes[0].finger} down.<br/><br/>Press and hold <strong>{proofRegisterLabel(proofNotes[1].pitch)}</strong> with <strong>Finger {proofNotes[1].finger}</strong>.</div>
                   </>
                 ) : proofProgress === 2 ? (
                   <>
                     <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>STEP 3</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep holding both keys.<br/><br/>Add <strong>Finger {proofNotes[2].finger}</strong> on <strong>{proofPitchName(proofNotes[2].pitch)}</strong></div>
+                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep both keys down.<br/><br/>Press and hold <strong>{proofRegisterLabel(proofNotes[2].pitch)}</strong> with <strong>Finger {proofNotes[2].finger}</strong>.</div>
                   </>
                 ) : (
                   <>
                     <div style={{ fontSize: '14px', fontWeight: 820, color: '#c74a27', marginBottom: '12px', letterSpacing: '0.11em' }}>HOLD STEADY</div>
-                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Don't let go...</div>
+                    <div style={{ fontSize: '28px', fontWeight: 860, color: '#ef6a47', lineHeight: 1.2 }}>Keep all three keys down until you hear the success sound.</div>
                   </>
                 )}
               </div>

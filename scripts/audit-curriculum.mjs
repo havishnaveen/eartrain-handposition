@@ -243,6 +243,58 @@ try {
                 `Fixed device latency was mistaken for bad rhythm in Lesson ${concept.index}.`,
               );
 
+              // A fluent human phrase is a timing category, not a laboratory
+              // sequence of identical timestamps. Smooth push/pull inside the
+              // visible beat must retain 5.0 across the whole curriculum.
+              const fluentOffsets = [-0.22, -0.08, 0.1, 0.22, 0.08, -0.1, -0.2, -0.04, 0.14];
+              const fluentTake = perfect.map((note, index) => {
+                const onsetOffset = fluentOffsets[index % fluentOffsets.length] * plan.secondsPerBeat;
+                const releaseOffset = (index % 2 === 0 ? 0.2 : -0.2) * plan.secondsPerBeat;
+                return {
+                  ...note,
+                  time: note.time + onsetOffset,
+                  endTime: note.endTime + onsetOffset + releaseOffset,
+                };
+              });
+              const fluentGrade = gradeSequence(
+                question.expectedSequence,
+                fluentTake,
+                gradeOptions,
+              );
+              assert.equal(
+                fluentGrade.scores.timing,
+                5,
+                `Musically fluent timing lost mastery credit in Lesson ${concept.index}.`,
+              );
+              assert.equal(
+                fluentGrade.scores.overall,
+                5,
+                `A fluent, complete performance showed a 4.x Overall in Lesson ${concept.index}.`,
+              );
+
+              // Release tracking is room-dependent. An ambiguous estimate is
+              // diagnostic only and must not turn exact attacks into 4.x.
+              const uncertainReleases = perfect.map((note) => ({
+                ...note,
+                endTime: note.time + plan.secondsPerBeat * 2.75,
+                durationConfidence: 0.7,
+              }));
+              const uncertainReleaseGrade = gradeSequence(
+                question.expectedSequence,
+                uncertainReleases,
+                gradeOptions,
+              );
+              assert.equal(
+                uncertainReleaseGrade.scores.timing,
+                5,
+                `Ambiguous release evidence lowered Timing in Lesson ${concept.index}.`,
+              );
+              assert.equal(
+                uncertainReleaseGrade.scores.overall,
+                5,
+                `Ambiguous release evidence lowered Overall in Lesson ${concept.index}.`,
+              );
+
               const silentGrade = gradeSequence(question.expectedSequence, [], gradeOptions);
               assert.equal(silentGrade.scores.pitch, 0);
               assert.equal(silentGrade.scores.cleanliness, 0);
@@ -263,6 +315,30 @@ try {
               }
 
               if (perfect.length >= 3) {
+                // The axes must stay independent: a corrected wrong key costs
+                // Cleanliness, but cannot also demote exact matched-note timing.
+                const correctedWrongKey = [
+                  perfect[0],
+                  {
+                    ...perfect[0],
+                    midi: perfect[0].midi + 1,
+                    time: perfect[0].time + plan.secondsPerBeat * 0.35,
+                    endTime: undefined,
+                  },
+                  ...perfect.slice(1),
+                ];
+                const correctedWrongGrade = gradeSequence(
+                  question.expectedSequence,
+                  correctedWrongKey,
+                  gradeOptions,
+                );
+                assert.equal(correctedWrongGrade.scores.pitch, 5,
+                  `A corrected extra corrupted Pitch in Lesson ${concept.index}.`);
+                assert.equal(correctedWrongGrade.scores.timing, 5,
+                  `A corrected extra was penalised again in Timing in Lesson ${concept.index}.`);
+                assert.ok(correctedWrongGrade.scores.cleanliness < 5,
+                  `A corrected extra was not isolated to Cleanliness in Lesson ${concept.index}.`);
+
                 const offBeat = perfect.map((note, index) => {
                   const offset = (index % 2 === 0 ? -0.65 : 0.65) * plan.secondsPerBeat;
                   return { ...note, time: note.time + offset, endTime: note.endTime + offset };

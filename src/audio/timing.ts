@@ -260,13 +260,13 @@ export interface RhythmReport {
   meanOnsetErrorBeats: number;
   /** Mean error in the rhythmic gaps between successive matched notes. */
   meanIntervalErrorBeats: number;
-  /** Number of written note lengths bounded by two confirmed attacks. */
+  /** Number of written note lengths supported by a credible acoustic release. */
   durationEvaluated: number;
   /** Durations measured from an actual acoustic release rather than attack spacing. */
   releaseEvaluated: number;
   /** Continuous 0–1 duration score for those confirmed note lengths. */
   durationAccuracy: number | null;
-  /** Mean absolute duration error in beats; null when only one note was heard. */
+  /** Mean absolute duration error in beats; null without credible release evidence. */
   meanDurationErrorBeats: number | null;
 }
 
@@ -471,6 +471,8 @@ const PEDAL_SUSTAIN_THRESHOLD = 4;
 const FAINT_RATIO = 0.5;
 /** Below this confidence, an unmatched event is detector debris—not proof of a wrong key. */
 const HARD_EXTRA_MIN_CLARITY = 0.62;
+/** A room-dependent release estimate must be credible before it can affect a grade. */
+const MIN_GRADED_RELEASE_CONFIDENCE = 0.72;
 
 function medianOf(values: number[]): number {
   if (values.length === 0) return 0;
@@ -629,7 +631,6 @@ function buildRhythm(
   // notes here breaks guide-note drills and can shift every later onset after
   // a rest or a compact cue representation.
   const expectedSlots = plan.expectedNotes;
-  const pitched = plan.notes.filter((n) => !n.isRest);
   const deviations: number[] = [];
 
   matches.forEach(({ expectedIndex, time }) => {
@@ -660,16 +661,11 @@ function buildRhythm(
   );
   const adjusted = deviations.map((deviation) => deviation - forgivenOffset);
 
-  // Absolute onsets catch playing the whole phrase late or early. Duration
-  // prefers a confirmed acoustic damping edge from the worklet. When that is
-  // not observable (most commonly with the pedal down), adjacent attacks are
-  // retained as a lower-confidence fallback only when no written rest sits
-  // between them.
+  // Absolute onsets catch playing the whole phrase late or early. Duration is
+  // considered separately and only when the worklet hears a credible acoustic
+  // damping edge; adjacent attacks cannot prove that the prior key was lifted.
   const intervalErrors: number[] = [];
   const releaseErrors: { error: number; weight: number }[] = [];
-  const fallbackDurationErrors: { error: number; weight: number }[] = [];
-  const releaseMeasuredExpected = new Set<number>();
-
   for (const match of matches) {
     const planned = expectedSlots[match.expectedIndex];
     const endTime = match.note.endTime;
@@ -678,7 +674,7 @@ function buildRhythm(
       !planned ||
       !Number.isFinite(endTime) ||
       (endTime as number) <= match.time ||
-      confidence < 0.5
+      confidence < MIN_GRADED_RELEASE_CONFIDENCE
     ) continue;
     const playedHoldBeats = ((endTime as number) - match.time) / plan.secondsPerBeat;
     releaseErrors.push({
@@ -688,7 +684,6 @@ function buildRhythm(
       // releases authority while gracefully discounting room-dependent ones.
       weight: Math.max(0.16, confidence * confidence),
     });
-    releaseMeasuredExpected.add(match.expectedIndex);
   }
 
   for (let index = 1; index < matches.length; index++) {
@@ -705,16 +700,13 @@ function buildRhythm(
     const playedGap = (current.time - previous.time) / plan.secondsPerBeat;
     const intervalError = Math.abs(playedGap - expectedGap);
     intervalErrors.push(intervalError);
-    const previousPlan = pitched[previous.expectedIndex];
-    const hasNoWrittenRest = previousPlan && Math.abs(expectedGap - previousPlan.beats) < 0.001;
-    if (!releaseMeasuredExpected.has(previous.expectedIndex) && hasNoWrittenRest) {
-      // Attack spacing is useful duration evidence, but it cannot prove when
-      // a key was released. Keep it as a deliberately low-weight fallback.
-      fallbackDurationErrors.push({ error: intervalError, weight: 0.28 });
-    }
   }
 
-  const durationErrors = [...releaseErrors, ...fallbackDurationErrors];
+  // Adjacent attacks already contribute to interval timing above. Treating
+  // that same gap as a guessed key duration penalised one timing variation
+  // twice and claimed to know when a finger lifted. Only an independently
+  // credible acoustic release is allowed to grade written note length.
+  const durationErrors = releaseErrors;
 
   const meanOnsetError =
     adjusted.reduce((sum, deviation) => sum + Math.abs(deviation), 0) / adjusted.length;
@@ -759,7 +751,7 @@ function buildRhythm(
     meanAbsBeats: Math.round(combinedError * 100) / 100,
     meanOnsetErrorBeats: Math.round(meanOnsetError * 100) / 100,
     meanIntervalErrorBeats: Math.round(meanIntervalError * 100) / 100,
-    durationEvaluated: durationErrors.length,
+    durationEvaluated: releaseErrors.length,
     releaseEvaluated: releaseErrors.length,
     durationAccuracy: durationAccuracy === null
       ? null
@@ -1238,31 +1230,39 @@ export function gradeSequence(
         );
         return clamp5(onsetScore * 0.82 + durationScore * 0.18);
       })();
-  const completeAndClean =
+  const completePitch =
     matches.length === expectedCount &&
-    totalMissed === 0 &&
-    hard === 0 &&
-    hesitations === 0;
+    totalMissed === 0;
+  const cleanPerformance = hard === 0 && hesitations === 0;
+  const completeAndClean = completePitch && cleanPerformance;
+
+  // Five means there is no useful timing correction to give—not that every
+  // FFT timestamp landed inside an artificially tiny mathematical plateau.
+  // Judge the whole musical result: every attack remains inside the lesson's
+  // on-beat window, relative spacing is stable, and repeated high-confidence
+  // releases do not prove materially wrong note lengths. Pitch/cleanliness
+  // mistakes remain on their own axes and cannot lower Timing a second time.
+  const transitionSupportsFullCredit =
+    !transition || (transition.measured && transition.score === 5);
   const fullCreditTiming = Boolean(
-    completeAndClean &&
+    completePitch &&
     rhythm &&
     rhythm.accuracy === 1 &&
-    (
-      rhythm.meanOnsetErrorBeats * 0.42 + rhythm.meanIntervalErrorBeats * 0.58
-    ) <= timingProfile.fullCreditOnsetWindow * 1.35 &&
+    rhythm.meanIntervalErrorBeats <= timingProfile.onBeatWindow * 1.2 &&
     (
       rhythm.durationAccuracy === null ||
       rhythm.durationEvaluated < 2 ||
-      rhythm.durationAccuracy >= 0.55
-    ),
+      rhythm.durationAccuracy >= 0.7
+    ) &&
+    transitionSupportsFullCredit,
   );
   const timingScore =
-    baseTimingScore === null
-      ? transition?.score ?? null
-      : transition
-        ? clamp5(baseTimingScore * 0.65 + transition.score * 0.35)
-        : fullCreditTiming
-          ? 5
+    fullCreditTiming
+      ? 5
+      : baseTimingScore === null
+        ? transition?.score ?? null
+        : transition
+          ? clamp5(baseTimingScore * 0.65 + transition.score * 0.35)
           : baseTimingScore;
 
   // Cleanliness: penalises only what the student actually did. Echoes and
