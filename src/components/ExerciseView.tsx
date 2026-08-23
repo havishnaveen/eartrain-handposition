@@ -121,6 +121,10 @@ function PerformanceAnalysis() {
   return (
     <section className="et-analysis" role="status" aria-live="polite" aria-label="Analyzing your performance">
       <div className="et-analysis__visual" aria-hidden="true">
+        <svg className="et-analysis__ring" viewBox="0 0 224 224">
+          <circle cx="112" cy="112" r="108" className="et-analysis__ring-track" />
+          <circle cx="112" cy="112" r="108" className="et-analysis__ring-progress" />
+        </svg>
         <span className="et-analysis__orbit et-analysis__orbit--one"><i /></span>
         <span className="et-analysis__orbit et-analysis__orbit--two"><i /></span>
         <span className="et-analysis__orbit et-analysis__orbit--three"><i /></span>
