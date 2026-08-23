@@ -49,21 +49,21 @@ const KEY_ACCIDENTALS: Record<string, number> = {
   F: 1, Bb: 2, Eb: 3, Ab: 4, Db: 5, Gb: 6,
 };
 
-const CLEF_WIDTH = 62;
-const ACCIDENTAL_WIDTH = 14;
-const TIME_SIG_WIDTH = 30;
-const PER_BEAT = 62;
-const MIN_PER_NOTE = 48;
-const PER_BARLINE = 30;
-const MIN_STAVE_W = 260;
+const CLEF_WIDTH = 50;
+const ACCIDENTAL_WIDTH = 11;
+const TIME_SIG_WIDTH = 26;
+const PER_BEAT = 40;
+const MIN_PER_NOTE = 34;
+const PER_BARLINE = 26;
+const MIN_STAVE_W = 190;
 /** Space for the final notehead, accidental, stem and finger annotation. */
-const NOTE_RIGHT_GUTTER = 44;
+const NOTE_RIGHT_GUTTER = 34;
 
 const CANVAS_H = 560;
 const STAVE_X = 12;
 const STAVE_TOP = 200;
 const STAVE_GAP = 122;
-const BOUNDS_PAD_X = 42;
+const BOUNDS_PAD_X = 26;
 const BOUNDS_PAD_Y = 28;
 const SCRUB_OVERHANG = 26;
 
