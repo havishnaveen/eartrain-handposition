@@ -49,7 +49,7 @@ import type { Contour } from './melody';
 
 const BASE_QUESTIONS = 3;
 const MAX_QUESTIONS = 9;
-const SHORT_MEMORY_PREVIEW_SECONDS = 6;
+const SHORT_MEMORY_PREVIEW_SECONDS = 10;
 const LONG_MEMORY_PREVIEW_SECONDS = 15;
 
 const C = positionById('C');
