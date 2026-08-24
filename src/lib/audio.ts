@@ -83,24 +83,58 @@ const getSampleUrl = (note: string, octave: number) => {
   return `${SAMPLE_BASE_URL}${mapped}${octave}.mp3`;
 };
 
+// A single flaky fetch to the sample CDN should never mean total silence.
+// This is the only exercise in the app that depends on network audio, so a
+// dropped request here is the difference between "the chord played" and a
+// child staring at a screen that never made a sound. Two quick retries with
+// a bounded per-attempt timeout absorb the transient case; a real outage
+// still resolves to null (never a synth substitute) and the caller surfaces
+// that explicitly instead of failing silently.
+const fetchWithTimeout = async (url: string, timeoutMs: number): Promise<ArrayBuffer> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`sample fetch ${res.status}`);
+    return await res.arrayBuffer();
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 export const loadSample = async (note: string, octave: number): Promise<AudioBuffer | null> => {
   if (!audioCtx) await initAudio();
   note = normalizeNote(note);
   const key = `${note}${octave}`;
-  
+
   if (bufferCache.has(key)) return bufferCache.get(key)!;
   if (loadingPromises.has(key)) return loadingPromises.get(key)!;
 
-  const promise = fetch(getSampleUrl(note, octave))
-    .then(res => res.arrayBuffer())
-    .then(data => audioCtx!.decodeAudioData(data))
-    .then(buffer => {
-      bufferCache.set(key, buffer);
-      return buffer;
-    })
-    .catch(() => null);
+  const url = getSampleUrl(note, octave);
+  const promise = (async () => {
+    const ATTEMPTS = 3;
+    for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
+      try {
+        const data = await fetchWithTimeout(url, 4500);
+        const buffer = await audioCtx!.decodeAudioData(data);
+        bufferCache.set(key, buffer);
+        return buffer;
+      } catch {
+        if (attempt < ATTEMPTS - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 220 * (attempt + 1)));
+        }
+      }
+    }
+    return null;
+  })();
 
   loadingPromises.set(key, promise);
+  // A failed attempt should not permanently poison this note for the rest of
+  // the session — clear it from the in-flight map so a later call retries
+  // fresh instead of replaying the same rejected promise forever.
+  promise.then((buffer) => {
+    if (!buffer) loadingPromises.delete(key);
+  });
   return promise;
 };
 

@@ -29,6 +29,13 @@ export interface CueSpec {
   staves: StaffSpec[];
   keySignature?: string;
   timeSignature?: string;
+  /**
+   * When set, a piece longer than this many measures wraps onto additional
+   * stacked systems (each a fresh copy of every staff in `staves`) instead
+   * of staying on one ever-widening line. Undefined keeps today's single
+   * continuous line — every existing exercise is unaffected.
+   */
+  measuresPerSystem?: number;
 }
 
 export type PhaseId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;

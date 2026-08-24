@@ -899,6 +899,42 @@ export function PathwayRouter({
     startActualDrill(active.id);
   }, [bpm, clearMemoryTimers, orientationNotice, startActualDrill, state.status]);
 
+  // Lets a student mid-search re-hear the chord demo without losing the
+  // lesson — e.g. after a CDN hiccup left them listening for a sound that
+  // never played, or they simply want another pass before guessing again.
+  // beginSpatialChord already resets its own detection state safely, so
+  // this is just handleStart's spatial-chord branch minus the 'prompt' gate.
+  const handleReplayChord = useCallback(() => {
+    const active = questionRef.current;
+    if (active.exerciseMode !== 'spatial-chord' || !active.spatialChord) return;
+    if (!(['chord-cue', 'chord-root', 'chord-build'] as ExerciseStatus[]).includes(state.status)) return;
+    if (chordStartingRef.current) return;
+    chordStartingRef.current = true;
+    const questionId = active.id;
+    activeDrillQuestionIdRef.current = questionId;
+    activeProofQuestionIdRef.current = null;
+    planRef.current = planForQuestion(active, bpm);
+    analysisStartedAtRef.current = 0;
+    exerciseViewRef.current?.resetProgress();
+    staffRef.current?.hide();
+    dispatch({ type: 'CHORD_START', questionId });
+    void beginSpatialChordRef.current(active.spatialChord)
+      .then((started) => {
+        chordStartingRef.current = false;
+        if (!started && activeDrillQuestionIdRef.current === questionId) {
+          activeDrillQuestionIdRef.current = null;
+          dispatch({ type: 'CHORD_CANCEL', questionId });
+        }
+      })
+      .catch(() => {
+        chordStartingRef.current = false;
+        if (activeDrillQuestionIdRef.current === questionId) {
+          activeDrillQuestionIdRef.current = null;
+          dispatch({ type: 'CHORD_CANCEL', questionId });
+        }
+      });
+  }, [bpm, state.status]);
+
   /* Telemetry drain. Ref-guarded so it cannot dispatch and therefore cannot
      loop, and idempotent under StrictMode's double-invoked effects. */
   const drainedRef = useRef(0);
@@ -1132,6 +1168,8 @@ export function PathwayRouter({
         spatialProgress={audio.spatialProgress}
         spatialFoundMidi={audio.spatialFoundMidi}
         spatialWrongGuesses={audio.spatialWrongGuesses}
+        spatialAudioIssue={audio.spatialAudioIssue}
+        onReplayChord={handleReplayChord}
         orientationNotice={orientationNotice}
         onAcknowledgeOrientation={acknowledgeOrientation}
       >

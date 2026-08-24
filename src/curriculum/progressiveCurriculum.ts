@@ -740,6 +740,9 @@ function twoHandStandardQuestion(
   difficulty: number,
   mode: GenerationMode,
   modeDifficulty: number,
+  /** Wraps the notation onto a second stacked grand-staff system once the
+   * (already-lengthened) contour runs past `measuresPerSystem` measures. */
+  measuresPerSystem?: number,
 ): Question {
   const leftOctave = cyclePick(lesson.leftOctaves, ordinal + 1);
   const leftPosition = buildPosition(rightPosition.template, leftOctave);
@@ -754,8 +757,16 @@ function twoHandStandardQuestion(
   const leftNotes: CueNote[] = [];
   const expectedSequence: string[] = [];
 
+  // Switching hands on every single note turned one melodic contour into a
+  // note-by-note ping-pong between two octave-apart registers — a leap on
+  // every attack, never a phrase either hand could actually play. Handing
+  // each hand a full bar at a time keeps the contour's own stepwise motion
+  // intact within a turn (real "hands take turns" phrasing) and confines
+  // the register jump to once per hand-off instead of every note.
+  const groupSize = Math.max(1, beatsPerBar);
+
   contour.forEach((degree, index) => {
-    const onRight = index % 2 === 0;
+    const onRight = Math.floor(index / groupSize) % 2 === 0;
     expectedSequence.push(onRight ? rightPosition.sci[degree] : leftPosition.sci[degree]);
     rightNotes.push(
       onRight
@@ -782,6 +793,7 @@ function twoHandStandardQuestion(
         { clef: 'treble', hand: 'right', notes: rightNotes },
         { clef: 'bass', hand: 'left', notes: leftNotes },
       ],
+      ...(measuresPerSystem ? { measuresPerSystem } : {}),
     },
     expectedSequence,
     tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),
@@ -1047,27 +1059,52 @@ function questionFor(
     : SHORT_MEMORY_PREVIEW_SECONDS;
   const beatsPerBar = cyclePick(lesson.meters, ordinal);
 
-  // Genuine two-hand grand-staff questions. Ramp: first appears at lesson 7,
-  // more common through 8 and 9, and by lesson 10 every 'standard' rep is
-  // two-handed (c07–c10 are the D- and A-major lessons this window covers;
-  // "afterward" every later blind-memory lesson's standard rep stays
-  // two-handed too, since the chance is 1 for every lesson.index >= 10).
-  // Scoped to 'standard' — prove-it/blind-memory/anchor-shift/spatial-chord
-  // already teach hand alternation or coordination in their own way (see
-  // c04's "alternate hands" prove-it lesson, and every BOTH_HANDS lesson's
-  // R/L/R rep cycle), and forcing simultaneous two-hand chords into a
-  // memory-recall or chord-search exercise would need real polyphonic
-  // detection this app doesn't have — not worth the risk for no clear
-  // teaching benefit.
-  const twoHandChance =
-    lesson.index >= 10 ? 1
-      : lesson.index === 9 ? 0.75
-        : lesson.index === 8 ? 0.5
-          : lesson.index === 7 ? 0.25
-            : 0;
-  if (exerciseMode === 'standard' && twoHandChance > 0 && rand() < twoHandChance) {
+  // Genuine two-hand grand-staff questions: every 'standard' rep from lesson
+  // 6 onward. Scoped to 'standard' — prove-it/blind-memory/anchor-shift/
+  // spatial-chord already teach hand alternation or coordination in their
+  // own way (see c04's "alternate hands" prove-it lesson, and every
+  // BOTH_HANDS lesson's R/L/R rep cycle), and forcing simultaneous two-hand
+  // chords into a memory-recall or chord-search exercise would need real
+  // polyphonic detection tuned for that purpose — not worth the risk for no
+  // clear teaching benefit.
+  const isTwoHandLesson = lesson.index >= 6;
+  if (exerciseMode === 'standard' && isTwoHandLesson) {
+    // Longer phrases for the tail of the standard-exercise arc: 60% of
+    // reps get roughly 1.5-2x the usual length, wrapped onto a second
+    // stacked grand-staff system instead of one ever-widening line.
+    //
+    // The original ask named "lesson 17" for this escalation, but lesson 17
+    // (c17-b-fsharp-orientation) is a prove-it lesson — like every lesson
+    // after 12, it never generates an exerciseMode:'standard' rep at all,
+    // since 'standard' only ever comes from a blind-memory lesson's
+    // non-memory rep (lessons 5-12, gated to two-handed from lesson 6
+    // above). Lessons 11-12 (E major) are the real tail of that window, so
+    // the escalation lands there instead of silently doing nothing.
+    const extendLength = lesson.index >= 11 && rand() < 0.6;
+    // Capped to exactly two systems' worth of notes (StaffCue.tsx wraps at
+    // `measuresPerSystem` measures = `measuresPerSystem * beatsPerBar`
+    // quarter notes) — "1.5 to 2 lines", never a stray third line, even
+    // when both concatenated contours happen to run long.
+    const notesPerSystem = 2 * beatsPerBar;
+    // Two independently-picked contours glued together can open the second
+    // one on a degree far from where the first just resolved — an arbitrary
+    // leap that reads as "two unrelated phrases," not one longer idea.
+    // Trying a couple of deterministic candidates and keeping whichever
+    // opens closest to the first phrase's last note keeps the seam a
+    // plausible melodic step instead of a coin-flip jump.
+    const continuationCandidates = [7, 11, 17].map((salt) =>
+      variedPick(lesson.contours, modeDifficulty, ordinal + lesson.index + salt),
+    );
+    const lastDegree = contour[contour.length - 1];
+    const continuation = continuationCandidates.reduce((best, candidate) =>
+      Math.abs(candidate[0] - lastDegree) < Math.abs(best[0] - lastDegree) ? candidate : best,
+    );
+    const standardContour = extendLength
+      ? [...contour, ...continuation].slice(0, notesPerSystem * 2)
+      : contour;
     return twoHandStandardQuestion(
-      lesson, position, contour, beatsPerBar, ordinal, difficulty, mode, modeDifficulty,
+      lesson, position, standardContour, beatsPerBar, ordinal, difficulty, mode, modeDifficulty,
+      extendLength ? 2 : undefined,
     );
   }
 
@@ -1117,7 +1154,15 @@ function questionFor(
                   { pitch: position.sci[2], finger: 3 as const },
                   { pitch: position.sci[4], finger: 1 as const },
                 ],
-            requireHeld: true,
+            // Each note just needs to sound, in order — the child does not
+            // have to keep earlier fingers pressed down while adding the
+            // next one. Holding a 3-key hand shape while a mic tries to
+            // confirm every finger is still down was fragile in practice
+            // (acoustic release detection is inherently noisy) and made
+            // Prove It feel needlessly strict. See useDrillAudio.ts's
+            // acceptProofNote / the final-verification block for the other
+            // half of this simplification.
+            requireHeld: false,
             acceptWindowMs: 5500,
           },
         }

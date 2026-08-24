@@ -1,10 +1,15 @@
 /**
- * Expected-tone polyphonic analyzer used only by spatial-chord exercises.
+ * Expected-tone polyphonic analyzer, run alongside the ordinary single-pitch
+ * detector for every exercise (see `listen-chord` callers in
+ * useDrillAudio.ts — spatial-chord exercises target their three chord tones,
+ * every other exercise targets every distinct pitch the current piece uses).
  *
  * The ordinary detector intentionally follows one pitch after each hammer
  * attack. That is correct for melodies and Prove-It, but a chord needs a
- * simultaneous spectral view. This processor measures all three known chord
- * tones independently and can report several of them from the same frame.
+ * simultaneous spectral view instead: this processor measures every target
+ * tone independently, each frame, and can report several of them at once
+ * from the same frame — however many are given (three for a triad, up to
+ * seven or more for a wide phrase), since each tone is scored on its own.
  */
 const WINDOW = 2048;
 const HOP = 512;

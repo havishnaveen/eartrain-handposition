@@ -1824,6 +1824,48 @@
   padding-top: 18px;
   border-top: 1px solid rgba(64,58,112,.1);
 }
+.et-spatial__answer-card--with-notation { width: min(100%, 620px); }
+.et-spatial__notation--compact { height: 110px; padding: 4px 10px 0; margin-bottom: 4px; }
+.et-spatial__answer-card .et-spatial__tones { width: 100%; margin-bottom: 14px; }
+.et-spatial__replay {
+  margin-top: 16px;
+  padding: 9px 18px;
+  border: 1px solid rgba(111,99,217,.25);
+  border-radius: 999px;
+  color: var(--et-ink-strong);
+  background: rgba(255,255,255,.85);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.et-spatial__replay:hover { border-color: var(--et-orange); color: var(--et-orange-deep); }
+.et-spatial__audio-issue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid rgba(214,90,60,.3);
+  border-radius: 16px;
+  color: #8a3a24;
+  background: rgba(255,236,228,.8);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
+}
+.et-spatial__audio-issue button {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 999px;
+  color: white;
+  background: var(--et-orange-deep, #b34e2f);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
 .et-spatial__answer-card .et-spatial__recording b { font-size: 14px; }
 
 .et-spatial__finished {
@@ -1940,23 +1982,6 @@
   gap: clamp(42px, 6vw, 82px);
 }
 
-.et-proof__anchor-step {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 12px 16px;
-  border-radius: 17px;
-  background: rgba(245, 242, 255, 0.72);
-}
-
-.et-proof__anchor-step--finger { background: rgba(255, 238, 231, 0.76); }
-.et-proof__anchor-step small { color: var(--et-ink-faint); font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
-.et-proof__anchor-step strong { color: var(--et-ink-strong); font-size: clamp(17px, 2vw, 23px); line-height: 1.15; }
-.et-proof__anchor-step--finger strong { color: var(--et-orange-deep); }
-.et-proof__anchor-arrow { display: grid; place-items: center; color: var(--et-orange); font-size: 35px; font-weight: 800; }
-
 .et-proof__identity {
   grid-area: identity;
   min-height: 330px;
@@ -1975,37 +2000,36 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-self: center;
   gap: 12px;
 }
 
-.et-proof__hold-rule {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  padding: 11px 15px;
-  border: 1px solid rgba(10, 129, 110, .24);
-  border-radius: 15px 15px 15px 5px;
-  color: #08705f;
-  background: rgba(226, 249, 242, .88);
-  text-align: left;
+/* The card that used to be inline-styled directly on the JSX node — pulled
+   into a real class so it participates in the theme/media-query system like
+   every other panel instead of fighting it with one-off inline styles. */
+.et-proof__card {
+  width: 100%;
+  padding: 32px 24px;
+  border: 1px solid rgba(239, 106, 71, 0.3);
+  border-radius: 24px 24px 24px 9px;
+  background: rgba(255, 253, 251, 0.96);
+  box-shadow: 0 14px 34px rgba(81, 51, 40, 0.1);
+  text-align: center;
 }
 
-.et-proof__hold-rule strong { flex: 0 0 auto; font-size: 14px; }
-.et-proof__hold-rule span { font-size: 12px; font-weight: 700; line-height: 1.35; }
-
-.et-proof__title {
-  max-width: 760px;
-  margin: 0;
-  color: var(--et-ink-strong);
-  font-size: clamp(40px, 4.8vw, 60px);
-  line-height: 0.98;
-  letter-spacing: -0.045em;
-  text-wrap: balance;
+.et-proof__eyebrow {
+  margin-bottom: 10px;
+  color: #c74a27;
+  font-size: 13px;
+  font-weight: 820;
+  letter-spacing: 0.11em;
 }
 
-.et-proof__title span {
-  color: var(--et-orange-deep);
+.et-proof__headline {
+  color: #ef6a47;
+  font-size: 24px;
+  font-weight: 860;
+  line-height: 1.2;
 }
 
 .et-hand-requirement {
@@ -2098,22 +2122,6 @@
 }
 
 .et-hand-requirement--both .et-hand-badge { width: 130px; }
-
-.et-proof__register {
-  width: fit-content;
-  margin: -12px 0 -4px;
-  padding: 10px 17px 10px 14px;
-  border: 1px solid rgba(111, 99, 217, 0.34);
-  border-radius: 9px 20px 20px 9px;
-  color: #44399e;
-  background: linear-gradient(135deg, rgba(239, 236, 255, 0.98), rgba(250, 248, 255, 0.96));
-  box-shadow:
-    inset 4px 0 0 #6f63d9,
-    0 7px 18px rgba(80, 67, 166, 0.1);
-  font-size: 18px;
-  font-weight: 860;
-  letter-spacing: 0.01em;
-}
 
 .et-orientation-gate {
   position: absolute;
@@ -2262,7 +2270,7 @@
   position: relative;
   min-height: 112px;
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) 94px 28px;
+  grid-template-columns: minmax(0, 1fr) 94px 28px;
   align-items: center;
   gap: 16px;
   padding: 18px 22px 18px 28px;
@@ -2273,6 +2281,7 @@
   box-shadow: 0 10px 26px rgba(36, 34, 55, 0.055);
   font-variant-numeric: tabular-nums;
   opacity: 0.5;
+  overflow: hidden;
   transform: translateX(0) scale(0.985);
   transition:
     opacity 220ms ease,
@@ -2282,26 +2291,35 @@
     box-shadow 220ms ease;
 }
 
-.et-proof__key span {
+.et-proof__key-finger {
+  min-width: 0;
   color: var(--et-ink-soft);
   font-size: 16px;
   font-weight: 760;
   letter-spacing: -0.01em;
 }
 
-.et-proof__key strong {
-  color: inherit;
-  font-size: clamp(50px, 5vw, 68px);
-  font-weight: 820;
-  line-height: 0.95;
-  letter-spacing: -0.06em;
+/* Register stacks above the note letter instead of sitting beside it — a
+   row layout let "MIDDLE" and a 68px "C" fight for the same horizontal
+   space and spill into the finger/badge columns next to them. */
+.et-proof__key-note {
+  min-width: 0;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.et-proof__key-note strong {
+  color: inherit;
+  font-size: clamp(36px, 4vw, 56px);
+  font-weight: 820;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
 .et-proof__key-register {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2596,7 +2614,6 @@
   .et-hand-requirement { justify-content: center; }
 
   .et-proof__mic-message { text-align: center; }
-  .et-proof__register { margin-inline: auto; }
   .et-orientation-tip { margin-inline: auto; }
   .et-proof__keys { width: min(100%, 640px); margin-inline: auto; }
 }
@@ -2628,17 +2645,17 @@
   .et-spatial__intro .et-hand-badge__icon { width: 104px; height: 104px; }
   .et-spatial__cue-card .et-spatial__notation { height: 170px; padding: 5px 8px 0; }
   .et-spatial__answer-card { width: min(100%, 340px); min-height: 285px; padding: 22px 18px 18px; }
+  .et-spatial__answer-card--with-notation { width: min(100%, 380px); }
+  .et-spatial__notation--compact { height: 92px; padding: 2px 4px 0; }
   .et-spatial__answer-card > strong { font-size: 70px; }
   .et-spatial__finished { min-height: 225px; }
   .et-proof { min-height: 560px; padding: 34px 16px; }
   .et-proof__halo { width: 390px; height: 280px; }
-  .et-proof__anchor-link { grid-template-columns: 1fr; gap: 6px; }
-  .et-proof__anchor-arrow { height: 26px; transform: rotate(90deg); font-size: 26px; }
-  .et-proof__hold-rule { align-items: flex-start; flex-direction: column; gap: 3px; }
   .et-proof__keys { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .et-proof__key { min-height: 132px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 18px 7px; border-radius: 18px 18px 18px 6px; }
-  .et-proof__key span { font-size: 11px; }
-  .et-proof__key strong { font-size: 46px; }
+  .et-proof__key { min-height: 132px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px 7px; border-radius: 18px 18px 18px 6px; }
+  .et-proof__key-note { align-items: center; }
+  .et-proof__key-finger { font-size: 11px; }
+  .et-proof__key-note strong { font-size: 38px; }
   .et-proof__key i { position: absolute; top: 8px; right: 8px; width: 21px; height: 21px; font-size: 12px; }
   .et-proof__key--active { transform: translateY(-5px) scale(1.015); }
   .et-proof__key--active::after { top: 10px; left: 10px; width: 7px; height: 7px; transform: none; }

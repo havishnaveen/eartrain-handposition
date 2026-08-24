@@ -91,6 +91,10 @@ export interface ExerciseViewProps {
   spatialProgress?: 0 | 1 | 2 | 3;
   spatialFoundMidi?: readonly number[];
   spatialWrongGuesses?: number;
+  /** True when the chord-by-ear demo's samples failed to load over the network. */
+  spatialAudioIssue?: boolean;
+  /** Re-plays the chord demo without leaving the current search. */
+  onReplayChord?: () => void;
   orientationNotice?: OrientationNotice | null;
   onAcknowledgeOrientation?: () => void;
 }
@@ -162,12 +166,6 @@ function proofPitchName(pitch: string): string {
   return pitch.replace(/-?\d+$/, '');
 }
 
-function joinChildFriendlyList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
-}
-
 function HandBadge({ hand }: { hand: 'right' | 'left' }) {
   const label = hand === 'right' ? 'Right Hand' : 'Left Hand';
   return (
@@ -218,28 +216,6 @@ function OrientationCallout({
     </div>
   );
 }
-
-/**
- * Small, deliberately terse text styles for the Prove It panel — a young
- * reader should be able to take in the whole instruction in one glance
- * rather than parsing a full sentence while also trying to hold keys down.
- */
-function proofEyebrowStyle(color: string): CSSProperties {
-  return { fontSize: '13px', fontWeight: 820, color, marginBottom: '10px', letterSpacing: '0.11em' };
-}
-const proofHeadlineStyle: CSSProperties = {
-  fontSize: '24px',
-  fontWeight: 860,
-  color: '#ef6a47',
-  lineHeight: 1.2,
-};
-const proofSubStyle: CSSProperties = {
-  fontSize: '15px',
-  fontWeight: 700,
-  color: '#6f687b',
-  lineHeight: 1.35,
-  marginTop: '10px',
-};
 
 /** Child-friendly register name for the position's first (anchor) note. */
 export function proofRegisterLabel(pitch: string): string {
@@ -300,9 +276,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       inputLevel = 0,
       detectedNotes = [],
       proofProgress = 0,
-      proofHoldFailure = null,
       spatialProgress = 0,
       spatialWrongGuesses = 0,
+      spatialAudioIssue = false,
+      onReplayChord,
       orientationNotice = null,
       onAcknowledgeOrientation,
     },
@@ -374,8 +351,13 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const activeTone = activeStep >= 0 ? orderedToneEntries[activeStep] : null;
       const chordSucceeded = Boolean(report?.passed);
       const matchedAnchor = spatialChord.rootSupport === 'matched';
+      // A "matched by ear" root that never resolves after repeated tries is a
+      // dead end, not a challenge — mic pitch-matching alone is not reliable
+      // enough to ask a young student to guess blind forever. After a few
+      // wrong tries, quietly reveal the note name as a hint.
+      const revealHint = matchedAnchor && spatialWrongGuesses >= 3;
       const activeAction = activeStep === 0
-        ? matchedAnchor
+        ? matchedAnchor && !revealHint
           ? `Copy the first note with Finger ${rootFinger}`
           : `Play ${rootName} with Finger ${rootFinger}`
         : activeStep === 1
@@ -383,7 +365,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           : activeStep === 2
             ? `Keep Fingers ${rootFinger} and 3 down. Add Finger ${outerFinger}.`
             : '';
-      const activeAnswer = activeStep === 0 && matchedAnchor
+      const activeAnswer = activeStep === 0 && matchedAnchor && !revealHint
         ? '♪'
         : activeStep === 0
           ? rootName
@@ -391,7 +373,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             ? `${rootFinger} — 3`
             : '1 · 3 · 5';
       const activeHint = activeStep === 0
-        ? `${handName} · Finger ${rootFinger}`
+        ? revealHint
+          ? `Hint: it's ${rootName} · Finger ${rootFinger}`
+          : `${handName} · Finger ${rootFinger}`
         : activeStep === 1
           ? 'Leave the anchor in place'
           : 'Finish the outside of the shape';
@@ -449,23 +433,41 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
                   <span><strong>Listen</strong><small>Together, then broken</small></span>
                 </div>
+                {spatialAudioIssue ? (
+                  <div className="et-spatial__audio-issue" role="alert">
+                    <span>We couldn't load the sound clearly.</span>
+                    <button type="button" onClick={onReplayChord ?? NOOP}>Play again</button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
             {isSearching && activeTone ? (
-              <div className="et-spatial__answer-card">
-                <div className="et-spatial__step-dots" aria-label={`Step ${activeStep + 1} of 3`}>
-                  {[0, 1, 2].map((step) => (
-                    <i
-                      key={step}
-                      className={step < spatialProgress
-                        ? 'is-done'
-                        : step === activeStep ? 'is-active' : ''}
-                    />
-                  ))}
+              <div className="et-spatial__answer-card et-spatial__answer-card--with-notation">
+                {/* The written shape stays on screen while the student
+                    searches — found notes light up green (via successPitches
+                    upstream), so the staff itself is the progress readout
+                    instead of an abstract dot count. */}
+                <div className="et-spatial__notation et-spatial__notation--compact">{children}</div>
+                <div className="et-spatial__tones" aria-label={`Step ${activeStep + 1} of 3`}>
+                  {orderedToneEntries.map((tone, step) => {
+                    const done = step < spatialProgress;
+                    const active = step === activeStep;
+                    return (
+                      <div
+                        key={tone.chordIndex}
+                        className={`et-spatial__tone${done ? ' et-spatial__tone--found' : active ? ' et-spatial__tone--active' : ''}`}
+                      >
+                        <span className="et-spatial__step-number">{done ? '✓' : step + 1}</span>
+                        <div className="et-spatial__tone-copy">
+                          <small>Finger</small>
+                          <strong>{tone.finger}</strong>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <span>Step {activeStep + 1} of 3</span>
-                <strong className={activeStep === 0 && matchedAnchor ? 'is-listen-symbol' : ''}>
+                <strong className={activeStep === 0 && matchedAnchor && !revealHint ? 'is-listen-symbol' : ''}>
                   {activeAnswer}
                 </strong>
                 <p>{activeAction}</p>
@@ -477,6 +479,16 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     <small>Listening…</small>
                   </div>
                 </div>
+                {spatialAudioIssue ? (
+                  <div className="et-spatial__audio-issue" role="alert">
+                    <span>The demo may not have played. Not sure what you heard?</span>
+                    <button type="button" onClick={onReplayChord ?? NOOP}>Play again</button>
+                  </div>
+                ) : (
+                  <button type="button" className="et-spatial__replay" onClick={onReplayChord ?? NOOP}>
+                    ↻ Hear it again
+                  </button>
+                )}
               </div>
             ) : null}
 
@@ -535,14 +547,12 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
         ...note,
         finger: proofFingers[index] ?? note.finger,
       }));
-
       const proofHandLabel = requiredHands === 'left' ? 'Left Hand' : 'Right Hand';
-      const releasedKeyMessage = proofHoldFailure
-        ? joinChildFriendlyList(proofHoldFailure.releasedNoteIndices.map((index) => {
-            const note = proofNotes[index];
-            return `${proofHandLabel} Finger ${note.finger} on ${proofRegisterLabel(note.pitch)}`;
-          }))
-        : '';
+
+      // Simplified Prove It: play the three notes in order, one at a time.
+      // No held hand-shape and no "let go" step — each note just needs to be
+      // heard once, so `proofHoldFailure` never fires here any more (it is
+      // wired up only for the (currently unused) `requireHeld: true` path).
       return (
         <section className={`et-proof et-proof--${status}`} aria-live="polite">
           <div className="et-proof__halo" aria-hidden="true"><span /><span /><span /></div>
@@ -551,7 +561,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <LessonPanel
                 keyName={proofPositionTitle(positionProof?.positionName)}
                 hands={requiredHands === 'both' ? ['left', 'right'] : [requiredHands]}
-                subtitle="Build one three-key shape. Keep each key down as you add the next finger."
+                subtitle={`Play the three ${proofHandLabel.toLowerCase()} notes, one after another.`}
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
               />
@@ -570,54 +580,39 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               ) : null}
             </div>
 
-            <div className="et-proof__task" style={{ alignSelf: 'center' }}>
-              <div className="et-proof__dynamic-step" style={{ textAlign: 'center', background: 'rgba(255, 253, 251, 0.96)', padding: '32px 24px', borderRadius: '24px 24px 24px 9px', border: '1px solid rgba(239, 106, 71, 0.3)', boxShadow: '0 14px 34px rgba(81, 51, 40, 0.1)', width: '100%' }}>
-                {status === 'proof-success' ? (
-                  <>
-                    <div style={proofEyebrowStyle('#c74a27')}>DONE</div>
-                    <div style={proofHeadlineStyle}>Let go — nice work! 🎉</div>
-                  </>
-                ) : proofHoldFailure ? (
-                  <>
-                    <div style={proofEyebrowStyle('#f84c4c')}>OOPS</div>
-                    <div style={proofHeadlineStyle}><strong>{releasedKeyMessage}</strong> let go</div>
-                    <div style={proofSubStyle}>Start over — Finger {proofNotes[0].finger} first.</div>
-                  </>
-                ) : (
-                  <>
-                    <div style={proofEyebrowStyle('#c74a27')}>
-                      {proofProgress >= proofNotes.length ? 'HOLD STEADY' : `STEP ${proofProgress + 1} OF ${proofNotes.length}`}
-                    </div>
-                    <div style={proofHeadlineStyle}>
-                      {proofProgress >= proofNotes.length
-                        ? 'Keep all three down!'
-                        : `${proofProgress === 0 ? 'Press' : 'Add'} Finger ${proofNotes[proofProgress].finger}`}
-                    </div>
-                    <ul className="et-proof__keys">
-                      {proofNotes.map((note, index) => {
-                        const keyState = index < proofProgress || proofProgress >= proofNotes.length
-                          ? 'done'
-                          : index === proofProgress
-                            ? 'active'
-                            : null;
-                        const { register, noteName } = proofRegisterParts(note.pitch);
-                        return (
-                          <li
-                            key={note.pitch + index}
-                            className={keyState ? `et-proof__key et-proof__key--${keyState}` : 'et-proof__key'}
-                          >
-                            <strong>
-                              {register ? <small className="et-proof__key-register">{register}</small> : null}
-                              {noteName}
-                            </strong>
-                            <span>Finger {note.finger}</span>
-                            <i aria-hidden="true">{keyState === 'done' ? '✓' : note.finger}</i>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                )}
+            <div className="et-proof__task">
+              <div className="et-proof__card">
+                <div className="et-proof__eyebrow">
+                  {status === 'proof-success' ? 'DONE' : `STEP ${Math.min(proofProgress + 1, proofNotes.length)} OF ${proofNotes.length}`}
+                </div>
+                <div className="et-proof__headline">
+                  {status === 'proof-success'
+                    ? 'Nice work! 🎉'
+                    : `Play Finger ${proofNotes[Math.min(proofProgress, proofNotes.length - 1)].finger}`}
+                </div>
+                <ul className="et-proof__keys">
+                  {proofNotes.map((note, index) => {
+                    const keyState = index < proofProgress || status === 'proof-success'
+                      ? 'done'
+                      : index === proofProgress
+                        ? 'active'
+                        : null;
+                    const { register, noteName } = proofRegisterParts(note.pitch);
+                    return (
+                      <li
+                        key={note.pitch + index}
+                        className={keyState ? `et-proof__key et-proof__key--${keyState}` : 'et-proof__key'}
+                      >
+                        <span className="et-proof__key-note">
+                          {register ? <small className="et-proof__key-register">{register}</small> : null}
+                          <strong>{noteName}</strong>
+                        </span>
+                        <span className="et-proof__key-finger">Finger {note.finger}</span>
+                        <i aria-hidden="true">{keyState === 'done' ? '✓' : note.finger}</i>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             </div>
           </div>

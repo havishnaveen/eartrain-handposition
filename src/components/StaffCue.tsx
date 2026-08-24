@@ -12,7 +12,7 @@ const {
   StaveNote,
   Voice,
 } = Vex.Flow;
-import type { AnchorShiftSpec, CueSpec, StaffSpec } from '../curriculum/types';
+import type { AnchorShiftSpec, CueNote, CueSpec, StaffSpec } from '../curriculum/types';
 import { beatsForDuration, pitchToMidi } from '../audio/timing';
 import './staff-cue.css';
 
@@ -100,11 +100,20 @@ export function shiftRegionFromOnsets(
   };
 }
 
-interface Layout {
+/**
+ * One horizontal line of notation. A piece that fits on one line has exactly
+ * one of these; a wrapped multi-line piece (see `CueSpec.measuresPerSystem`)
+ * has one per line, each with its own local beat-to-pixel scale and its own
+ * vertical band, plus a `startBeat` that place it on the piece's one shared,
+ * continuous beat timeline — the same global `beat` the scrubber is driven
+ * with — so `seekToBeat` can find which system a given moment belongs to.
+ */
+interface SystemLayout {
+  startBeat: number;
+  totalBeats: number;
   points: ScrubPoint[];
   startX: number;
   endX: number;
-  totalBeats: number;
   top: number;
   bottom: number;
 }
@@ -142,11 +151,6 @@ export function timelineXForBeat(
   if (!Number.isFinite(totalBeats) || totalBeats <= 0) return startX;
   const progress = Math.min(1, Math.max(0, beat / totalBeats));
   return startX + progress * (endX - startX);
-}
-
-/** Constant-velocity mapping across the same beat scale used for engraving. */
-function xForBeat(layout: Layout, beat: number): number {
-  return timelineXForBeat(layout.startX, layout.endX, layout.totalBeats, beat);
 }
 
 /**
@@ -225,7 +229,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const layoutRef = useRef<Layout | null>(null);
+  const layoutRef = useRef<SystemLayout[] | null>(null);
   const lineRef = useRef<SVGLineElement | null>(null);
   const trailRef = useRef<SVGRectElement | null>(null);
   const successPitchKey = [...successPitches].sort().join('|');
@@ -234,30 +238,47 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     ref,
     () => ({
       seekToBeat(beat: number) {
-        const layout = layoutRef.current;
+        const systems = layoutRef.current;
         const line = lineRef.current;
         const trail = trailRef.current;
-        if (!layout || !line || !trail) return;
+        if (!systems || systems.length === 0 || !line || !trail) return;
+        const first = systems[0];
 
         if (beat < 0) {
           // During the two-measure count-in the cursor is visible but parked
           // at the first playable point. That makes the waiting state clear
           // without implying that any written time has elapsed.
           line.setAttribute('opacity', '1');
-          line.setAttribute('x1', String(layout.startX));
-          line.setAttribute('x2', String(layout.startX));
+          line.setAttribute('x1', String(first.startX));
+          line.setAttribute('x2', String(first.startX));
+          line.setAttribute('y1', String(first.top));
+          line.setAttribute('y2', String(first.bottom));
           trail.setAttribute('opacity', '1');
+          trail.setAttribute('x', String(first.startX));
+          trail.setAttribute('y', String(first.top));
+          trail.setAttribute('height', String(first.bottom - first.top));
           trail.setAttribute('width', '0');
           return;
         }
 
-        const x = xForBeat(layout, beat);
+        // Multi-line pieces need the right system, not just the right X —
+        // each line has its own vertical band, so crossing into the next
+        // system moves the cursor down as well as back to the left margin.
+        let system = systems.find((s) => beat >= s.startBeat && beat < s.startBeat + s.totalBeats);
+        if (!system) system = beat < first.startBeat ? first : systems[systems.length - 1];
+
+        const x = timelineXForBeat(system.startX, system.endX, system.totalBeats, beat - system.startBeat);
         line.setAttribute('opacity', '1');
         line.setAttribute('x1', String(x));
         line.setAttribute('x2', String(x));
+        line.setAttribute('y1', String(system.top));
+        line.setAttribute('y2', String(system.bottom));
 
         trail.setAttribute('opacity', '1');
-        trail.setAttribute('width', String(Math.max(0, x - layout.startX)));
+        trail.setAttribute('x', String(system.startX));
+        trail.setAttribute('y', String(system.top));
+        trail.setAttribute('height', String(system.bottom - system.top));
+        trail.setAttribute('width', String(Math.max(0, x - system.startX)));
       },
       hide() {
         lineRef.current?.setAttribute('opacity', '0');
@@ -318,177 +339,252 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     );
     const canvasWidth = staveWidth + STAVE_X * 2;
 
+    // A piece longer than `measuresPerSystem` measures wraps onto additional
+    // stacked systems instead of staying on one ever-widening line. Splitting
+    // is by note COUNT, not measured beats: every current producer of
+    // `measuresPerSystem` (twoHandStandardQuestion's extended phrases) writes
+    // only quarter notes, so one note is exactly one beat and a plain count
+    // split lands precisely on measure boundaries. A future duration-mixed
+    // producer of this field would need a beat-aware split instead.
+    const notesPerSystem = cue.measuresPerSystem
+      ? cue.measuresPerSystem * Math.max(1, beatsPerBar)
+      : Infinity;
+    const sliceIntoSystems = (notes: readonly CueNote[]): CueNote[][] => {
+      if (!Number.isFinite(notesPerSystem) || notesPerSystem <= 0) return [notes.slice()];
+      const chunks: CueNote[][] = [];
+      for (let i = 0; i < notes.length; i += notesPerSystem) {
+        chunks.push(notes.slice(i, i + notesPerSystem));
+      }
+      return chunks.length > 0 ? chunks : [[]];
+    };
+    const systemsByStaff = cue.staves.map((staff) => sliceIntoSystems(staff.notes));
+    const systemCount = Math.max(1, ...systemsByStaff.map((chunks) => chunks.length));
+    const staffCountPerSystem = Math.max(1, cue.staves.length);
+    // Extra clearance below one system's last staff before the next
+    // system's first staff — bigger than STAVE_GAP (which only separates
+    // treble from bass within one grand staff) so ledger lines and finger
+    // annotations from consecutive systems never crowd each other.
+    const SYSTEM_GAP = STAVE_GAP + 96;
+    const systemHeight = (staffCountPerSystem - 1) * STAVE_GAP + SYSTEM_GAP;
+    const canvasHeight = systemCount <= 1
+      ? CANVAS_H
+      : STAVE_TOP + (systemCount - 1) * systemHeight + (staffCountPerSystem - 1) * STAVE_GAP + 300;
+
     const renderer = new Renderer(host, Renderer.Backends.SVG);
-    renderer.resize(canvasWidth, CANVAS_H);
+    renderer.resize(canvasWidth, canvasHeight);
     const context = renderer.getContext();
     context.setFont('Inter, Roboto, sans-serif', 15);
 
-    const drawnStaves: any[] = [];
     const barlineXs: { x: number; top: number; bottom: number }[] = [];
-    let layout: Layout | null = null;
+    const systems: SystemLayout[] = [];
     let shiftRegion: (ShiftRegion & { top: number; bottom: number }) | null = null;
 
-    cue.staves.forEach((staffSpec: StaffSpec, staffIndex: number) => {
-      const stave = new Stave(STAVE_X, STAVE_TOP + staffIndex * STAVE_GAP, staveWidth);
+    for (let systemIndex = 0; systemIndex < systemCount; systemIndex += 1) {
+      const drawnStavesInSystem: any[] = [];
+      const systemBarlines: { x: number; top: number; bottom: number }[] = [];
+      // Exact because every system but a possibly-shorter last one holds
+      // precisely `notesPerSystem` notes, and one note is one beat here —
+      // see the comment on `notesPerSystem` above.
+      const systemStartBeat = systemIndex * (Number.isFinite(notesPerSystem) ? notesPerSystem : 0);
 
-      // Clef, then key, then time — the frame a student reads in a method book.
-      stave.addClef(staffSpec.clef);
-      if (cue.keySignature) stave.addKeySignature(cue.keySignature);
-      if (cue.timeSignature) stave.addTimeSignature(cue.timeSignature);
+      cue.staves.forEach((staffSpec: StaffSpec, staffIndex: number) => {
+        const notesForSystem = systemsByStaff[staffIndex][systemIndex] ?? [];
+        if (notesForSystem.length === 0) return;
 
-      stave.setBegBarType(Vex.Flow.Barline.type.SINGLE);
-      stave.setEndBarType(Vex.Flow.Barline.type.END);
-      (stave as any).setStyle({ strokeStyle: inkColor, fillStyle: inkColor, lineWidth: 1.5 });
-      stave.setContext(context).draw();
-      drawnStaves.push(stave);
-
-      const marks = barlineBefore(staffSpec.notes, beatsPerBar);
-
-      const staveNotes = staffSpec.notes.map((cueNote) => {
-        const note = new StaveNote({
-          keys: cueNote.keys,
-          duration: cueNote.duration,
-          clef: staffSpec.clef,
-        });
-
-        // The duration parser gives `hd`, `qd`, etc. their correct number of
-        // ticks, but VexFlow does not draw the matching glyph dot unless the
-        // Dot modifier is attached. Without this, later lessons sounded and
-        // graded three beats while showing an undotted two-beat half note.
-        const dotCount = (cueNote.duration.replace(/r$/, '').match(/d+$/)?.[0].length ?? 0);
-        for (let dot = 0; dot < dotCount; dot += 1) {
-          // Runtime is VexFlow 4; the installed legacy declaration package
-          // omits this V4 static helper even though the implementation ships.
-          (Dot as any).buildAndAttach([note], { all: true });
-        }
-
-        // A rest's `keys` is only ever a staff-line placeholder (see
-        // twoHandStandardQuestion in progressiveCurriculum.ts) — it must
-        // never be compared against completedMidi, or a rest could get
-        // colored as "played" purely by coincidence with its placeholder
-        // pitch.
-        const completed = !cueNote.duration.endsWith('r') && cueNote.keys.some((key) => {
-          const match = /^([a-g](?:#|b)?)\/(-?\d+)$/i.exec(key);
-          if (!match) return false;
-          const scientific = `${match[1][0].toUpperCase()}${match[1].slice(1)}${match[2]}`;
-          const midi = pitchToMidi(scientific);
-          return midi !== null && completedMidi.has(midi);
-        });
-        const color = completed ? successColor : cueNote.anchor ? accentColor : inkColor;
-        (note as any).setStyle({ strokeStyle: color, fillStyle: color, lineWidth: 1.5 });
-
-        if (cueNote.finger !== undefined) {
-          const placement =
-            staffSpec.hand === 'right'
-              ? Annotation.VerticalJustify.TOP
-              : Annotation.VerticalJustify.BOTTOM;
-
-          const annotation = new Annotation(String(cueNote.finger))
-            .setVerticalJustification(placement)
-            .setFont('Inter, Roboto, sans-serif', 17, '700');
-          // Annotation inherits Element.setStyle at runtime, but VexFlow 4's
-          // declaration omits it from Annotation. Keep the runtime styling
-          // while containing the typing gap here.
-          (annotation as any).setStyle({ strokeStyle: color, fillStyle: color });
-          note.addModifier(annotation, 0);
-        }
-
-        return note;
-      });
-
-      if (staveNotes.length === 0) return;
-
-      const voice = new Voice({ num_beats: 4, beat_value: 4 })
-        .setStrict(false)
-        .addTickables(staveNotes);
-
-      Accidental.applyAccidentals([voice], cue.keySignature ?? 'C');
-
-      const noteStart = stave.getNoteStartX();
-      const noteEnd = stave.getX() + stave.getWidth();
-      const timelineEnd = noteEnd - NOTE_RIGHT_GUTTER;
-      const formatWidth = Math.max(110, timelineEnd - noteStart);
-
-      new Formatter().joinVoices([voice]).format([voice], formatWidth);
-      const beams = Beam.generateBeams(staveNotes);
-      const timeline = distributeNotesByTime(
-        staveNotes,
-        staffSpec.notes.map((note) => note.duration),
-        formatWidth,
-      );
-      voice.draw(context, stave);
-      beams.forEach((beam) => beam.setContext(context).draw());
-
-      // Barlines.
-      //
-      // VexFlow 4's BarNote emits nothing when added as a tickable to a
-      // non-strict voice — verified: no vf-barnote element reaches the SVG.
-      // Drawing them directly is deterministic and needs no cooperation from
-      // the formatter. Each sits midway between the last note of one measure
-      // and the first of the next, which is where an engraver would put it.
-      if (marks.size > 0) {
-        const top = stave.getYForLine(0);
-        const bottom = stave.getYForLine(4);
-        marks.forEach((index) => {
-          const after = staveNotes[index];
-          const before = staveNotes[index - 1];
-          if (!after || !before) return;
-          // The next note begins exactly on the measure boundary. Leave a
-          // small engraving gap before it without changing its timed X.
-          const previousX = before.getAbsoluteX();
-          const nextX = after.getAbsoluteX();
-          const x = nextX - Math.min(10, Math.max(4, (nextX - previousX) * 0.16));
-          barlineXs.push({ x, top, bottom });
-        });
-      }
-
-      // Capture the scrubber track from the FIRST staff only, after
-      // formatting — getAbsoluteX is meaningless before the formatter runs.
-      if (staffIndex === 0) {
-        const points: ScrubPoint[] = [];
-        let beat = 0;
-        staveNotes.forEach((note, i) => {
-          points.push({ beat, x: note.getAbsoluteX() });
-          beat += beatsForDuration(staffSpec.notes[i].duration);
-        });
-        const totalBeats = timeline?.totalBeats ?? Math.max(beat, points.length);
-        const scrubberBounds = scrubberBoundsFromOnsets(
-          points,
-          totalBeats,
-          timeline?.startX ?? noteStart,
-          // The extrapolated timed endpoint may occupy the reserved final
-          // note gutter, but can never cross the stave's actual end barline.
-          noteEnd,
+        const stave = new Stave(
+          STAVE_X,
+          STAVE_TOP + systemIndex * systemHeight + staffIndex * STAVE_GAP,
+          staveWidth,
         );
-        layout = {
-          points,
-          startX: scrubberBounds.startX,
-          endX: scrubberBounds.endX,
-          totalBeats,
-          top: stave.getYForLine(0) - SCRUB_OVERHANG,
-          bottom: stave.getYForLine(4) + SCRUB_OVERHANG,
-        };
-        const resolvedShift = shiftMarker
-          ? shiftRegionFromOnsets(points, shiftMarker.splitIndex)
-          : null;
-        if (resolvedShift) {
-          shiftRegion = {
-            ...resolvedShift,
-            top: stave.getYForLine(0) - 25,
-            bottom: stave.getYForLine(4) + 25,
-          };
+
+        // Clef, then key, then time — the frame a student reads in a method
+        // book. Every system restates clef and key (a reader who lands
+        // mid-system should never lose track of either), but the time
+        // signature is conventionally shown only once, at the very start.
+        stave.addClef(staffSpec.clef);
+        if (cue.keySignature) stave.addKeySignature(cue.keySignature);
+        if (cue.timeSignature && systemIndex === 0) stave.addTimeSignature(cue.timeSignature);
+
+        stave.setBegBarType(Vex.Flow.Barline.type.SINGLE);
+        stave.setEndBarType(Vex.Flow.Barline.type.END);
+        (stave as any).setStyle({ strokeStyle: inkColor, fillStyle: inkColor, lineWidth: 1.5 });
+        stave.setContext(context).draw();
+        drawnStavesInSystem.push(stave);
+
+        const marks = barlineBefore(notesForSystem, beatsPerBar);
+
+        const staveNotes = notesForSystem.map((cueNote) => {
+          const note = new StaveNote({
+            keys: cueNote.keys,
+            duration: cueNote.duration,
+            clef: staffSpec.clef,
+          });
+
+          // The duration parser gives `hd`, `qd`, etc. their correct number of
+          // ticks, but VexFlow does not draw the matching glyph dot unless the
+          // Dot modifier is attached. Without this, later lessons sounded and
+          // graded three beats while showing an undotted two-beat half note.
+          const dotCount = (cueNote.duration.replace(/r$/, '').match(/d+$/)?.[0].length ?? 0);
+          for (let dot = 0; dot < dotCount; dot += 1) {
+            // Runtime is VexFlow 4; the installed legacy declaration package
+            // omits this V4 static helper even though the implementation ships.
+            (Dot as any).buildAndAttach([note], { all: true });
+          }
+
+          // A rest's `keys` is only ever a staff-line placeholder (see
+          // twoHandStandardQuestion in progressiveCurriculum.ts) — it must
+          // never be compared against completedMidi, or a rest could get
+          // colored as "played" purely by coincidence with its placeholder
+          // pitch.
+          const completed = !cueNote.duration.endsWith('r') && cueNote.keys.some((key) => {
+            const match = /^([a-g](?:#|b)?)\/(-?\d+)$/i.exec(key);
+            if (!match) return false;
+            const scientific = `${match[1][0].toUpperCase()}${match[1].slice(1)}${match[2]}`;
+            const midi = pitchToMidi(scientific);
+            return midi !== null && completedMidi.has(midi);
+          });
+          const color = completed ? successColor : cueNote.anchor ? accentColor : inkColor;
+          (note as any).setStyle({ strokeStyle: color, fillStyle: color, lineWidth: 1.5 });
+
+          if (cueNote.finger !== undefined) {
+            const placement =
+              staffSpec.hand === 'right'
+                ? Annotation.VerticalJustify.TOP
+                : Annotation.VerticalJustify.BOTTOM;
+
+            const annotation = new Annotation(String(cueNote.finger))
+              .setVerticalJustification(placement)
+              .setFont('Inter, Roboto, sans-serif', 17, '700');
+            // Annotation inherits Element.setStyle at runtime, but VexFlow 4's
+            // declaration omits it from Annotation. Keep the runtime styling
+            // while containing the typing gap here.
+            (annotation as any).setStyle({ strokeStyle: color, fillStyle: color });
+            note.addModifier(annotation, 0);
+          }
+
+          return note;
+        });
+
+        const voice = new Voice({ num_beats: 4, beat_value: 4 })
+          .setStrict(false)
+          .addTickables(staveNotes);
+
+        Accidental.applyAccidentals([voice], cue.keySignature ?? 'C');
+
+        const noteStart = stave.getNoteStartX();
+        const noteEnd = stave.getX() + stave.getWidth();
+        const timelineEnd = noteEnd - NOTE_RIGHT_GUTTER;
+        const formatWidth = Math.max(110, timelineEnd - noteStart);
+
+        new Formatter().joinVoices([voice]).format([voice], formatWidth);
+        const beams = Beam.generateBeams(staveNotes);
+        const timeline = distributeNotesByTime(
+          staveNotes,
+          notesForSystem.map((note) => note.duration),
+          formatWidth,
+        );
+        voice.draw(context, stave);
+        beams.forEach((beam) => beam.setContext(context).draw());
+
+        // Barlines.
+        //
+        // VexFlow 4's BarNote emits nothing when added as a tickable to a
+        // non-strict voice — verified: no vf-barnote element reaches the SVG.
+        // Drawing them directly is deterministic and needs no cooperation from
+        // the formatter. Each sits midway between the last note of one measure
+        // and the first of the next, which is where an engraver would put it.
+        //
+        // X positions are taken from the FIRST staff of THIS system only,
+        // same authoritative timeline the scrubber below uses — every staff
+        // shares one formatWidth and one written beat grid, so both staves'
+        // bars land at (as good as) identical X already. Height is fixed up
+        // to span every staff in the system right after this staff loop, so
+        // a two-hand grand staff gets one continuous barline through both
+        // staves instead of two short, disconnected ones.
+        if (marks.size > 0 && staffIndex === 0) {
+          const top = stave.getYForLine(0);
+          const bottom = stave.getYForLine(4);
+          marks.forEach((index) => {
+            const after = staveNotes[index];
+            const before = staveNotes[index - 1];
+            if (!after || !before) return;
+            // The next note begins exactly on the measure boundary. Leave a
+            // small engraving gap before it without changing its timed X.
+            const previousX = before.getAbsoluteX();
+            const nextX = after.getAbsoluteX();
+            const x = nextX - Math.min(10, Math.max(4, (nextX - previousX) * 0.16));
+            systemBarlines.push({ x, top, bottom });
+          });
+        }
+
+        // Capture the scrubber track from the FIRST staff of THIS system
+        // only, after formatting — getAbsoluteX is meaningless before the
+        // formatter runs.
+        if (staffIndex === 0) {
+          const points: ScrubPoint[] = [];
+          let beat = 0;
+          staveNotes.forEach((note, i) => {
+            points.push({ beat, x: note.getAbsoluteX() });
+            beat += beatsForDuration(notesForSystem[i].duration);
+          });
+          const totalBeats = timeline?.totalBeats ?? Math.max(beat, points.length);
+          const scrubberBounds = scrubberBoundsFromOnsets(
+            points,
+            totalBeats,
+            timeline?.startX ?? noteStart,
+            // The extrapolated timed endpoint may occupy the reserved final
+            // note gutter, but can never cross the stave's actual end barline.
+            noteEnd,
+          );
+          systems.push({
+            startBeat: systemStartBeat,
+            totalBeats,
+            points,
+            startX: scrubberBounds.startX,
+            endX: scrubberBounds.endX,
+            top: stave.getYForLine(0) - SCRUB_OVERHANG,
+            bottom: stave.getYForLine(4) + SCRUB_OVERHANG,
+          });
+          // Only ever meaningful in the single-system case — anchor-shift
+          // exercises never set `measuresPerSystem` — same as before.
+          const resolvedShift = shiftMarker
+            ? shiftRegionFromOnsets(points, shiftMarker.splitIndex)
+            : null;
+          if (resolvedShift) {
+            shiftRegion = {
+              ...resolvedShift,
+              top: stave.getYForLine(0) - 25,
+              bottom: stave.getYForLine(4) + 25,
+            };
+          }
+        }
+      });
+
+      // Extend this system's barlines and scrubber band down through every
+      // staff IN THIS SYSTEM — both were captured against the first (top)
+      // staff alone above, which is correct for a single staff but left a
+      // two-hand grand staff with a marker that stopped at the bottom of the
+      // treble staff instead of reaching the bass staff underneath it.
+      if (drawnStavesInSystem.length > 1) {
+        const lastStave = drawnStavesInSystem[drawnStavesInSystem.length - 1];
+        const systemBottom = lastStave.getYForLine(4);
+        systemBarlines.forEach((bar) => { bar.bottom = systemBottom; });
+        const thisSystemLayout = systems[systems.length - 1];
+        if (thisSystemLayout && thisSystemLayout.startBeat === systemStartBeat) {
+          thisSystemLayout.bottom = systemBottom + SCRUB_OVERHANG;
         }
       }
-    });
+      barlineXs.push(...systemBarlines);
 
-    if (drawnStaves.length === 2) {
-      const [top, bottom] = drawnStaves;
-      (['BRACE', 'SINGLE_LEFT', 'SINGLE_RIGHT'] as const).forEach((kind) => {
-        new StaveConnector(top, bottom)
-          .setType(StaveConnector.type[kind])
-          .setContext(context)
-          .draw();
-      });
+      if (drawnStavesInSystem.length === 2) {
+        const [top, bottom] = drawnStavesInSystem;
+        (['BRACE', 'SINGLE_LEFT', 'SINGLE_RIGHT'] as const).forEach((kind) => {
+          new StaveConnector(top, bottom)
+            .setType(StaveConnector.type[kind])
+            .setContext(context)
+            .draw();
+        });
+      }
     }
 
     const svg = host.querySelector('svg') as SVGSVGElement | null;
@@ -547,14 +643,16 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
 
     // Scrubber. Drawn INSIDE the SVG so it shares the notation's coordinate
     // space — no unit conversion, and it scales with the staff for free.
-    if (layout) {
-      const resolved: Layout = layout;
+    // Starts parked on the first system; `seekToBeat` moves it — including
+    // between systems, for a wrapped multi-line piece — from there.
+    if (systems.length > 0) {
+      const first = systems[0];
 
       const trail = document.createElementNS(SVG_NS, 'rect');
-      trail.setAttribute('x', String(resolved.startX));
-      trail.setAttribute('y', String(resolved.top));
+      trail.setAttribute('x', String(first.startX));
+      trail.setAttribute('y', String(first.top));
       trail.setAttribute('width', '0');
-      trail.setAttribute('height', String(resolved.bottom - resolved.top));
+      trail.setAttribute('height', String(first.bottom - first.top));
       trail.setAttribute('fill', accentColor);
       trail.setAttribute('opacity', '0');
       trail.setAttribute('pointer-events', 'none');
@@ -562,10 +660,10 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       svg.appendChild(trail);
 
       const line = document.createElementNS(SVG_NS, 'line');
-      line.setAttribute('x1', String(resolved.startX));
-      line.setAttribute('x2', String(resolved.startX));
-      line.setAttribute('y1', String(resolved.top));
-      line.setAttribute('y2', String(resolved.bottom));
+      line.setAttribute('x1', String(first.startX));
+      line.setAttribute('x2', String(first.startX));
+      line.setAttribute('y1', String(first.top));
+      line.setAttribute('y2', String(first.bottom));
       line.setAttribute('stroke', accentColor);
       line.setAttribute('stroke-width', '2.5');
       line.setAttribute('stroke-linecap', 'round');
@@ -576,12 +674,12 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
 
       trailRef.current = trail;
       lineRef.current = line;
-      layoutRef.current = resolved;
+      layoutRef.current = systems;
     }
 
     // Measure what was drawn, then crop to it. Nothing can clip, however far
     // ledger lines, accidentals, annotations or the scrubber extend.
-    let box = { x: 0, y: 0, width: canvasWidth, height: CANVAS_H };
+    let box = { x: 0, y: 0, width: canvasWidth, height: canvasHeight };
     try {
       const measured = svg.getBBox();
       if (measured.width > 0 && measured.height > 0) box = measured;
