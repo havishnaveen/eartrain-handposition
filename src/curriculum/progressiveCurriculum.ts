@@ -16,7 +16,7 @@ import {
   buildPosition,
   positionById,
 } from './positions';
-import type { PositionTemplate } from './positions';
+import type { Position, PositionTemplate } from './positions';
 import {
   MUSICAL_BEGINNER,
   MUSICAL_GENTLE_SKIPS,
@@ -720,6 +720,77 @@ function contextualProgression(
   return voiced;
 }
 
+/**
+ * A real grand-staff question: right hand and left hand trade the notes of
+ * one shared contour, one note at a time, each in its own register. Every
+ * beat slot has exactly one sounded note (on whichever hand's turn it is)
+ * and a rest on the other staff — never two pitches at once — so the
+ * existing single-pitch-at-a-time detector and timing.ts's beat-merged
+ * `planFor` (see there) grade it exactly like any other exercise. This is
+ * what actually makes the drill require both hands: the notation shows two
+ * staves and the student must physically move between them mid-phrase,
+ * even though acoustic detection only ever expects one pitch at a time.
+ */
+function twoHandStandardQuestion(
+  lesson: LessonRecipe,
+  rightPosition: Position,
+  contour: Contour,
+  beatsPerBar: number,
+  ordinal: number,
+  difficulty: number,
+  mode: GenerationMode,
+  modeDifficulty: number,
+): Question {
+  const leftOctave = cyclePick(lesson.leftOctaves, ordinal + 1);
+  const leftPosition = buildPosition(rightPosition.template, leftOctave);
+  // A rest still needs a staff line to sit on — VexFlow's Accidental.
+  // applyAccidentals explicitly skips rests (t.isRest() short-circuits it),
+  // so there's no accidental-safety concern here; these are simply each
+  // clef's conventional centered rest position (the middle line).
+  const rightRestKey = 'b/4';
+  const leftRestKey = 'd/3';
+
+  const rightNotes: CueNote[] = [];
+  const leftNotes: CueNote[] = [];
+  const expectedSequence: string[] = [];
+
+  contour.forEach((degree, index) => {
+    const onRight = index % 2 === 0;
+    expectedSequence.push(onRight ? rightPosition.sci[degree] : leftPosition.sci[degree]);
+    rightNotes.push(
+      onRight
+        ? { keys: [rightPosition.vf[degree]], duration: 'q', finger: fingerFor(degree, 'right'), anchor: index === 0 }
+        : { keys: [rightRestKey], duration: 'qr' },
+    );
+    leftNotes.push(
+      onRight
+        ? { keys: [leftRestKey], duration: 'qr' }
+        : { keys: [leftPosition.vf[degree]], duration: 'q', finger: fingerFor(degree, 'left') },
+    );
+  });
+
+  return {
+    id: `${lesson.id}#${ordinal}`,
+    conceptId: lesson.id,
+    exerciseMode: 'standard',
+    handScope: 'both',
+    instruction: 'Hands take turns — right, then left. Play the phrase after the count-in.',
+    cue: {
+      keySignature: lesson.showKeySignature ? rightPosition.template.keySignature : 'C',
+      timeSignature: `${beatsPerBar}/4`,
+      staves: [
+        { clef: 'treble', hand: 'right', notes: rightNotes },
+        { clef: 'bass', hand: 'left', notes: leftNotes },
+      ],
+    },
+    expectedSequence,
+    tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),
+    positionLabel: `${rightPosition.label} — both hands`,
+    difficulty,
+    mode,
+  };
+}
+
 function spatialChordQuestion(
   lesson: LessonRecipe,
   recipe: SpatialChordRecipe,
@@ -975,6 +1046,30 @@ function questionFor(
     ? LONG_MEMORY_PREVIEW_SECONDS
     : SHORT_MEMORY_PREVIEW_SECONDS;
   const beatsPerBar = cyclePick(lesson.meters, ordinal);
+
+  // Genuine two-hand grand-staff questions. Ramp: first appears at lesson 7,
+  // more common through 8 and 9, and by lesson 10 every 'standard' rep is
+  // two-handed (c07–c10 are the D- and A-major lessons this window covers;
+  // "afterward" every later blind-memory lesson's standard rep stays
+  // two-handed too, since the chance is 1 for every lesson.index >= 10).
+  // Scoped to 'standard' — prove-it/blind-memory/anchor-shift/spatial-chord
+  // already teach hand alternation or coordination in their own way (see
+  // c04's "alternate hands" prove-it lesson, and every BOTH_HANDS lesson's
+  // R/L/R rep cycle), and forcing simultaneous two-hand chords into a
+  // memory-recall or chord-search exercise would need real polyphonic
+  // detection this app doesn't have — not worth the risk for no clear
+  // teaching benefit.
+  const twoHandChance =
+    lesson.index >= 10 ? 1
+      : lesson.index === 9 ? 0.75
+        : lesson.index === 8 ? 0.5
+          : lesson.index === 7 ? 0.25
+            : 0;
+  if (exerciseMode === 'standard' && twoHandChance > 0 && rand() < twoHandChance) {
+    return twoHandStandardQuestion(
+      lesson, position, contour, beatsPerBar, ordinal, difficulty, mode, modeDifficulty,
+    );
+  }
 
   const notes: CueNote[] = contour.map((degree, index) => ({
     keys: [position.vf[degree]],

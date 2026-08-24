@@ -63,6 +63,8 @@ export interface ExerciseViewProps {
   children?: ReactNode;
 
   onStart?: () => void;
+  /** Only ever offered during the count-in, before the downbeat hands off to recording. */
+  onCancelStart?: () => void;
   startLabel?: string;
   micStatus?: MicStatus;
 
@@ -281,6 +283,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       memorySecondsRemaining = 3,
       children,
       onStart,
+      onCancelStart,
       startLabel = 'Start drill',
       micStatus = 'idle',
       beatLabel = '',
@@ -750,6 +753,17 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <span className="et-leadin__label">
                 {isDownbeat ? 'Play next!' : 'Get ready'}
               </span>
+              {onCancelStart ? (
+                <button
+                  type="button"
+                  className="et-leadin__cancel"
+                  onClick={onCancelStart}
+                  disabled={isDownbeat}
+                  aria-label="Cancel and go back"
+                >
+                  Cancel
+                </button>
+              ) : null}
             </div>
           </div>
 

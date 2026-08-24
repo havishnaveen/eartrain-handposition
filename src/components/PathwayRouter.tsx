@@ -1050,6 +1050,21 @@ export function PathwayRouter({
     clearMemoryTimers();
   }, [clearMemoryTimers]);
 
+  // Only reachable during the two-measure count-in ('leadin'), before the
+  // downbeat hands off to 'listening'. Once recording has actually started,
+  // there is no cancel: an interrupted attempt would otherwise be graded as
+  // a real, silent playthrough. audio.abort() tears down the scheduled
+  // clicks and the not-yet-armed detector before the state resets to
+  // 'prompt', so a re-Start begins completely fresh.
+  const handleCancelStart = useCallback(() => {
+    if (state.status !== 'leadin') return;
+    const questionId = questionRef.current.id;
+    drillStartingRef.current = false;
+    activeDrillQuestionIdRef.current = null;
+    abortRef.current();
+    dispatch({ type: 'START_CANCEL', questionId });
+  }, [state.status]);
+
   if (state.finished) {
     const passes = sessionAttempts.filter((a) => a.passed).length;
     const scoredAttempts = sessionAttempts.filter(
@@ -1092,6 +1107,7 @@ export function PathwayRouter({
         spatialChord={question.spatialChord}
         memorySecondsRemaining={memorySecondsRemaining}
         onStart={handleStart}
+        onCancelStart={handleCancelStart}
         startLabel={
           state.attempt > 1
             ? 'Try again'

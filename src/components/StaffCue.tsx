@@ -362,7 +362,12 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           (Dot as any).buildAndAttach([note], { all: true });
         }
 
-        const completed = cueNote.keys.some((key) => {
+        // A rest's `keys` is only ever a staff-line placeholder (see
+        // twoHandStandardQuestion in progressiveCurriculum.ts) — it must
+        // never be compared against completedMidi, or a rest could get
+        // colored as "played" purely by coincidence with its placeholder
+        // pitch.
+        const completed = !cueNote.duration.endsWith('r') && cueNote.keys.some((key) => {
           const match = /^([a-g](?:#|b)?)\/(-?\d+)$/i.exec(key);
           if (!match) return false;
           const scientific = `${match[1][0].toUpperCase()}${match[1].slice(1)}${match[2]}`;
@@ -591,13 +596,25 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // also covers stroke width and sub-pixel rounding at the right edge.
     const boundsLeft = Math.min(0, box.x);
     const boundsRight = Math.max(canvasWidth, box.x + box.width);
+    const viewBoxWidth = boundsRight - boundsLeft + BOUNDS_PAD_X * 2;
+    const viewBoxHeight = box.height + BOUNDS_PAD_Y * 2;
     svg.setAttribute(
       'viewBox',
-      `${boundsLeft - BOUNDS_PAD_X} ${box.y - BOUNDS_PAD_Y} ${boundsRight - boundsLeft + BOUNDS_PAD_X * 2} ${box.height + BOUNDS_PAD_Y * 2}`,
+      `${boundsLeft - BOUNDS_PAD_X} ${box.y - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
     );
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    svg.removeAttribute('width');
-    svg.removeAttribute('height');
+    // Give the SVG an intrinsic size equal to its own viewBox (1 SVG unit =
+    // 1 CSS px) instead of leaving width/height unset, which the container
+    // CSS used to stretch to 100% of the card on every exercise. That made
+    // notehead size a function of note COUNT: a 3-note phrase and a
+    // 12-note one were forced into the same box, so the busier exercise's
+    // notes rendered visibly smaller. With explicit width/height here,
+    // `.et-staff svg`'s `width:auto;height:auto;max-width:100%;max-height:
+    // 100%` (staff-cue.css) renders every exercise at the same true
+    // engraving scale, only shrinking proportionally if content is wider
+    // than the card can hold at all — never as a function of note count.
+    svg.setAttribute('width', String(viewBoxWidth));
+    svg.setAttribute('height', String(viewBoxHeight));
     svg.setAttribute('role', 'img');
     svg.setAttribute('focusable', 'false');
 

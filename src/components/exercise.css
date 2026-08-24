@@ -1227,6 +1227,30 @@
   color: var(--et-ink-soft);
 }
 
+.et-leadin__cancel {
+  margin-top: 2px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--et-ink-faint);
+  background: transparent;
+  color: var(--et-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.et-leadin__cancel:hover:not(:disabled) {
+  background: var(--et-ink-faint);
+  color: var(--et-ink-strong);
+}
+
+.et-leadin__cancel:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* --- Session complete ----------------------------------------------------- */
 
 .et-done {

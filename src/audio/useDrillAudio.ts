@@ -602,64 +602,66 @@ export interface SpatialChordAdvance {
 }
 
 /**
- * Anchor-first chord construction with monotonic progress.
+ * Order-tolerant chord construction with monotonic progress.
  *
- * The anchor is supplied by name or isolated playback, so this is not an
- * absolute-pitch test. After it locks, the learner builds the conventional
- * root-third-fifth shape. Progress remains monotonic when several chord tones
- * arrive in the same analysis frame.
+ * A real chord reaches the microphone with all three notes within
+ * milliseconds of each other, not in strict textbook root-third-fifth
+ * order — a hand naturally lands with the outer notes fractionally ahead of
+ * or behind the root. The previous version required the root to be the
+ * *first* tone detected and silently discarded anything else heard before
+ * it as a "wrong root guess" — so a genuinely correct chord, struck as a
+ * block, regularly registered as at most one note. Any of the three target
+ * tones is now accepted the instant it is heard, in any order; root-finding
+ * is tracked separately (it still arms the shape-search deadline and drives
+ * the "root found" UI moment) rather than gating acceptance of the other
+ * two. Only a pitch that is not one of the three target tones counts as a
+ * wrong guess.
  */
 export function advanceSpatialChord(
   active: ActiveSpatialChord,
   midi: number,
   time: number,
 ): SpatialChordAdvance {
-  active.totalGuesses += 1;
   const orderedTargets = active.spec.buildOrder.map((index) => active.targetMidi[index]);
   const root = orderedTargets[0];
 
-  if (active.rootFoundAt === null) {
-    if (midi !== root) {
-      active.wrongRootGuesses += 1;
-      return { progress: 0, rootJustFound: false, complete: false, countedGuess: true };
-    }
-    active.rootFoundAt = time;
-    active.foundMidi.add(root);
-    active.foundAtByMidi.set(root, time);
-    return { progress: 1, rootJustFound: true, complete: false, countedGuess: false };
-  }
-
   if (active.foundMidi.has(midi)) {
-    // A held/repeated target does not move backward and is not random search.
-    active.totalGuesses = Math.max(0, active.totalGuesses - 1);
+    // A held/repeated target does not move backward and is not a fresh guess.
     return {
-      progress: active.foundMidi.size as 1 | 2 | 3,
+      progress: active.foundMidi.size as 0 | 1 | 2 | 3,
       rootJustFound: false,
       complete: active.foundMidi.size === 3,
       countedGuess: false,
     };
   }
 
-  const nextTarget = orderedTargets[active.foundMidi.size];
-  if (midi === nextTarget) {
-    active.foundMidi.add(midi);
-    active.foundAtByMidi.set(midi, time);
-    const progress = active.foundMidi.size as 2 | 3;
-    if (progress === 3) active.completedAt = time;
+  active.totalGuesses += 1;
+
+  if (!orderedTargets.includes(midi)) {
+    // Attribute the miss to whichever mistake it resembles so the existing
+    // report fields (wrongRootGuesses/wrongShapeGuesses) stay meaningful,
+    // even though tone acceptance itself no longer requires strict order.
+    if (active.rootFoundAt === null) active.wrongRootGuesses += 1;
+    else active.wrongShapeGuesses += 1;
     return {
-      progress,
+      progress: active.foundMidi.size as 0 | 1 | 2,
       rootJustFound: false,
-      complete: progress === 3,
-      countedGuess: false,
+      complete: false,
+      countedGuess: true,
     };
   }
 
-  active.wrongShapeGuesses += 1;
+  active.foundMidi.add(midi);
+  active.foundAtByMidi.set(midi, time);
+  const rootJustFound = midi === root && active.rootFoundAt === null;
+  if (rootJustFound) active.rootFoundAt = time;
+  const progress = active.foundMidi.size as 1 | 2 | 3;
+  if (progress === 3) active.completedAt = time;
   return {
-    progress: active.foundMidi.size as 1 | 2,
-    rootJustFound: false,
-    complete: false,
-    countedGuess: true,
+    progress,
+    rootJustFound,
+    complete: progress === 3,
+    countedGuess: false,
   };
 }
 
@@ -1855,11 +1857,12 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         if (orderedMidi.length === 0) return;
 
         orderedMidi.forEach((midi, index) => {
-          const nextTarget = active.spec.buildOrder
-            .map((targetIndex) => active.targetMidi[targetIndex])[active.foundMidi.size];
-          if (midi !== nextTarget) return;
-          // Preserve root–third–fifth teaching order even when all tones are
-          // present in one FFT frame. Tiny offsets keep result ordering stable.
+          // orderedMidi is already every currently-heard, not-yet-found
+          // target tone — advanceSpatialChord below accepts each of them
+          // regardless of arrival order, which is what makes a genuinely
+          // simultaneous chord register as three notes instead of one.
+          // Tiny offsets keep result ordering stable when several tones
+          // arrive in the same analysis frame.
           const time = baseTime + index * 0.001;
           const note: DetectedNote = {
             midi,

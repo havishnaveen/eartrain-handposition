@@ -103,26 +103,44 @@ export function planFor(
   expectedSequence: string[],
   bpm: number = DEFAULT_BPM,
 ): DrillPlan {
-  const staff = cue.staves[0];
   const secondsPerBeat = 60 / bpm;
   const beatsPerBar = parseBeatsPerBar(cue.timeSignature);
+
+  // Merge every staff onto one shared timeline, in beat order. The
+  // overwhelming majority of exercises have exactly one staff, so this
+  // reduces to the original single-staff walk. A genuine two-hand grand
+  // staff (see progressiveCurriculum.ts) is built so that at any one beat
+  // exactly one staff carries a sounded note and the other rests — hands
+  // alternate rather than strike together — so pitches from different
+  // staves never collide once merged, and grading stays the same simple
+  // one-pitch-at-a-time matcher used everywhere else.
+  interface RawEntry { beat: number; beats: number; isRest: boolean; staffIndex: number }
+  const raw: RawEntry[] = [];
+  cue.staves.forEach((staff, staffIndex) => {
+    let staffBeat = 0;
+    staff.notes.forEach((note) => {
+      const isRest = note.duration.endsWith('r');
+      const beats = beatsForDuration(note.duration);
+      raw.push({ beat: staffBeat, beats, isRest, staffIndex });
+      staffBeat += beats;
+    });
+  });
+  raw.sort((a, b) => a.beat - b.beat || a.staffIndex - b.staffIndex);
 
   const notes: PlannedNote[] = [];
   let beat = 0;
   let pitchIndex = 0;
 
-  (staff?.notes ?? []).forEach((note, cueIndex) => {
-    const isRest = note.duration.endsWith('r');
-    const beats = beatsForDuration(note.duration);
+  raw.forEach((entry, cueIndex) => {
     notes.push({
       cueIndex,
-      beat,
-      beats,
-      isRest,
-      pitch: isRest ? null : (expectedSequence[pitchIndex] ?? null),
+      beat: entry.beat,
+      beats: entry.beats,
+      isRest: entry.isRest,
+      pitch: entry.isRest ? null : (expectedSequence[pitchIndex] ?? null),
     });
-    if (!isRest) pitchIndex += 1;
-    beat += beats;
+    if (!entry.isRest) pitchIndex += 1;
+    beat = Math.max(beat, entry.beat + entry.beats);
   });
 
   // A guide-note cue shows one note but is played as a five-note run, so the
