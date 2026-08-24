@@ -1973,26 +1973,26 @@
 .et-proof__layout {
   position: relative;
   z-index: 2;
-  width: min(100%, 980px);
+  width: min(100%, 920px);
   display: grid;
   grid-template-areas:
     "identity task";
-  grid-template-columns: minmax(230px, 0.72fr) minmax(460px, 1.28fr);
+  grid-template-columns: minmax(240px, 310px) minmax(380px, 1fr);
   align-items: center;
-  gap: clamp(42px, 6vw, 82px);
+  justify-content: center;
+  gap: clamp(24px, 4vw, 44px);
+  margin: 0 auto;
 }
 
 .et-proof__identity {
   grid-area: identity;
-  min-height: 330px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  gap: 28px;
-  padding: 34px 12px 34px 32px;
-  border-left: 3px solid rgba(239, 106, 71, 0.72);
-  text-align: left;
+  gap: 16px;
+  padding: 0;
+  text-align: center;
 }
 
 .et-proof__task {
@@ -2004,32 +2004,32 @@
   gap: 12px;
 }
 
-/* The card that used to be inline-styled directly on the JSX node — pulled
-   into a real class so it participates in the theme/media-query system like
-   every other panel instead of fighting it with one-off inline styles. */
 .et-proof__card {
   width: 100%;
-  padding: 32px 24px;
-  border: 1px solid rgba(239, 106, 71, 0.3);
-  border-radius: 24px 24px 24px 9px;
-  background: rgba(255, 253, 251, 0.96);
-  box-shadow: 0 14px 34px rgba(81, 51, 40, 0.1);
+  padding: 32px 28px;
+  border: 1px solid rgba(239, 106, 71, 0.25);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 16px 40px rgba(81, 51, 40, 0.08);
   text-align: center;
+  box-sizing: border-box;
 }
 
 .et-proof__eyebrow {
-  margin-bottom: 10px;
+  margin: 0 0 6px;
   color: #c74a27;
   font-size: 13px;
   font-weight: 820;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .et-proof__headline {
   color: #ef6a47;
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 860;
-  line-height: 1.2;
+  line-height: 1.25;
+  margin: 0 0 24px;
 }
 
 .et-hand-requirement {
@@ -2257,8 +2257,8 @@
 }
 
 .et-proof__keys {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
   width: 100%;
   margin: 0;
@@ -2268,122 +2268,114 @@
 
 .et-proof__key {
   position: relative;
-  min-height: 112px;
+  min-height: 86px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 94px 28px;
+  grid-template-columns: minmax(0, 1fr) auto 32px;
   align-items: center;
-  gap: 16px;
-  padding: 18px 22px 18px 28px;
-  border: 1px solid var(--et-line-strong);
-  border-radius: 26px 26px 26px 8px;
+  gap: 18px;
+  padding: 14px 22px 14px 26px;
+  border: 1.5px solid var(--et-line-strong, #e8dfd8);
+  border-radius: 20px;
   color: var(--et-ink-strong);
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 10px 26px rgba(36, 34, 55, 0.055);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 14px rgba(81, 51, 40, 0.04);
   font-variant-numeric: tabular-nums;
   opacity: 0.5;
-  overflow: hidden;
-  transform: translateX(0) scale(0.985);
-  transition:
-    opacity 220ms ease,
-    transform 220ms ease,
-    border-color 220ms ease,
-    background 220ms ease,
-    box-shadow 220ms ease;
+  transition: all 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-sizing: border-box;
 }
 
 .et-proof__key-finger {
   min-width: 0;
-  color: var(--et-ink-soft);
-  font-size: 16px;
-  font-weight: 760;
+  color: var(--et-ink-soft, #645f74);
+  font-size: 15px;
+  font-weight: 750;
   letter-spacing: -0.01em;
 }
 
-/* Register stacks above the note letter instead of sitting beside it — a
-   row layout let "MIDDLE" and a 68px "C" fight for the same horizontal
-   space and spill into the finger/badge columns next to them. */
 .et-proof__key-note {
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  text-align: left;
 }
 
 .et-proof__key-note strong {
   color: inherit;
-  font-size: clamp(36px, 4vw, 56px);
-  font-weight: 820;
+  font-size: clamp(34px, 3.5vw, 48px);
+  font-weight: 850;
   line-height: 1;
   letter-spacing: -0.03em;
 }
 
 .et-proof__key-register {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.55;
+  color: var(--et-ink-soft, #7c7789);
+  opacity: 0.8;
 }
 
 .et-proof__key i {
   position: static;
-  width: 27px;
-  height: 27px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
   font-style: normal;
   font-weight: 900;
-  background: var(--et-ink-faint, #cbc6d6);
+  background: var(--et-ink-faint, #d3cdd7);
+  transition: all 200ms ease;
 }
-
-.et-proof__key--active i { background: var(--et-orange, #ef6a47); }
 
 .et-proof__key--active {
-  color: var(--et-orange-deep);
-  border-color: rgba(239, 106, 71, 0.72);
-  background: rgba(255, 248, 244, 0.98);
+  color: var(--et-orange-deep, #9c321f);
+  border-color: rgba(239, 106, 71, 0.85);
+  background: linear-gradient(135deg, #ffffff 0%, #fff6f2 100%);
   box-shadow:
-    0 18px 45px rgba(239, 106, 71, 0.2),
-    0 0 0 6px rgba(239, 106, 71, 0.09);
+    0 12px 28px rgba(239, 106, 71, 0.16),
+    0 0 0 3px rgba(239, 106, 71, 0.12);
   opacity: 1;
-  transform: translateX(10px) scale(1.015);
-  animation: et-proof-target 1250ms ease-in-out infinite;
+  transform: scale(1.015);
+  animation: et-proof-target 1500ms ease-in-out infinite;
 }
 
-.et-proof__key--active span { color: var(--et-orange-ink); }
+.et-proof__key--active span {
+  color: var(--et-orange-ink, #9c321f);
+}
 
-.et-proof__key--active::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: -6px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--et-orange);
-  box-shadow: 0 0 0 7px rgba(239, 106, 71, 0.12);
-  transform: translateY(-50%);
+.et-proof__key--active i {
+  background: var(--et-orange, #ef6a47);
+  box-shadow: 0 3px 10px rgba(239, 106, 71, 0.35);
 }
 
 .et-proof__key--done {
   color: #08705f;
-  border-color: rgba(10, 129, 110, 0.34);
-  background: rgba(226, 249, 242, 0.94);
-  box-shadow: 0 10px 24px rgba(10, 129, 110, 0.1);
-  opacity: 0.82;
-  transform: translateX(0) scale(0.985);
+  border-color: rgba(10, 129, 110, 0.4);
+  background: rgba(236, 253, 248, 0.95);
+  box-shadow: 0 6px 18px rgba(10, 129, 110, 0.08);
+  opacity: 0.9;
+  transform: none;
 }
 
-.et-proof__key--done span { color: #08705f; }
-.et-proof__key--done i { background: #0a816e; }
+.et-proof__key--done span {
+  color: #08705f;
+}
+
+.et-proof__key--done i {
+  background: #0a816e;
+  box-shadow: 0 3px 8px rgba(10, 129, 110, 0.3);
+}
 
 @keyframes et-proof-target {
-  0%, 100% { box-shadow: 0 18px 45px rgba(239, 106, 71, 0.18), 0 0 0 5px rgba(239, 106, 71, 0.08); }
-  50% { box-shadow: 0 20px 52px rgba(239, 106, 71, 0.27), 0 0 0 10px rgba(239, 106, 71, 0.11); }
+  0%, 100% { box-shadow: 0 12px 28px rgba(239, 106, 71, 0.16), 0 0 0 3px rgba(239, 106, 71, 0.12); }
+  50% { box-shadow: 0 16px 36px rgba(239, 106, 71, 0.24), 0 0 0 6px rgba(239, 106, 71, 0.16); }
 }
 
 .et-proof__start { margin-top: 4px; }
@@ -2605,9 +2597,9 @@
     min-height: 0;
     align-items: center;
     gap: 20px;
-    padding: 24px 24px 28px;
+    padding: 16px 0 20px;
     border-left: 0;
-    border-bottom: 2px solid rgba(239, 106, 71, 0.42);
+    border-bottom: none;
     text-align: center;
   }
 
@@ -2615,7 +2607,7 @@
 
   .et-proof__mic-message { text-align: center; }
   .et-orientation-tip { margin-inline: auto; }
-  .et-proof__keys { width: min(100%, 640px); margin-inline: auto; }
+  .et-proof__keys { width: 100%; margin-inline: auto; }
 }
 
 @media (max-width: 620px) {
@@ -2649,16 +2641,14 @@
   .et-spatial__notation--compact { height: 92px; padding: 2px 4px 0; }
   .et-spatial__answer-card > strong { font-size: 70px; }
   .et-spatial__finished { min-height: 225px; }
-  .et-proof { min-height: 560px; padding: 34px 16px; }
-  .et-proof__halo { width: 390px; height: 280px; }
-  .et-proof__keys { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .et-proof__key { min-height: 132px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px 7px; border-radius: 18px 18px 18px 6px; }
-  .et-proof__key-note { align-items: center; }
-  .et-proof__key-finger { font-size: 11px; }
-  .et-proof__key-note strong { font-size: 38px; }
-  .et-proof__key i { position: absolute; top: 8px; right: 8px; width: 21px; height: 21px; font-size: 12px; }
-  .et-proof__key--active { transform: translateY(-5px) scale(1.015); }
-  .et-proof__key--active::after { top: 10px; left: 10px; width: 7px; height: 7px; transform: none; }
+  .et-proof { min-height: 520px; padding: 24px 14px; }
+  .et-proof__halo { width: 340px; height: 260px; }
+  .et-proof__keys { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+  .et-proof__key { min-height: 80px; display: grid; grid-template-columns: minmax(0, 1fr) auto 28px; padding: 12px 18px; border-radius: 16px; }
+  .et-proof__key-note strong { font-size: 32px; }
+  .et-proof__key i { position: static; width: 24px; height: 24px; font-size: 12px; }
+  .et-proof__key--active { transform: scale(1.01); }
+  .et-proof__key--active::after { display: none; }
   .et-proof__key--done { transform: none; }
   .et-kid-steps { grid-template-columns: 1fr; gap: 5px; }
   .et-shift-map {
