@@ -1112,9 +1112,9 @@ export function gradeSequence(
     .map(norm);
   const expectedCount = expectedMidi.length;
 
-  // A detector flood is not a valid musical take. Compare pitch frequency
-  // against the written score so legitimate repeated notes remain valid,
-  // while dozens of copies of one held key can never earn mastery credit.
+  // Compare pitch frequency against the written score. This preserves the
+  // score's legitimate repeated notes while exposing surplus attacks of the
+  // same key instead of allowing them to disappear as harmless echoes.
   const expectedPitchCounts = new Map<number, number>();
   expectedMidi.forEach((midi) => {
     expectedPitchCounts.set(midi, (expectedPitchCounts.get(midi) ?? 0) + 1);
@@ -1129,8 +1129,6 @@ export function gradeSequence(
       total + Math.max(0, count - (expectedPitchCounts.get(midi) ?? 0)),
     0,
   );
-  const detectionFlood = duplicateOverage >= Math.max(6, Math.ceil(expectedCount * 1.25));
-
   const allowances = {
     ...allowancesFor(expectedCount),
     ...(isMemory ? { misses: expectedCount >= 4 ? 1 : 0 } : {}),
@@ -1249,6 +1247,14 @@ export function gradeSequence(
   }
 
   const totalMissed = missedExpectedIndices.length;
+  // A small amount of acoustic debris remains free because microphones can
+  // echo a strong piano attack. Beyond that budget, surplus detections count
+  // as played errors whether they repeat one key or scatter across pitches.
+  const benignExtraBudget = Math.max(2, Math.floor(expectedCount * 0.25));
+  const significantExtraCount = Math.max(
+    hard + hesitations * 0.35,
+    Math.max(0, duplicateOverage - benignExtraBudget),
+  );
 
   const playedNames = detected.map((d) => midiToName(d.midi));
   const rhythm = buildRhythm(matches, options);
@@ -1266,9 +1272,11 @@ export function gradeSequence(
     ({ note }) => note.analysisSource === 'offline-recovered',
   ).length;
   const pitchEvidence = matches.length - offlineOnlyMatches * 0.35;
-  const exactPitchScore = clamp5(
-    expectedCount === 0 ? 0 : (5 * pitchEvidence) / expectedCount,
-  );
+  const pitchCoverage = expectedCount === 0 ? 0 : pitchEvidence / expectedCount;
+  const pitchPrecision = pitchEvidence <= 0
+    ? 0
+    : pitchEvidence / (pitchEvidence + significantExtraCount);
+  const exactPitchScore = clamp5(5 * pitchCoverage * pitchPrecision);
   // Memory assesses whether the learner retained the musical chunk. One
   // omitted note in an otherwise exact, ordered pattern still demonstrates
   // recognition; wrong notes and reordered material remain fully visible.
@@ -1278,7 +1286,8 @@ export function gradeSequence(
     totalMissed <= 1 &&
     matches.length >= expectedCount - 1 &&
     hard === 0 &&
-    hesitations === 0
+    hesitations === 0 &&
+    significantExtraCount === 0
   );
   const pitchScore = memoryPatternRecognized ? 5 : exactPitchScore;
 
@@ -1332,7 +1341,7 @@ export function gradeSequence(
   const completePitch =
     matches.length === expectedCount &&
     totalMissed === 0;
-  const cleanPerformance = hard === 0 && hesitations === 0;
+  const cleanPerformance = significantExtraCount === 0;
   const completeAndClean = completePitch && cleanPerformance;
 
   // Five means there is no useful timing correction to give—not that every
@@ -1368,9 +1377,7 @@ export function gradeSequence(
   // resonances are the room's doing and cost nothing.
   // Nothing played is not a clean performance — it is no performance.
   const cleanScore =
-    detectionFlood
-      ? 0
-      : detected.length === 0
+    detected.length === 0
       ? 0
       : completeAndClean
         // Quiet-room recoveries, sympathetic resonance, and harmless
@@ -1380,22 +1387,18 @@ export function gradeSequence(
         // Only confident, uncorrected wrong-key strikes should materially
         // affect Cleanliness. Echoes, resonances, faint detections and quick
         // self-corrections must not make a correct take look dirty.
-        : clamp5(5 - 0.75 * hard - 0.25 * hesitations);
+        : clamp5(5 - 0.8 * significantExtraCount);
 
   // Pitch carries the most weight: this app exists to verify hand position.
   const wPitch = isMemory ? 0.7 : 0.5;
   const wTiming = isMemory ? 0.1 : 0.2;
   const wClean = isMemory ? 0.2 : 0.3;
-  const calculatedOverall = calculateOverallScore(
+  const overall = calculateOverallScore(
     pitchScore,
     timingScore,
     cleanScore,
     { pitch: wPitch, timing: wTiming, cleanliness: wClean },
   );
-  // Never advance a student on an acoustically invalid flood. The displayed
-  // overall score remains the routing authority; it is capped honestly here
-  // rather than hiding a second pass/fail rule elsewhere.
-  const overall = detectionFlood ? Math.min(RETRY_OVERALL_MAX, calculatedOverall) : calculatedOverall;
 
   const scores: ScoreBreakdown = {
     pitch: pitchScore,
@@ -1439,8 +1442,6 @@ export function gradeSequence(
     } else {
       detail = 'Every note in the right place.';
     }
-  } else if (detectionFlood) {
-    detail = 'Too many repeated or unexpected detections were heard to grade this take reliably. Please try again.';
   } else if (detected.length === 0) {
     detail = 'No notes were heard. Check the microphone and play a little louder.';
   } else if (matches.length === 0) {
@@ -1455,6 +1456,8 @@ export function gradeSequence(
     detail = 'The notes around the position change were not both heard, so the hand shift could not be measured.';
   } else if (transition && transition.score < 1.5) {
     detail = `The position change took ${transition.transitionSeconds?.toFixed(2)} seconds. Prepare the landing shape before you move.`;
+  } else if (significantExtraCount >= Math.max(3, expectedCount)) {
+    detail = 'Too many extra notes were played. Follow only the written pattern and try again.';
   } else if (totalMissed > allowances.misses) {
     const firstMiss = missedExpectedIndices[0] ?? 0;
     const missedName = expected[Math.min(firstMiss, Math.max(0, expected.length - 1))];

@@ -47,10 +47,12 @@ try {
     })),
   ].sort((a, b) => a.time - b.time);
   const grade = gradeSequence(expected, flooded, { exerciseMode: 'blind-memory' });
-  assert.equal(grade.passed, false, 'Dozens of duplicate detections must force a retry.');
-  assert.ok(grade.scores.overall <= 3, 'A detector flood must never receive 5/5.');
-  assert.match(grade.detail, /repeated or unexpected detections/i,
-    'The retry must identify a detection problem rather than blame the student.');
+  assert.equal(grade.passed, false, 'Dozens of played extra notes must force a retry.');
+  assert.ok(grade.scores.pitch < 2, 'Extra notes must reduce pitch precision, not only cleanliness.');
+  assert.equal(grade.scores.cleanliness, 0, 'Dozens of played extras must be completely unclean.');
+  assert.ok(grade.scores.overall < 2, 'A performance full of extra notes must score as incorrect.');
+  assert.match(grade.detail, /too many extra notes/i,
+    'The retry must explain that the played pattern contained too many notes.');
 
   console.log('Live regression audit passed: melody/chord isolation and duplicate-flood grading.');
 } finally {
