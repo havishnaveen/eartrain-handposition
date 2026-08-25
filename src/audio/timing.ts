@@ -1112,23 +1112,6 @@ export function gradeSequence(
     .map(norm);
   const expectedCount = expectedMidi.length;
 
-  // Compare pitch frequency against the written score. This preserves the
-  // score's legitimate repeated notes while exposing surplus attacks of the
-  // same key instead of allowing them to disappear as harmless echoes.
-  const expectedPitchCounts = new Map<number, number>();
-  expectedMidi.forEach((midi) => {
-    expectedPitchCounts.set(midi, (expectedPitchCounts.get(midi) ?? 0) + 1);
-  });
-  const detectedPitchCounts = new Map<number, number>();
-  detected.forEach((note) => {
-    const midi = norm(note.midi);
-    detectedPitchCounts.set(midi, (detectedPitchCounts.get(midi) ?? 0) + 1);
-  });
-  const duplicateOverage = [...detectedPitchCounts].reduce(
-    (total, [midi, count]) =>
-      total + Math.max(0, count - (expectedPitchCounts.get(midi) ?? 0)),
-    0,
-  );
   const allowances = {
     ...allowancesFor(expectedCount),
     ...(isMemory ? { misses: expectedCount >= 4 ? 1 : 0 } : {}),
@@ -1175,6 +1158,7 @@ export function gradeSequence(
   let benign = 0;
   let hesitations = 0;
   let hard = 0;
+  let playedRepeatExtras = 0;
 
   // Most recent matched occurrence of the note currently ringing. Do not
   // advance this anchor for echoes: otherwise an unlimited stream of false
@@ -1227,6 +1211,17 @@ export function gradeSequence(
       benign += 1;
       if (kind === 'repeat') {
         echoExtras += 1;
+        // A strict event with its own hammer evidence is a played repeat,
+        // even inside the echo window. Weak/offline repeats remain acoustic
+        // debris so detector chatter cannot crush an otherwise strong take.
+        const hasIndependentAttack = Boolean(
+          note.detectorLane === 'strict' && (
+            (note.pianoAttackConfidence ?? 0) >= 0.5 ||
+            (note.frameAttackRatio ?? 0) >= 1.08 ||
+            (note.novelty ?? 0) >= 0.4
+          )
+        );
+        if (hasIndependentAttack) playedRepeatExtras += 1;
       } else if (kind === 'resonance' && SUBOCTAVE_ARTIFACTS.includes(note.midi - (accepted[accepted.length - 1]?.midi ?? 0))) {
         echoExtras += 1;
       }
@@ -1247,14 +1242,7 @@ export function gradeSequence(
   }
 
   const totalMissed = missedExpectedIndices.length;
-  // A small amount of acoustic debris remains free because microphones can
-  // echo a strong piano attack. Beyond that budget, surplus detections count
-  // as played errors whether they repeat one key or scatter across pitches.
-  const benignExtraBudget = Math.max(2, Math.floor(expectedCount * 0.25));
-  const significantExtraCount = Math.max(
-    hard + hesitations * 0.35,
-    Math.max(0, duplicateOverage - benignExtraBudget),
-  );
+  const significantExtraCount = hard + hesitations * 0.35 + playedRepeatExtras;
 
   const playedNames = detected.map((d) => midiToName(d.midi));
   const rhythm = buildRhythm(matches, options);
@@ -1268,10 +1256,15 @@ export function gradeSequence(
   // Offline recovery can rescue a real quiet key, but a note that never
   // cleared the live detector remains provisional evidence. It may earn
   // substantial credit, but it cannot turn an incomplete live take into 5.0.
-  const offlineOnlyMatches = matches.filter(
-    ({ note }) => note.analysisSource === 'offline-recovered',
-  ).length;
-  const pitchEvidence = matches.length - offlineOnlyMatches * 0.35;
+  const offlineRecoveryPenalty = matches.reduce((penalty, { note }) => {
+    if (note.analysisSource !== 'offline-recovered') return penalty;
+    const confidence = clamp01(note.analysisConfidence ?? note.clarity ?? 0);
+    // Lossless PCM is stronger evidence than a missing live UI event. Keep a
+    // small provenance deduction so it cannot create 5.0, while avoiding the
+    // old flat penalty that severely undervalued clearly recorded soft notes.
+    return penalty + 0.1 + (1 - confidence) * 0.22;
+  }, 0);
+  const pitchEvidence = matches.length - offlineRecoveryPenalty;
   const pitchCoverage = expectedCount === 0 ? 0 : pitchEvidence / expectedCount;
   const pitchPrecision = pitchEvidence <= 0
     ? 0
@@ -1289,7 +1282,11 @@ export function gradeSequence(
     hesitations === 0 &&
     significantExtraCount === 0
   );
-  const pitchScore = memoryPatternRecognized ? 5 : exactPitchScore;
+  // Recognising a memory pattern with one omission should pass comfortably,
+  // but "accepted" is not "perfect." Reserve 5.0 for every written pitch.
+  const pitchScore = memoryPatternRecognized
+    ? Math.max(4.5, exactPitchScore)
+    : exactPitchScore;
 
   // Timing: a curved, lesson-aware falloff. Early readers get space to find
   // the beat; later readers are asked for more precision, without the old

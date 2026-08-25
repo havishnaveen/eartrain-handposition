@@ -2155,7 +2155,12 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       });
     };
 
-    let offset = 0;
+    // Supply the anchor before the harmony. The remaining tones can stay
+    // visually hidden because the learner now has a concrete relative-pitch
+    // reference instead of being asked to identify an absolute chord blind.
+    schedulePitches([spec.rootPitch], 0, 0.62, 0.78);
+    schedulePitches([spec.rootPitch], 0.72, 0.62, 0.78);
+    let offset = 1.55;
     progression.forEach((chord, index) => {
       const resolvesToTonic = index === progression.length - 1;
       const duration = resolvesToTonic ? chordDuration * 1.35 : chordDuration * 0.88;
@@ -2183,11 +2188,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     schedulePitches(spec.chordPitches, offset, 0.58, 0.82, 0.58);
     offset += 0.58 * spec.chordPitches.length + 0.3;
 
-    if (spec.rootSupport === 'matched') {
-      schedulePitches([spec.rootPitch], offset, 0.62, 0.78);
-      schedulePitches([spec.rootPitch], offset + 0.78, 0.62, 0.78);
-      offset += 1.5;
-    }
+    // Finish on the same supplied reference so the root-to-third and
+    // root-to-fifth distances remain available in auditory memory.
+    schedulePitches([spec.rootPitch], offset, 0.72, 0.78);
+    offset += 0.9;
 
     // Return an equivalent end time on the microphone context's clock.
     return ctx.currentTime + 0.16 + offset;

@@ -127,6 +127,11 @@ function PerformanceAnalysis() {
           <b className="et-analysis__note et-analysis__note--one">♪</b>
           <b className="et-analysis__note et-analysis__note--two">♪</b>
           <b className="et-analysis__note et-analysis__note--three">♫</b>
+          <b className="et-analysis__note et-analysis__note--four">♪</b>
+          <b className="et-analysis__note et-analysis__note--five">♪</b>
+          <b className="et-analysis__note et-analysis__note--six">♫</b>
+          <b className="et-analysis__note et-analysis__note--seven">♪</b>
+          <b className="et-analysis__note et-analysis__note--eight">♪</b>
           <span className="et-analysis__scan" />
         </div>
         <div className="et-analysis__copy">
@@ -350,35 +355,25 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const activeStep = isRootSearch ? 0 : isShapeSearch ? Math.min(2, spatialProgress) : -1;
       const activeTone = activeStep >= 0 ? orderedToneEntries[activeStep] : null;
       const chordSucceeded = Boolean(report?.passed);
-      const matchedAnchor = spatialChord.rootSupport === 'matched';
-      // A "matched by ear" root that never resolves after repeated tries is a
-      // dead end, not a challenge — mic pitch-matching alone is not reliable
-      // enough to ask a young student to guess blind forever. After a few
-      // wrong tries, quietly reveal the note name as a hint.
-      const revealHint = matchedAnchor && spatialWrongGuesses >= 3;
       const activeAction = activeStep === 0
-        ? matchedAnchor && !revealHint
-          ? `Copy the first note with Finger ${rootFinger}`
-          : `Play ${rootName} with Finger ${rootFinger}`
+        ? `Play the given ${rootName} anchor with Finger ${rootFinger}`
         : activeStep === 1
-          ? `Keep ${rootName}. Add the middle with Finger 3`
+          ? `Keep ${rootName}. Find the chord's middle sound with Finger 3`
           : activeStep === 2
-            ? `Keep Fingers ${rootFinger} and 3 down. Add Finger ${outerFinger}.`
+            ? `Keep both keys down. Complete the sound with Finger ${outerFinger}`
             : '';
-      const activeAnswer = activeStep === 0 && matchedAnchor && !revealHint
-        ? '♪'
-        : activeStep === 0
-          ? rootName
-          : activeStep === 1
-            ? `${rootFinger} — 3`
-            : '1 · 3 · 5';
-      const activeHint = activeStep === 0
-        ? revealHint
-          ? `Hint: it's ${rootName} · Finger ${rootFinger}`
-          : `${handName} · Finger ${rootFinger}`
+      const activeAnswer = activeStep === 0
+        ? rootName
         : activeStep === 1
-          ? 'Leave the anchor in place'
-          : 'Finish the outside of the shape';
+          ? 'Finger 3'
+          : `Finger ${outerFinger}`;
+      const activeHint = activeStep === 0
+        ? 'The anchor is supplied—this is not a perfect-pitch test'
+        : activeStep === 1
+          ? spatialWrongGuesses >= 3
+            ? 'Compare nearby keys to the broken-chord replay'
+            : 'Listen to the distance above the anchor'
+          : 'Match the outside note you heard in the replay';
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">
@@ -398,9 +393,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             </h2>
             <p>
               {status === 'prompt'
-                ? `${handName}. Tap the button once.`
+                ? `${rootName} is supplied as your anchor. Use relative listening—not perfect pitch.`
                 : isCue
-                  ? 'Hands still. Hear it together, then one note at a time.'
+                  ? `Hear how the hidden chord grows above ${rootName}.`
                   : isComplete
                     ? chordSucceeded
                       ? 'You found the whole hand shape.'
@@ -421,17 +416,29 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
           <div className="et-spatial__single-stage">
             {status === 'prompt' ? (
-              <div className="et-spatial__intro" aria-label={`${handName} for ${spatialChord.chordName}`}>
+              <div className="et-spatial__intro" aria-label={`${handName} chord listening exercise`}>
                 <HandRequirement scope={spatialChord.hand} />
               </div>
             ) : null}
 
             {isCue ? (
               <div className="et-spatial__cue-card">
-                <div className="et-spatial__notation">{children}</div>
+                <div className="et-spatial__ear-map" aria-label={`${rootName} is the supplied anchor; the other chord tones are hidden`}>
+                  <div className="et-spatial__anchor">
+                    <small>Given anchor</small>
+                    <strong>{rootName}</strong>
+                    <span>Finger {rootFinger}</span>
+                  </div>
+                  <span className="et-spatial__ear-path" aria-hidden="true"><i /><i /><i /></span>
+                  <div className="et-spatial__hidden-tones">
+                    <span aria-hidden="true">♪</span>
+                    <strong>Listen for the shape</strong>
+                    <small>The other notes stay hidden</small>
+                  </div>
+                </div>
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-                  <span><strong>Listen</strong><small>Together, then broken</small></span>
+                  <span><strong>Anchor → chord</strong><small>Together, then one note at a time</small></span>
                 </div>
                 {spatialAudioIssue ? (
                   <div className="et-spatial__audio-issue" role="alert">
@@ -443,12 +450,12 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             ) : null}
 
             {isSearching && activeTone ? (
-              <div className="et-spatial__answer-card et-spatial__answer-card--with-notation">
-                {/* The written shape stays on screen while the student
-                    searches — found notes light up green (via successPitches
-                    upstream), so the staff itself is the progress readout
-                    instead of an abstract dot count. */}
-                <div className="et-spatial__notation et-spatial__notation--compact">{children}</div>
+              <div className="et-spatial__answer-card et-spatial__answer-card--ear">
+                <div className="et-spatial__anchor-strip">
+                  <span>Given anchor</span>
+                  <strong>{rootName}</strong>
+                  <small>{handName} · Finger {rootFinger}</small>
+                </div>
                 <div className="et-spatial__tones" aria-label={`Step ${activeStep + 1} of 3`}>
                   {orderedToneEntries.map((tone, step) => {
                     const done = step < spatialProgress;
@@ -467,9 +474,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     );
                   })}
                 </div>
-                <strong className={activeStep === 0 && matchedAnchor && !revealHint ? 'is-listen-symbol' : ''}>
-                  {activeAnswer}
-                </strong>
+                <strong>{activeAnswer}</strong>
                 <p>{activeAction}</p>
                 <small>{activeHint}</small>
                 <div className="et-spatial__recording" role="status">

@@ -44,6 +44,10 @@ try {
     ...Array.from({ length: 24 }, (_, index) => ({
       ...perfect[0],
       time: perfect[0].time + 0.08 * (index + 1),
+      detectorLane: 'strict',
+      pianoAttackConfidence: 0.82,
+      frameAttackRatio: 1.31,
+      novelty: 0.68,
     })),
   ].sort((a, b) => a.time - b.time);
   const grade = gradeSequence(expected, flooded, { exerciseMode: 'blind-memory' });
@@ -54,7 +58,44 @@ try {
   assert.match(grade.detail, /too many extra notes/i,
     'The retry must explain that the played pattern contained too many notes.');
 
-  console.log('Live regression audit passed: melody/chord isolation and duplicate-flood grading.');
+  const acousticEchoes = [
+    ...perfect,
+    ...Array.from({ length: 18 }, (_, index) => ({
+      ...perfect[0],
+      time: perfect[0].time + 0.08 * (index + 1),
+      clarity: 0.44,
+      strength: 0.48,
+      analysisSource: 'offline-recovered',
+    })),
+  ].sort((a, b) => a.time - b.time);
+  const echoGrade = gradeSequence(expected, acousticEchoes);
+  assert.equal(echoGrade.scores.pitch, 5,
+    'Weak acoustic repeats must not lower pitch precision as played errors.');
+
+  const oneMissMemory = gradeSequence(expected, perfect.slice(0, -1), {
+    exerciseMode: 'blind-memory',
+  });
+  assert.equal(oneMissMemory.passed, true,
+    'One omitted memory note should still demonstrate pattern recognition.');
+  assert.ok(oneMissMemory.scores.overall < 5 && oneMissMemory.scores.overall >= 4.5,
+    'A recognized-but-incomplete memory pattern must pass without receiving 5.0.');
+
+  const oneMissStandard = gradeSequence(expected, perfect.slice(0, -1));
+  assert.ok(oneMissStandard.scores.overall >= 4 && oneMissStandard.scores.overall < 5,
+    'One missed note in an otherwise clean four-note take should score near 4, never 3 or 5.');
+
+  const pcmRecovered = perfect.map((note, index) => index === 2
+    ? {
+        ...note,
+        analysisSource: 'offline-recovered',
+        analysisConfidence: 0.85,
+      }
+    : note);
+  const recoveredGrade = gradeSequence(expected, pcmRecovered);
+  assert.ok(recoveredGrade.scores.overall >= 4.5 && recoveredGrade.scores.overall < 5,
+    'A strongly PCM-supported soft note should retain high credit without manufacturing 5.0.');
+
+  console.log('Live regression audit passed: detector isolation, honest misses, PCM recovery, and played-extra grading.');
 } finally {
   await server.close();
   await rm(cacheDir, { recursive: true, force: true });
