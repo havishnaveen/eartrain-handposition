@@ -15,7 +15,7 @@
 // strong partial of one piano key cannot masquerade as another chord tone.
 const WINDOW = 4096;
 const HOP = 512;
-const CALIBRATION_FRAMES = 5;
+const CALIBRATION_FRAMES = 12;
 // A tone must disappear for several consecutive hops before it can become a
 // new arrival again. Brief threshold flutter inside one piano decay is not a
 // second hammer strike.
@@ -35,6 +35,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.sinceHop = 0;
     this.targets = [];
     this.baselines = new Map();
+    this.calibrationEvidence = new Map();
     this.stableFrames = new Map();
     this.missingFrames = new Map();
     this.reportedPresent = new Set();
@@ -42,20 +43,33 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.listening = false;
     this.port.onmessage = (event) => {
       const data = event.data || {};
-      if (data.type === 'listen-chord') {
-        this.targets = (Array.isArray(data.targetMidi) ? data.targetMidi : [])
+      if (data.type === 'prepare-chord' || data.type === 'listen-chord') {
+        const targets = (Array.isArray(data.targetMidi) ? data.targetMidi : [])
           .map(Number)
           .filter((midi) => Number.isFinite(midi) && midi >= 21 && midi <= 108)
           .map(Math.round);
-        this.baselines.clear();
+        const canReuseBaseline =
+          data.type === 'listen-chord' &&
+          data.reuseBaseline === true &&
+          targets.length === this.targets.length &&
+          targets.every((midi, index) => midi === this.targets[index]) &&
+          targets.every((midi) => this.baselines.has(midi));
+        this.targets = targets;
+        if (!canReuseBaseline) this.baselines.clear();
+        this.calibrationEvidence.clear();
         this.stableFrames.clear();
         this.missingFrames.clear();
         this.reportedPresent.clear();
-        this.calibrationFrames = CALIBRATION_FRAMES;
+        this.calibrationFrames = canReuseBaseline ? 0 : CALIBRATION_FRAMES;
+        this.reportEnabled = data.type === 'listen-chord';
         this.listening = true;
+        if (canReuseBaseline) this.port.postMessage({ type: 'chord-ready' });
       } else if (data.type === 'idle') {
         this.listening = false;
+        this.reportEnabled = false;
         this.targets = [];
+        this.calibrationFrames = 0;
+        this.calibrationEvidence.clear();
         this.stableFrames.clear();
         this.missingFrames.clear();
         this.reportedPresent.clear();
@@ -140,13 +154,26 @@ class ChordProcessor extends AudioWorkletProcessor {
     const evidence = this.targets.map((midi) => ({ midi, ...this._toneEvidence(midi) }));
     if (this.calibrationFrames > 0) {
       for (const tone of evidence) {
-        const baseline = this.baselines.get(tone.midi) || { fundamental: 0, score: 0 };
-        baseline.fundamental = Math.max(baseline.fundamental, tone.fundamental);
-        baseline.score = Math.max(baseline.score, tone.score);
-        this.baselines.set(tone.midi, baseline);
+        const samples = this.calibrationEvidence.get(tone.midi) || [];
+        samples.push({ fundamental: tone.fundamental, score: tone.score });
+        this.calibrationEvidence.set(tone.midi, samples);
       }
       this.calibrationFrames -= 1;
-      if (this.calibrationFrames === 0) this.port.postMessage({ type: 'chord-ready' });
+      if (this.calibrationFrames === 0) {
+        for (const [midi, samples] of this.calibrationEvidence) {
+          const percentile = (key) => {
+            const values = samples.map((sample) => sample[key]).sort((a, b) => a - b);
+            return values[Math.min(values.length - 1, Math.floor(values.length * 0.8))] || 0;
+          };
+          this.baselines.set(midi, {
+            fundamental: percentile('fundamental'),
+            score: percentile('score'),
+          });
+        }
+        this.calibrationEvidence.clear();
+        this.port.postMessage({ type: 'chord-ready' });
+        if (!this.reportEnabled) this.listening = false;
+      }
       return;
     }
 
@@ -180,7 +207,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     const changed =
       currentlyPresent.size !== this.reportedPresent.size ||
       [...currentlyPresent].some((midi) => !this.reportedPresent.has(midi));
-    if (changed) {
+    if (this.reportEnabled && changed) {
       // Send the complete current set on edges only. A held chord therefore
       // produces one arrival, not dozens of fake repeated notes; adding the
       // root later still re-sends the already-held third/fifth in this set.

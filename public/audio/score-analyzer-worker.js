@@ -207,18 +207,35 @@ function buildAnalysis(samples, sampleRate, captureStartTime, midiValues) {
 
     midiValues.forEach((midi) => {
       const baseFrequency = midiFrequency(midi);
-      let harmonicSum = 0;
-      let fundamentalExcess = 0;
-      for (let harmonic = 1; harmonic <= 8; harmonic++) {
-        const frequency = baseFrequency * harmonic;
-        if (frequency >= Math.min(8000, sampleRate * 0.46)) break;
-        const { peak, floor } = peakAndFloor(frequency);
-        const excess = Math.max(0, peak - floor * 1.04);
-        if (harmonic === 1) fundamentalExcess = excess;
-        harmonicSum += excess / Math.pow(harmonic, 0.72);
+      let bestHarmonicSum = 0;
+      let bestFundamentalExcess = 0;
+      // Real piano strings become slightly sharper in their upper partials,
+      // especially in the B4-F#5 register. Search a small, bounded piano
+      // inharmonicity/tuning bank instead of assuming perfect integer partials.
+      const upperRegister = baseFrequency >= 440;
+      const stretchBank = upperRegister ? [0, 0.0003, 0.0006, 0.00095] : [0];
+      const tuningBank = upperRegister ? [2 ** (-16 / 1200), 1, 2 ** (16 / 1200)] : [1];
+      for (const tuningRatio of tuningBank) {
+        for (const stretch of stretchBank) {
+          let harmonicSum = 0;
+          let fundamentalExcess = 0;
+          for (let harmonic = 1; harmonic <= 8; harmonic++) {
+            const frequency = baseFrequency * tuningRatio * harmonic *
+              (1 + stretch * (harmonic * harmonic - 1));
+            if (frequency >= Math.min(8000, sampleRate * 0.46)) break;
+            const { peak, floor } = peakAndFloor(frequency);
+            const excess = Math.max(0, peak - floor * 1.04);
+            if (harmonic === 1) fundamentalExcess = excess;
+            harmonicSum += excess / Math.pow(harmonic, 0.72);
+          }
+          if (harmonicSum > bestHarmonicSum) {
+            bestHarmonicSum = harmonicSum;
+            bestFundamentalExcess = fundamentalExcess;
+          }
+        }
       }
-      salience.get(midi)[frameIndex] = harmonicSum;
-      fundamental.get(midi)[frameIndex] = fundamentalExcess;
+      salience.get(midi)[frameIndex] = bestHarmonicSum;
+      fundamental.get(midi)[frameIndex] = bestFundamentalExcess;
     });
   }
 

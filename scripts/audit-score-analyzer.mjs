@@ -45,10 +45,11 @@ function synthesize({
         ? Math.max(0, (strike.duration - age) / releaseLength)
         : 1;
       const envelope = strike.amplitude * attack * Math.exp(-age / 0.65) * release;
-      const frequency = 440 * Math.pow(2, (strike.midi - 69) / 12);
+      const frequency = 440 * Math.pow(2, (strike.midi - 69) / 12) *
+        Math.pow(2, (strike.detuneCents ?? 0) / 1200);
       [1, 0.47, 0.24, 0.13, 0.075, 0.04].forEach((gain, partialIndex) => {
         const harmonic = partialIndex + 1;
-        const stiffness = 1 + harmonic * harmonic * 0.0001;
+        const stiffness = 1 + harmonic * harmonic * (strike.stiffness ?? 0.0001);
         value += envelope * gain * Math.sin(
           2 * Math.PI * frequency * harmonic * stiffness * time,
         );
@@ -157,6 +158,29 @@ assert.deepEqual(
   Array.from(softResult.notes, (note) => note.midi),
   [60, 62, 64],
   'Lossless score-aware analysis must recover quiet C-D-E under metronome bleed.',
+);
+
+const upperBMajor = synthesize({
+  seconds: 3.2,
+  room: 0.0002,
+  strikes: [71, 75, 78].map((midi, index) => ({
+    midi,
+    time: 1 + index * 0.5,
+    duration: 0.4,
+    amplitude: 0.00115,
+    detuneCents: 14,
+    stiffness: 0.0006,
+  })),
+  seed: 71,
+});
+const upperBMajorResult = runWorker({
+  samples: upperBMajor,
+  expected: [71, 75, 78].map((midi, index) => ({ midi, beat: index, beats: 1 })),
+});
+assert.deepEqual(
+  Array.from(upperBMajorResult.notes, (note) => note.midi),
+  [71, 75, 78],
+  'Offline grading must recover detuned, inharmonic B4-D#5-F#5 notes.',
 );
 
 // The real-time UI can establish a strict, score-matched note from several

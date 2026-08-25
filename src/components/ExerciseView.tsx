@@ -374,6 +374,11 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             ? 'Compare nearby keys to the broken-chord replay'
             : 'Listen to the distance above the anchor'
           : 'Hold all three keys together until the chord confirms';
+      const retryMessage = activeStep === 0
+        ? `That was not the given ${rootName}. Return to the anchor.`
+        : activeStep === 1
+          ? 'Middle tone missed. Replay and match the second sound in 1–3–5.'
+          : 'Outside tone missed. Replay and match the final sound in 1–3–5.';
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">
@@ -393,9 +398,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             </h2>
             <p>
               {status === 'prompt'
-                ? `${rootName} is supplied as your anchor. Use relative listening—not perfect pitch.`
+                ? `${rootName} is supplied. Hear the chord whole, then copy its 1–3–5 shape without seeing the answer.`
                 : isCue
-                  ? `Hear how the hidden chord grows above ${rootName}.`
+                  ? `Three passes: anchor, whole chord, then broken 1–3–5.`
                   : isComplete
                     ? chordSucceeded
                       ? 'You found the whole hand shape.'
@@ -423,22 +428,26 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
             {isCue ? (
               <div className="et-spatial__cue-card">
-                <div className="et-spatial__ear-map" aria-label={`${rootName} is the supplied anchor; the other chord tones are hidden`}>
-                  <div className="et-spatial__anchor">
-                    <small>Given anchor</small>
+                <div className="et-spatial__listen-passes" aria-label={`${rootName} is supplied; the other chord tones remain hidden`}>
+                  <div className="et-spatial__listen-pass et-spatial__listen-pass--anchor">
+                    <small>1 · Anchor</small>
                     <strong>{rootName}</strong>
                     <span>Finger {rootFinger}</span>
                   </div>
-                  <span className="et-spatial__ear-path" aria-hidden="true"><i /><i /><i /></span>
-                  <div className="et-spatial__hidden-tones">
-                    <span aria-hidden="true">♪</span>
-                    <strong>Listen for the shape</strong>
-                    <small>The other notes stay hidden</small>
+                  <div className="et-spatial__listen-pass">
+                    <small>2 · Whole chord</small>
+                    <span className="et-spatial__chord-dots" aria-hidden="true"><i /><i /><i /></span>
+                    <strong>One blended sound</strong>
+                  </div>
+                  <div className="et-spatial__listen-pass">
+                    <small>3 · Broken shape</small>
+                    <span className="et-spatial__finger-shape" aria-hidden="true">1 · 3 · 5</span>
+                    <strong>Bottom · middle · top</strong>
                   </div>
                 </div>
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-                  <span><strong>Anchor → chord</strong><small>Together, then one note at a time</small></span>
+                  <span><strong>Listen in three passes</strong><small>The hidden note names are never shown</small></span>
                 </div>
                 {spatialAudioIssue ? (
                   <div className="et-spatial__audio-issue" role="alert">
@@ -480,8 +489,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <div className="et-spatial__recording" role="status">
                   <span className="et-record__mic"><span className="et-listen__halo" /><MicIcon /></span>
                   <div>
-                    <b>{spatialWrongGuesses > 0 ? 'Try one nearby key' : 'Listening'}</b>
-                    <small>Listening…</small>
+                    <b>{spatialWrongGuesses > 0 ? 'Try again' : 'Listening'}</b>
+                    <small>{spatialWrongGuesses > 0 ? retryMessage : 'Play when you are ready…'}</small>
                   </div>
                 </div>
                 {spatialAudioIssue ? (

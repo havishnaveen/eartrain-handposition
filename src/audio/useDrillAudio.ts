@@ -596,6 +596,8 @@ export interface ActiveSpatialChord {
   wrongRootGuesses: number;
   wrongShapeGuesses: number;
   totalGuesses: number;
+  lastWrongAt: number | null;
+  wrongHeldDetectorIds: Set<number>;
 }
 
 export interface SpatialChordAdvance {
@@ -781,7 +783,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
     workletUrl = '/audio/pitch-processor.js?v=proof-recovery-v17-2026-08-23',
-    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v3-2026-08-24',
+    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v4-2026-08-25',
   } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
@@ -1351,6 +1353,20 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
         if (data.type === 'note-release') {
           const id = Number(data.id);
+          const spatial = spatialRef.current;
+          if (spatial?.wrongHeldDetectorIds.has(id)) {
+            const releaseTime = Number(data.time);
+            const confidence = Number(data.confidence);
+            if (
+              data.reason !== 'reattack' &&
+              Number.isFinite(releaseTime) &&
+              Number.isFinite(confidence) &&
+              confidence >= 0.5
+            ) {
+              spatial.wrongHeldDetectorIds.delete(id);
+              spatial.lastWrongAt = releaseTime;
+            }
+          }
           const proofMidi = proofMidiByDetectorRef.current.get(id);
           if (proofRef.current && proofMidi !== undefined && proofRef.current.requireHeld !== false) {
             const hold = proofHoldByMidiRef.current.get(proofMidi);
@@ -1573,6 +1589,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             diagnosticsRef.current.strictAccepted += 1;
 
             advanceSpatialChord(active, primaryMidi, Number(data.time));
+            active.lastWrongAt = Number(data.time);
+            if (detectedNote.detectorId !== undefined) {
+              active.wrongHeldDetectorIds.add(detectedNote.detectorId);
+            }
             safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
             safeSet(
               setSpatialWrongGuesses,
@@ -2011,16 +2031,31 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
         if (result.progress === active.targetMidi.length) {
           if (!spatialChordHoldTimerRef.current) {
-            spatialChordHoldTimerRef.current = window.setTimeout(() => {
+            const confirmCleanHold = () => {
               spatialChordHoldTimerRef.current = 0;
               const current = spatialRef.current;
               if (current !== active || finishedRef.current) return;
               const targets = current.spec.buildOrder.map((index) => current.targetMidi[index]);
               if (!targets.every((midi) => current.foundMidi.has(midi))) return;
+              if (current.wrongHeldDetectorIds.size > 0) {
+                spatialChordHoldTimerRef.current = window.setTimeout(confirmCleanHold, 120);
+                return;
+              }
+              const cleanForMs = current.lastWrongAt === null
+                ? Number.POSITIVE_INFINITY
+                : (ctx.currentTime - current.lastWrongAt) * 1000;
+              if (cleanForMs < SPATIAL_CHORD_HOLD_MS) {
+                spatialChordHoldTimerRef.current = window.setTimeout(
+                  confirmCleanHold,
+                  SPATIAL_CHORD_HOLD_MS - cleanForMs,
+                );
+                return;
+              }
               current.completedAt = ctx.currentTime;
               playProofSuccessChime(ctx);
               finishSpatialRef.current?.(false);
-            }, SPATIAL_CHORD_HOLD_MS);
+            };
+            spatialChordHoldTimerRef.current = window.setTimeout(confirmCleanHold, SPATIAL_CHORD_HOLD_MS);
           }
         } else if (spatialChordHoldTimerRef.current) {
           window.clearTimeout(spatialChordHoldTimerRef.current);
@@ -2125,15 +2160,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     const progression = spec.context.progression.length > 0
       ? spec.context.progression
       : [spec.chordPitches];
-    const rootParts = splitPianoPitch(spec.rootPitch);
-    const tonicResolution = rootParts
-      ? `${rootParts.note}${rootParts.octave + 1}`
-      : spec.rootPitch;
     const allPitches = new Set([
       ...progression.flat(),
       ...spec.chordPitches,
       spec.rootPitch,
-      tonicResolution,
     ]);
     const loaded = new Map<string, unknown>();
     await Promise.all([...allPitches].map(async (pitch) => {
@@ -2177,40 +2207,37 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     // Supply the anchor before the harmony. The remaining tones can stay
     // visually hidden because the learner now has a concrete relative-pitch
     // reference instead of being asked to identify an absolute chord blind.
-    schedulePitches([spec.rootPitch], 0, 0.62, 0.78);
-    schedulePitches([spec.rootPitch], 0.72, 0.62, 0.78);
-    let offset = 1.55;
-    progression.forEach((chord, index) => {
-      const resolvesToTonic = index === progression.length - 1;
-      const duration = resolvesToTonic ? chordDuration * 1.35 : chordDuration * 0.88;
-      // A subtle roll exposes the smoothly moving voices without turning the
-      // example into three disconnected guide notes. The tonic is held long
-      // enough for the cadence to sound finished before the teaching replay.
-      schedulePitches(chord, offset, duration, resolvesToTonic ? 0.98 : 0.88, 0.035);
-      // Let the top voice sing independently above each block. The last
-      // gesture resolves upward to tonic, so the phrase sounds finished.
-      const melodicPitch = resolvesToTonic ? tonicResolution : chord[chord.length - 1];
-      schedulePitches(
-        [melodicPitch],
-        offset + chordDuration * 0.48,
-        resolvesToTonic ? chordDuration * 0.9 : chordDuration * 0.48,
-        resolvesToTonic ? 0.42 : 0.28,
-      );
-      offset += resolvesToTonic ? chordDuration * 1.35 : chordDuration;
-    });
+    schedulePitches([spec.rootPitch], 0, 0.72, 0.82);
+    let offset = 0.95;
 
-    // End every clue with the target in the two forms a young learner needs:
-    // the whole hand shape, then the same keys slowly from anchor outward.
-    offset += 0.12;
-    schedulePitches(spec.chordPitches, offset, 0.82, 0.95);
-    offset += 1.06;
-    schedulePitches(spec.chordPitches, offset, 0.58, 0.82, 0.58);
-    offset += 0.58 * spec.chordPitches.length + 0.3;
+    // A short voice-led context gives the chord a tonal home without burying
+    // the sound the learner must copy. Single-chord questions skip it.
+    if (progression.length > 1) {
+      progression.forEach((chord, index) => {
+        const resolvesToTarget = index === progression.length - 1;
+        schedulePitches(
+          chord,
+          offset,
+          resolvesToTarget ? chordDuration * 1.22 : chordDuration * 0.82,
+          resolvesToTarget ? 0.94 : 0.78,
+        );
+        offset += resolvesToTarget ? chordDuration * 1.3 : chordDuration * 0.92;
+      });
+      offset += 0.18;
+    }
 
-    // Finish on the same supplied reference so the root-to-third and
-    // root-to-fifth distances remain available in auditory memory.
-    schedulePitches([spec.rootPitch], offset, 0.72, 0.78);
-    offset += 0.9;
+    // Three unambiguous listening passes: whole shape, 1-3-5, whole shape.
+    // The final sound is the complete tonic chord—not an isolated note—so
+    // the harmonic memory and the required simultaneous response agree.
+    const wholeRepeats = Math.max(1, Math.min(2, spec.context.targetRepeats));
+    for (let repeat = 0; repeat < wholeRepeats; repeat++) {
+      schedulePitches(spec.chordPitches, offset, 0.9, 0.96);
+      offset += 1.08;
+    }
+    schedulePitches(spec.chordPitches, offset, 0.62, 0.84, 0.48);
+    offset += 0.48 * spec.chordPitches.length + 0.28;
+    schedulePitches(spec.chordPitches, offset, 1.35, 1);
+    offset += 1.55;
 
     // Return an equivalent end time on the microphone context's clock.
     return ctx.currentTime + 0.16 + offset;
@@ -2395,6 +2422,22 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       safeSet(setSpatialAudioIssue, false);
       safeSet(setPhase, 'idle' as DrillPhase);
 
+      // Learn the room's noise floor before any speaker playback can leak
+      // back into the microphone. The same baseline is reused when listening
+      // begins, so a reverberant demo cannot hide a softly voiced chord tone.
+      const prepared = new Promise<void>((resolve) => {
+        chordReadyResolveRef.current = resolve;
+      });
+      chordWorklet.port.postMessage({ type: 'prepare-chord', targetMidi });
+      await Promise.race([
+        prepared,
+        new Promise<void>((resolve) => window.setTimeout(resolve, 700)),
+      ]);
+      chordReadyResolveRef.current = null;
+      if (!mountedRef.current || runTokenRef.current !== runToken || chordWorkletRef.current !== chordWorklet) {
+        return false;
+      }
+
       const clueEndTime = await scheduleSpatialContext(ctx, target);
       const waitMs = Math.max(0, (clueEndTime - ctx.currentTime + 0.16) * 1000);
       await new Promise<void>((resolve) => window.setTimeout(resolve, waitMs));
@@ -2414,12 +2457,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         wrongRootGuesses: 0,
         wrongShapeGuesses: 0,
         totalGuesses: 0,
+        lastWrongAt: null,
+        wrongHeldDetectorIds: new Set<number>(),
       };
       spatialRef.current = active;
       const chordReady = new Promise<void>((resolve) => {
         chordReadyResolveRef.current = resolve;
       });
-      chordWorklet.port.postMessage({ type: 'listen-chord', targetMidi });
+      chordWorklet.port.postMessage({ type: 'listen-chord', targetMidi, reuseBaseline: true });
       await Promise.race([
         chordReady,
         new Promise<void>((resolve) => window.setTimeout(resolve, 700)),

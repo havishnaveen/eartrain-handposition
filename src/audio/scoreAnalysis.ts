@@ -20,7 +20,7 @@ export interface ScoreAnalysisResult {
   reason: string;
 }
 
-const WORKER_URL = '/audio/score-analyzer-worker.js?v=live-preserving-v15-2026-08-22';
+const WORKER_URL = '/audio/score-analyzer-worker.js?v=piano-stretch-v16-2026-08-25';
 const ANALYSIS_TIMEOUT_MS = 10_000;
 
 function combineChunks(chunks: readonly Float32Array[]): Float32Array {
