@@ -130,7 +130,10 @@
   border-radius: 13px 13px 13px 5px;
   color: #fff;
   background: linear-gradient(145deg, #f5825e, var(--et-orange-deep));
-  box-shadow: 0 8px 20px rgba(217, 78, 49, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 20px rgba(217, 78, 49, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
 .et-sidebar__brand > span:last-child {

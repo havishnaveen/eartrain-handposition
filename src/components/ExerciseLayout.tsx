@@ -19,8 +19,10 @@ export interface ExerciseLayoutProps {
 }
 
 const NoteMark = () => (
-  <svg viewBox="0 0 28 28" width="25" height="25" fill="none" aria-hidden="true">
-    <path d="M17.5 4.5v14.2c0 2.4-2.2 4.3-5 4.3-2.2 0-4-1.2-4-3s1.8-3.5 4.2-3.5c.8 0 1.5.1 2.1.4V7l8-1.8v3.1l-5.3 1.2" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+  <svg viewBox="0 0 32 32" width="26" height="26" fill="none" aria-hidden="true">
+    <path d="M9.7 10.2c-2.8 2.7-2.8 8.9 0 11.6M13 12.7c-1.3 1.4-1.3 4.6 0 6" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" />
+    <ellipse cx="17.1" cy="21.9" rx="4.15" ry="3.05" fill="currentColor" transform="rotate(-12 17.1 21.9)" />
+    <path d="M20.65 20.7V7.5l5.2-1.2v3l-5.2 1.2" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
