@@ -1112,6 +1112,25 @@ export function gradeSequence(
     .map(norm);
   const expectedCount = expectedMidi.length;
 
+  // A detector flood is not a valid musical take. Compare pitch frequency
+  // against the written score so legitimate repeated notes remain valid,
+  // while dozens of copies of one held key can never earn mastery credit.
+  const expectedPitchCounts = new Map<number, number>();
+  expectedMidi.forEach((midi) => {
+    expectedPitchCounts.set(midi, (expectedPitchCounts.get(midi) ?? 0) + 1);
+  });
+  const detectedPitchCounts = new Map<number, number>();
+  detected.forEach((note) => {
+    const midi = norm(note.midi);
+    detectedPitchCounts.set(midi, (detectedPitchCounts.get(midi) ?? 0) + 1);
+  });
+  const duplicateOverage = [...detectedPitchCounts].reduce(
+    (total, [midi, count]) =>
+      total + Math.max(0, count - (expectedPitchCounts.get(midi) ?? 0)),
+    0,
+  );
+  const detectionFlood = duplicateOverage >= Math.max(6, Math.ceil(expectedCount * 1.25));
+
   const allowances = {
     ...allowancesFor(expectedCount),
     ...(isMemory ? { misses: expectedCount >= 4 ? 1 : 0 } : {}),
@@ -1159,8 +1178,9 @@ export function gradeSequence(
   let hesitations = 0;
   let hard = 0;
 
-  // Most recent occurrence of the note currently ringing, updated by both
-  // matches and forgiven echoes so a chain of re-detections stays linked.
+  // Most recent matched occurrence of the note currently ringing. Do not
+  // advance this anchor for echoes: otherwise an unlimited stream of false
+  // re-detections can chain forever and still look perfectly clean.
   let lastEcho: DetectedNote | null = null;
 
   const isRepeat = (note: DetectedNote) => {
@@ -1209,7 +1229,6 @@ export function gradeSequence(
       benign += 1;
       if (kind === 'repeat') {
         echoExtras += 1;
-        lastEcho = note; // keep the chain alive
       } else if (kind === 'resonance' && SUBOCTAVE_ARTIFACTS.includes(note.midi - (accepted[accepted.length - 1]?.midi ?? 0))) {
         echoExtras += 1;
       }
@@ -1349,7 +1368,9 @@ export function gradeSequence(
   // resonances are the room's doing and cost nothing.
   // Nothing played is not a clean performance — it is no performance.
   const cleanScore =
-    detected.length === 0
+    detectionFlood
+      ? 0
+      : detected.length === 0
       ? 0
       : completeAndClean
         // Quiet-room recoveries, sympathetic resonance, and harmless
@@ -1365,12 +1386,16 @@ export function gradeSequence(
   const wPitch = isMemory ? 0.7 : 0.5;
   const wTiming = isMemory ? 0.1 : 0.2;
   const wClean = isMemory ? 0.2 : 0.3;
-  const overall = calculateOverallScore(
+  const calculatedOverall = calculateOverallScore(
     pitchScore,
     timingScore,
     cleanScore,
     { pitch: wPitch, timing: wTiming, cleanliness: wClean },
   );
+  // Never advance a student on an acoustically invalid flood. The displayed
+  // overall score remains the routing authority; it is capped honestly here
+  // rather than hiding a second pass/fail rule elsewhere.
+  const overall = detectionFlood ? Math.min(RETRY_OVERALL_MAX, calculatedOverall) : calculatedOverall;
 
   const scores: ScoreBreakdown = {
     pitch: pitchScore,
@@ -1414,6 +1439,8 @@ export function gradeSequence(
     } else {
       detail = 'Every note in the right place.';
     }
+  } else if (detectionFlood) {
+    detail = 'Too many repeated or unexpected detections were heard to grade this take reliably. Please try again.';
   } else if (detected.length === 0) {
     detail = 'No notes were heard. Check the microphone and play a little louder.';
   } else if (matches.length === 0) {

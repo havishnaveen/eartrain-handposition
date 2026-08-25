@@ -692,13 +692,35 @@ function playProofSuccessChime(_ctx?: AudioContext): void {
   })();
 }
 
+/**
+ * The polyphonic detector is only useful where the score genuinely asks for
+ * two or more simultaneous attacks. Arming it with every pitch in a melody
+ * made one held note look like a new note on every analysis frame.
+ */
+export function polyphonicTargetsForPlan(plan: DrillPlan): number[] {
+  const pitchesByBeat = new Map<number, number[]>();
+  plan.expectedNotes.forEach((slot) => {
+    const midi = pitchToMidi(slot.pitch);
+    if (midi === null) return;
+    const beatKey = Math.round(slot.beat * 1000) / 1000;
+    const pitches = pitchesByBeat.get(beatKey) ?? [];
+    pitches.push(midi);
+    pitchesByBeat.set(beatKey, pitches);
+  });
+  return Array.from(new Set(
+    [...pitchesByBeat.values()]
+      .filter((pitches) => pitches.length > 1)
+      .flat(),
+  ));
+}
+
 export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // The worklet lives in public/ and is otherwise easy for a browser/CDN to
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
     workletUrl = '/audio/pitch-processor.js?v=proof-recovery-v17-2026-08-23',
-    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v1-2026-08-23',
+    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v2-2026-08-24',
   } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
@@ -729,14 +751,15 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const chordWorkletRef = useRef<AudioWorkletNode | null>(null);
   const chordReadyResolveRef = useRef<(() => void) | null>(null);
   /**
-   * Distinct expected pitches for the drill currently playing, fed to the
-   * polyphonic chord-processor for the whole drill (not just spatial-chord
-   * exercises — see the `chord-tones` handling below). This is a second,
+   * Distinct pitches that share a written onset in the current drill, fed to
+   * the polyphonic chord-processor (see the `chord-tones` handling below).
+   * This is a second,
    * independent, simultaneous-tone-aware witness that runs alongside the
    * existing single-pitch onset detector; it only ever *adds* corroborated
    * notes, never replaces or overrides the tuned monophonic path.
    */
   const generalChordTargetsRef = useRef<number[]>([]);
+  const generalChordPresentRef = useRef(new Set<number>());
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const clickGainRef = useRef<GainNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -749,6 +772,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
   const rafRef = useRef(0);
   const schedTimerRef = useRef(0);
+  const playTransitionTimerRef = useRef(0);
 
   const planRef = useRef<DrillPlan | null>(null);
   const clicksRef = useRef<Scheduled[]>([]);
@@ -960,6 +984,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     if (schedTimerRef.current) {
       window.clearInterval(schedTimerRef.current);
       schedTimerRef.current = 0;
+    }
+    if (playTransitionTimerRef.current) {
+      window.clearTimeout(playTransitionTimerRef.current);
+      playTransitionTimerRef.current = 0;
     }
   }, []);
 
@@ -1874,24 +1902,38 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         if (data.type !== 'chord-tones') return;
 
         if (!spatialRef.current) {
-          // Uniform chord awareness for every other exercise: the polyphonic
-          // analyzer was armed (see `begin()`) with every distinct pitch the
-          // current piece expects, so a genuine simultaneous chord — struck
-          // in a normal, prove-it, or any other non-spatial-chord drill —
-          // is corroborated here as several notes instead of the monophonic
-          // detector's one onset winning by default. Purely additive: a tone
-          // already registered by the monophonic path within a tight window
-          // is skipped, so this never contests or overrides that detector.
+          // This lane is armed only for score beats containing simultaneous
+          // notes. Track presence edges so a sustained chord is one attack,
+          // while a released and genuinely re-struck chord can be heard again.
           if (generalChordTargetsRef.current.length === 0) return;
           const heard: number[] = (Array.isArray(data.midi) ? data.midi : [])
             .map((value: unknown) => Number(value))
             .filter((value: number) => Number.isFinite(value))
             .map((value: number) => Math.round(value));
-          if (heard.length === 0) return;
+          const heardSet = new Set(heard);
+          const arrivals = heard.filter((midi) => !generalChordPresentRef.current.has(midi));
+          generalChordPresentRef.current = heardSet;
+          if (arrivals.length === 0) return;
+          const plan = planRef.current;
+          if (!plan) return;
           const baseTime = Number.isFinite(data.time) ? Number(data.time) : ctx.currentTime;
+          const onsetBeat = (baseTime - playStartRef.current) / plan.secondsPerBeat;
           let added = false;
-          heard.forEach((midi: number, index: number) => {
+          arrivals.forEach((midi: number, index: number) => {
             const time = baseTime + index * 0.001;
+            const expectedSlot = plan.expectedNotes
+              .map((slot, slotIndex) => ({ slot, slotIndex }))
+              .filter(({ slot, slotIndex }) =>
+                pitchToMidi(slot.pitch) === midi &&
+                !occupiedExpectedSlotsRef.current.has(slotIndex) &&
+                Math.abs(slot.beat - onsetBeat) <= 0.75,
+              )
+              .sort((a, b) =>
+                Math.abs(a.slot.beat - onsetBeat) - Math.abs(b.slot.beat - onsetBeat),
+              )[0]?.slotIndex;
+            // Polyphonic evidence may corroborate an actual written chord;
+            // it must never invent an extra note outside a score slot.
+            if (expectedSlot === undefined) return;
             const alreadyClose = onsetsRef.current.some(
               (existing) => existing.midi === midi && Math.abs(existing.time - time) < 0.12,
             );
@@ -1902,10 +1944,17 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               clarity: 0.75,
               strength: 1.3,
               sustain: 1,
+              expectedSlot,
               detectorLane: 'strict',
               scoreContextAccepted: true,
             };
             onsetsRef.current.push(note);
+            occupiedExpectedSlotsRef.current.add(expectedSlot);
+            lastStrikeByMidiRef.current.set(midi, {
+              time,
+              peakRms: 0,
+              candidate: false,
+            });
             diagnosticsRef.current.strictAccepted += 1;
             added = true;
           });
@@ -2171,6 +2220,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     finishedRef.current = true;
     workletRef.current?.port.postMessage({ type: 'idle' });
     chordWorkletRef.current?.port.postMessage({ type: 'idle' });
+    generalChordTargetsRef.current = [];
+    generalChordPresentRef.current.clear();
     safeSet(setPhase, 'idle' as DrillPhase);
     safeSet(setBeatLabel, '');
     safeSet(setIsDownbeat, false);
@@ -2219,6 +2270,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       replaceRecordingUrl(null);
       chordWorkletRef.current?.port.postMessage({ type: 'idle' });
       generalChordTargetsRef.current = [];
+      generalChordPresentRef.current.clear();
       onsetsRef.current = [];
       onsetByDetectorIdRef.current.clear();
       occupiedExpectedSlotsRef.current.clear();
@@ -2300,6 +2352,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       replaceRecordingUrl(null);
       worklet.port.postMessage({ type: 'idle' });
       generalChordTargetsRef.current = [];
+      generalChordPresentRef.current.clear();
       detectorArmedRef.current = false;
       listeningRef.current = false;
       finishedRef.current = false;
@@ -2450,14 +2503,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       chordWorkletRef.current?.port.postMessage({ type: 'idle' });
 
       planRef.current = plan;
-      // Every distinct pitch this piece expects, so the polyphonic analyzer
-      // can corroborate a genuine simultaneous chord anywhere in a normal
-      // drill — see the `chord-tones` handling above.
-      generalChordTargetsRef.current = Array.from(new Set(
-        plan.expectedNotes
-          .map((slot) => pitchToMidi(slot.pitch))
-          .filter((midi): midi is number => midi !== null),
-      ));
+      generalChordTargetsRef.current = polyphonicTargetsForPlan(plan);
+      generalChordPresentRef.current.clear();
       proofRef.current = null;
       proofHoldByMidiRef.current.clear();
       proofMidiByDetectorRef.current.clear();
@@ -2538,6 +2585,56 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         }
       }, SCHEDULE_INTERVAL_MS);
 
+      // State must leave count-in on the audio-clock downbeat even if a
+      // browser delays or drops requestAnimationFrame. This is especially
+      // important after a long memory preview, where the old RAF-only handoff
+      // could leave the interface frozen on the final count-in beat.
+      const enterPlaying = () => {
+        if (
+          listeningRef.current ||
+          finishedRef.current ||
+          runTokenRef.current !== runToken ||
+          !ctxRef.current
+        ) return;
+        if (playTransitionTimerRef.current) {
+          window.clearTimeout(playTransitionTimerRef.current);
+          playTransitionTimerRef.current = 0;
+        }
+        listeningRef.current = true;
+        startMicRecording();
+        if (!detectorArmedRef.current) {
+          detectorArmedRef.current = true;
+          workletRef.current?.port.postMessage({ type: 'listen' });
+          if (generalChordTargetsRef.current.length > 0) {
+            chordWorkletRef.current?.port.postMessage({
+              type: 'listen-chord',
+              targetMidi: generalChordTargetsRef.current,
+            });
+          }
+        }
+        safeSet(setPhase, 'playing' as DrillPhase);
+        safeSet(setIsDownbeat, false);
+        cbRef.current.onPlayStart?.(playStartRef.current);
+      };
+
+      const handOffAtDownbeat = () => {
+        const context = ctxRef.current;
+        if (!context || finishedRef.current || runTokenRef.current !== runToken) return;
+        const secondsRemaining = playStartRef.current - context.currentTime;
+        if (secondsRemaining > 0.015) {
+          playTransitionTimerRef.current = window.setTimeout(
+            handOffAtDownbeat,
+            Math.max(16, Math.min(250, secondsRemaining * 1000 + 8)),
+          );
+          return;
+        }
+        enterPlaying();
+      };
+      playTransitionTimerRef.current = window.setTimeout(
+        handOffAtDownbeat,
+        Math.max(0, (playStart - ctx.currentTime) * 1000 + 8),
+      );
+
       const frame = () => {
         const context = ctxRef.current;
         const currentPlan = planRef.current;
@@ -2577,23 +2674,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             safeSet(setIsDownbeat, index === countInBeats - 1);
           }
         } else {
-          if (!listeningRef.current) {
-            listeningRef.current = true;
-            startMicRecording();
-            if (!detectorArmedRef.current) {
-              detectorArmedRef.current = true;
-              workletRef.current?.port.postMessage({ type: 'listen' });
-              if (generalChordTargetsRef.current.length > 0) {
-                chordWorkletRef.current?.port.postMessage({
-                  type: 'listen-chord',
-                  targetMidi: generalChordTargetsRef.current,
-                });
-              }
-            }
-            safeSet(setPhase, 'playing' as DrillPhase);
-            safeSet(setIsDownbeat, false);
-            cbRef.current.onPlayStart?.(playStartRef.current);
-          }
+          enterPlaying();
 
           const timedShift = currentPlan.timedShift;
           const moving = Boolean(

@@ -1,19 +1,23 @@
 /**
  * Expected-tone polyphonic analyzer, run alongside the ordinary single-pitch
- * detector for every exercise (see `listen-chord` callers in
- * useDrillAudio.ts — spatial-chord exercises target their three chord tones,
- * every other exercise targets every distinct pitch the current piece uses).
+ * detector where the score actually contains simultaneous notes (see the
+ * `listen-chord` callers in useDrillAudio.ts). Spatial-chord exercises target
+ * their three chord tones; ordinary melodies stay on the onset detector.
  *
  * The ordinary detector intentionally follows one pitch after each hammer
  * attack. That is correct for melodies and Prove-It, but a chord needs a
  * simultaneous spectral view instead: this processor measures every target
  * tone independently, each frame, and can report several of them at once
  * from the same frame — however many are given (three for a triad, up to
- * seven or more for a wide phrase), since each tone is scored on its own.
+ * seven or more for a wide chord), since each tone is scored on its own.
  */
 const WINDOW = 2048;
 const HOP = 512;
 const CALIBRATION_FRAMES = 5;
+// A tone must disappear for several consecutive hops before it can become a
+// new arrival again. Brief threshold flutter inside one piano decay is not a
+// second hammer strike.
+const RELEASE_FRAMES = 10;
 const TUNING_RATIOS = [Math.pow(2, -22 / 1200), 1, Math.pow(2, 22 / 1200)];
 const STRETCH = [0, 0.00055];
 
@@ -30,6 +34,8 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.targets = [];
     this.baselines = new Map();
     this.stableFrames = new Map();
+    this.missingFrames = new Map();
+    this.reportedPresent = new Set();
     this.calibrationFrames = 0;
     this.listening = false;
     this.port.onmessage = (event) => {
@@ -41,12 +47,16 @@ class ChordProcessor extends AudioWorkletProcessor {
           .map(Math.round);
         this.baselines.clear();
         this.stableFrames.clear();
+        this.missingFrames.clear();
+        this.reportedPresent.clear();
         this.calibrationFrames = CALIBRATION_FRAMES;
         this.listening = true;
       } else if (data.type === 'idle') {
         this.listening = false;
         this.targets = [];
         this.stableFrames.clear();
+        this.missingFrames.clear();
+        this.reportedPresent.clear();
       }
     };
   }
@@ -116,7 +126,7 @@ class ChordProcessor extends AudioWorkletProcessor {
       return;
     }
 
-    const newlyFound = [];
+    const currentlyPresent = new Set();
     for (const tone of evidence) {
       const baseline = this.baselines.get(tone.midi) || { fundamental: 0, score: 0 };
       const fundamentalThreshold = Math.max(
@@ -132,15 +142,21 @@ class ChordProcessor extends AudioWorkletProcessor {
       const present = tone.fundamental >= fundamentalThreshold && tone.score >= scoreThreshold;
       const stable = present ? (this.stableFrames.get(tone.midi) || 0) + 1 : 0;
       this.stableFrames.set(tone.midi, stable);
-      // Re-report a held tone periodically until the main thread accepts it.
-      // This matters when a child places third/fifth just before the required
-      // root; once the root arrives, the still-held tones must remain usable.
-      if (stable === 2 || (stable > 2 && stable % 4 === 0)) {
-        newlyFound.push(tone.midi);
+      const missing = present ? 0 : (this.missingFrames.get(tone.midi) || 0) + 1;
+      this.missingFrames.set(tone.midi, missing);
+      if (stable >= 2 || (this.reportedPresent.has(tone.midi) && missing < RELEASE_FRAMES)) {
+        currentlyPresent.add(tone.midi);
       }
     }
-    if (newlyFound.length > 0) {
-      this.port.postMessage({ type: 'chord-tones', midi: newlyFound, time: currentTime });
+    const changed =
+      currentlyPresent.size !== this.reportedPresent.size ||
+      [...currentlyPresent].some((midi) => !this.reportedPresent.has(midi));
+    if (changed) {
+      // Send the complete current set on edges only. A held chord therefore
+      // produces one arrival, not dozens of fake repeated notes; adding the
+      // root later still re-sends the already-held third/fifth in this set.
+      this.port.postMessage({ type: 'chord-tones', midi: [...currentlyPresent], time: currentTime });
+      this.reportedPresent = currentlyPresent;
     }
   }
 

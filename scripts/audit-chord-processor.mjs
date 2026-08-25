@@ -72,8 +72,14 @@ for (const chord of [[60, 64, 67], [59, 63, 66], [71, 75, 78]]) {
   chord.forEach((midi) => {
     const reports = messages.filter((message) =>
       message.type === 'chord-tones' && message.midi.includes(midi)).length;
-    assert.ok(reports >= 2, `Held MIDI ${midi} must remain available after an earlier-order miss.`);
+    assert.ok(reports >= 1, `Held MIDI ${midi} must be reported.`);
+    assert.ok(reports <= chord.length,
+      `Held MIDI ${midi} must not be emitted repeatedly as fake new attacks.`);
   });
+  assert.ok(
+    messages.filter((message) => message.type === 'chord-tones').length <= chord.length + 1,
+    `One held chord must produce bounded presence edges, not a stream of repeated notes.`,
+  );
 }
 
 assert.equal(
