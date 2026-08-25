@@ -97,6 +97,8 @@ interface LessonRecipe {
   tempoEasy: number;
   tempoHard: number;
   shiftPairs?: readonly (readonly [PositionTemplate, PositionTemplate])[];
+  /** Local reps that stay as notated reading and include block chords. */
+  standardChordReps?: readonly (1 | 2 | 3)[];
   /** Optional ear-training reps interleaved with this lesson's tactile work. */
   spatialChord?: SpatialChordRecipe;
 }
@@ -302,6 +304,7 @@ const LESSONS: readonly LessonRecipe[] = [
     rightOctaves: TREBLE, leftOctaves: BASS, contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.3, tempoHard: 10.7,
     shiftPairs: [[A, E]],
+    standardChordReps: [2],
     spatialChord: {
       questionNumbers: [3], roots: [A, E], qualities: ['major'], rootSupport: 'matched', layers: ['pad', 'bass', 'pulse'],
       progressionLength: 3, targetRepeats: 2, rootSearchSeconds: 6.8,
@@ -317,6 +320,7 @@ const LESSONS: readonly LessonRecipe[] = [
     positions: [B, B, FS], rightOctaves: [4], leftOctaves: [3],
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_GENTLE_SKIPS], meters: [4],
     showKeySignature: true, tempoEasy: 13.2, tempoHard: 11.8,
+    standardChordReps: [2],
   },
   {
     id: 'c18-shift-b-to-fsharp', index: 18, phase: 5, phaseLabel: 'Five and six sharps',
@@ -326,6 +330,7 @@ const LESSONS: readonly LessonRecipe[] = [
     rightOctaves: [4], leftOctaves: [3], contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.2,
     shiftPairs: [[B, FS]],
+    standardChordReps: [2],
     spatialChord: {
       questionNumbers: [3], roots: [B, FS], qualities: ['major'], rootSupport: 'matched',
       layers: ['pad', 'bass', 'pulse'], progressionLength: 3, targetRepeats: 2,
@@ -339,6 +344,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D],
     rightOctaves: [4], leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 14, tempoHard: 13,
+    standardChordReps: [2],
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D], qualities: ['major'], rootSupport: 'shown',
       layers: [], progressionLength: 1, targetRepeats: 2, rootSearchSeconds: 9,
@@ -803,6 +809,63 @@ function twoHandStandardQuestion(
   };
 }
 
+/**
+ * Late standard reading keeps a melodic line, but adds genuine stacked
+ * attacks so chord reading and the polyphonic microphone path are exercised
+ * before the dedicated chord-by-ear sequence takes over.
+ */
+function chordalStandardQuestion(
+  lesson: LessonRecipe,
+  ordinal: number,
+  questionNumber: number,
+  difficulty: number,
+  mode: GenerationMode,
+  modeDifficulty: number,
+  hand: Hand,
+): Question {
+  const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
+  const positionTemplate = cyclePick(lesson.positions, questionNumber - 1);
+  const octave = cyclePick(
+    octavePool,
+    Math.floor((questionNumber - 1) / lesson.positions.length),
+  );
+  const position = buildPosition(positionTemplate, octave);
+  const phraseBanks: readonly (readonly (readonly number[])[])[] = [
+    [[0, 2, 4], [1], [2], [0, 2, 4], [4], [3], [0, 4], [0, 2, 4]],
+    [[0], [1], [0, 2, 4], [2], [3], [4], [0, 4], [0, 2, 4]],
+    [[4], [3], [0, 2, 4], [1], [2], [1], [0, 4], [0, 2, 4]],
+  ];
+  const events = cyclePick(phraseBanks, ordinal + lesson.index);
+  const notes: CueNote[] = events.map((degrees, index) => ({
+    keys: degrees.map((degree) => position.vf[degree]),
+    duration: 'q',
+    ...(degrees.length === 1 ? { finger: fingerFor(degrees[0], hand) } : {}),
+    anchor: index === 0,
+  }));
+
+  return {
+    id: `${lesson.id}#${ordinal}`,
+    conceptId: lesson.id,
+    exerciseMode: 'standard',
+    handScope: hand,
+    instruction: 'Read the phrase. Play every stacked chord together.',
+    cue: {
+      keySignature: lesson.showKeySignature ? position.template.keySignature : 'C',
+      timeSignature: '4/4',
+      staves: [{ clef: hand === 'right' ? 'treble' : 'bass', hand, notes }],
+    },
+    // Chord pitches stay adjacent here because planFor maps every pitch from
+    // one CueNote to the same beat.
+    expectedSequence: events.flatMap((degrees) =>
+      degrees.map((degree) => position.sci[degree]),
+    ),
+    tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),
+    positionLabel: `${position.label} — chord phrase`,
+    difficulty,
+    mode,
+  };
+}
+
 function spatialChordQuestion(
   lesson: LessonRecipe,
   recipe: SpatialChordRecipe,
@@ -914,6 +977,18 @@ function questionFor(
   const hand = lesson.hands[localRep % lesson.hands.length];
   const clef = hand === 'right' ? 'treble' : 'bass';
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
+
+  if (lesson.standardChordReps?.includes((localRep + 1) as 1 | 2 | 3)) {
+    return chordalStandardQuestion(
+      lesson,
+      ordinal,
+      questionNumber,
+      difficulty,
+      mode,
+      modeDifficulty,
+      hand,
+    );
+  }
 
   if (
     lesson.spatialChord &&
@@ -1048,6 +1123,21 @@ function questionFor(
     lesson.exerciseMode === 'blind-memory' && localRep !== memoryRep
       ? 'standard'
       : lesson.exerciseMode;
+
+  // Future late lessons that directly choose `standard` inherit the same
+  // rule: after Lesson 15, normal reading always includes block chords.
+  if (exerciseMode === 'standard' && lesson.index > 15) {
+    return chordalStandardQuestion(
+      lesson,
+      ordinal,
+      questionNumber,
+      difficulty,
+      mode,
+      modeDifficulty,
+      hand,
+    );
+  }
+
   const memoryPool = lesson.index >= 9 ? MEMORY_LONG_PATTERNS : MEMORY_SHORT_PATTERNS;
   const contour = variedPick(
     exerciseMode === 'blind-memory' ? memoryPool : lesson.contours,
@@ -1059,8 +1149,9 @@ function questionFor(
     : SHORT_MEMORY_PREVIEW_SECONDS;
   const beatsPerBar = cyclePick(lesson.meters, ordinal);
 
-  // Genuine two-hand grand-staff questions: every 'standard' rep from lesson
-  // 6 onward. Scoped to 'standard' — prove-it/blind-memory/anchor-shift/
+  // Genuine two-hand grand-staff questions: standard reps from Lessons 6-15.
+  // Later standard reps use chordalStandardQuestion above. Scoped to
+  // 'standard' — prove-it/blind-memory/anchor-shift/
   // spatial-chord already teach hand alternation or coordination in their
   // own way (see c04's "alternate hands" prove-it lesson, and every
   // BOTH_HANDS lesson's R/L/R rep cycle), and forcing simultaneous two-hand
@@ -1072,14 +1163,6 @@ function questionFor(
     // Longer phrases for the tail of the standard-exercise arc: 60% of
     // reps get roughly 1.5-2x the usual length, wrapped onto a second
     // stacked grand-staff system instead of one ever-widening line.
-    //
-    // The original ask named "lesson 17" for this escalation, but lesson 17
-    // (c17-b-fsharp-orientation) is a prove-it lesson — like every lesson
-    // after 12, it never generates an exerciseMode:'standard' rep at all,
-    // since 'standard' only ever comes from a blind-memory lesson's
-    // non-memory rep (lessons 5-12, gated to two-handed from lesson 6
-    // above). Lessons 11-12 (E major) are the real tail of that window, so
-    // the escalation lands there instead of silently doing nothing.
     const extendLength = lesson.index >= 11 && rand() < 0.6;
     // Capped to exactly two systems' worth of notes (StaffCue.tsx wraps at
     // `measuresPerSystem` measures = `measuresPerSystem * beatsPerBar`

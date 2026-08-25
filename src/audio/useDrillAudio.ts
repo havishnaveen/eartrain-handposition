@@ -726,20 +726,53 @@ function playProofSuccessChime(_ctx?: AudioContext): void {
  * made one held note look like a new note on every analysis frame.
  */
 export function polyphonicTargetsForPlan(plan: DrillPlan): number[] {
-  const pitchesByBeat = new Map<number, number[]>();
-  plan.expectedNotes.forEach((slot) => {
+  return Array.from(new Set(
+    polyphonicSlotGroupsForPlan(plan).flatMap((group) =>
+      group.slots.map(({ midi }) => midi),
+    ),
+  ));
+}
+
+export interface PolyphonicSlotGroup {
+  beat: number;
+  slots: Array<{ index: number; midi: number }>;
+}
+
+/** Exact score slots that must be heard together, grouped by written onset. */
+export function polyphonicSlotGroupsForPlan(plan: DrillPlan): PolyphonicSlotGroup[] {
+  const slotsByBeat = new Map<number, Array<{ index: number; midi: number }>>();
+  plan.expectedNotes.forEach((slot, index) => {
     const midi = pitchToMidi(slot.pitch);
     if (midi === null) return;
     const beatKey = Math.round(slot.beat * 1000) / 1000;
-    const pitches = pitchesByBeat.get(beatKey) ?? [];
-    pitches.push(midi);
-    pitchesByBeat.set(beatKey, pitches);
+    const slots = slotsByBeat.get(beatKey) ?? [];
+    slots.push({ index, midi });
+    slotsByBeat.set(beatKey, slots);
   });
-  return Array.from(new Set(
-    [...pitchesByBeat.values()]
-      .filter((pitches) => pitches.length > 1)
-      .flat(),
-  ));
+  return [...slotsByBeat.entries()]
+    .filter(([, slots]) => slots.length > 1)
+    .map(([beat, slots]) => ({ beat, slots }));
+}
+
+export function isPolyphonicExpectedSlot(plan: DrillPlan, expectedSlot: number): boolean {
+  return polyphonicSlotGroupsForPlan(plan).some((group) =>
+    group.slots.some(({ index }) => index === expectedSlot),
+  );
+}
+
+export function findCompletePolyphonicGroup(
+  plan: DrillPlan,
+  heard: ReadonlySet<number>,
+  onsetBeat: number,
+  occupied: ReadonlySet<number>,
+): PolyphonicSlotGroup | null {
+  return polyphonicSlotGroupsForPlan(plan)
+    .filter((candidate) =>
+      candidate.slots.every(({ midi }) => heard.has(midi)) &&
+      candidate.slots.some(({ index }) => !occupied.has(index)) &&
+      Math.abs(candidate.beat - onsetBeat) <= 0.75,
+    )
+    .sort((a, b) => Math.abs(a.beat - onsetBeat) - Math.abs(b.beat - onsetBeat))[0] ?? null;
 }
 
 export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
@@ -787,7 +820,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
    * notes, never replaces or overrides the tuned monophonic path.
    */
   const generalChordTargetsRef = useRef<number[]>([]);
-  const generalChordPresentRef = useRef(new Set<number>());
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const clickGainRef = useRef<GainNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -1648,6 +1680,17 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             : { midi: primaryMidi, slot: null, disambiguated: false };
           midi = contextual.midi;
           const expectedSlot = contextual.slot;
+          if (
+            plan &&
+            expectedSlot !== null &&
+            isPolyphonicExpectedSlot(plan, expectedSlot)
+          ) {
+            // A monophonic estimate cannot prove one member of a written
+            // chord. The independent chord lane will submit the whole stack
+            // only when all of its tones coexist in one analysis frame.
+            diagnosticsRef.current.candidatesIgnored += 1;
+            return;
+          }
           if (contextual.disambiguated) {
             diagnosticsRef.current.contextDisambiguated += 1;
           }
@@ -1885,41 +1928,29 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
         if (!spatialRef.current) {
           // This lane is armed only for score beats containing simultaneous
-          // notes. Track presence edges so a sustained chord is one attack,
-          // while a released and genuinely re-struck chord can be heard again.
+          // notes. Never credit partial arrivals: the complete written stack
+          // must coexist in the current polyphonic frame.
           if (generalChordTargetsRef.current.length === 0) return;
           const heard: number[] = (Array.isArray(data.midi) ? data.midi : [])
             .map((value: unknown) => Number(value))
             .filter((value: number) => Number.isFinite(value))
             .map((value: number) => Math.round(value));
           const heardSet = new Set(heard);
-          const arrivals = heard.filter((midi) => !generalChordPresentRef.current.has(midi));
-          generalChordPresentRef.current = heardSet;
-          if (arrivals.length === 0) return;
           const plan = planRef.current;
           if (!plan) return;
           const baseTime = Number.isFinite(data.time) ? Number(data.time) : ctx.currentTime;
           const onsetBeat = (baseTime - playStartRef.current) / plan.secondsPerBeat;
+          const group = findCompletePolyphonicGroup(
+            plan,
+            heardSet,
+            onsetBeat,
+            occupiedExpectedSlotsRef.current,
+          );
+          if (!group) return;
           let added = false;
-          arrivals.forEach((midi: number, index: number) => {
+          group.slots.forEach(({ index: expectedSlot, midi }, index) => {
+            if (occupiedExpectedSlotsRef.current.has(expectedSlot)) return;
             const time = baseTime + index * 0.001;
-            const expectedSlot = plan.expectedNotes
-              .map((slot, slotIndex) => ({ slot, slotIndex }))
-              .filter(({ slot, slotIndex }) =>
-                pitchToMidi(slot.pitch) === midi &&
-                !occupiedExpectedSlotsRef.current.has(slotIndex) &&
-                Math.abs(slot.beat - onsetBeat) <= 0.75,
-              )
-              .sort((a, b) =>
-                Math.abs(a.slot.beat - onsetBeat) - Math.abs(b.slot.beat - onsetBeat),
-              )[0]?.slotIndex;
-            // Polyphonic evidence may corroborate an actual written chord;
-            // it must never invent an extra note outside a score slot.
-            if (expectedSlot === undefined) return;
-            const alreadyClose = onsetsRef.current.some(
-              (existing) => existing.midi === midi && Math.abs(existing.time - time) < 0.12,
-            );
-            if (alreadyClose) return;
             const note: DetectedNote = {
               midi,
               time,
@@ -2213,7 +2244,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     workletRef.current?.port.postMessage({ type: 'idle' });
     chordWorkletRef.current?.port.postMessage({ type: 'idle' });
     generalChordTargetsRef.current = [];
-    generalChordPresentRef.current.clear();
     safeSet(setPhase, 'idle' as DrillPhase);
     safeSet(setBeatLabel, '');
     safeSet(setIsDownbeat, false);
@@ -2262,7 +2292,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       replaceRecordingUrl(null);
       chordWorkletRef.current?.port.postMessage({ type: 'idle' });
       generalChordTargetsRef.current = [];
-      generalChordPresentRef.current.clear();
       onsetsRef.current = [];
       onsetByDetectorIdRef.current.clear();
       occupiedExpectedSlotsRef.current.clear();
@@ -2344,7 +2373,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       replaceRecordingUrl(null);
       worklet.port.postMessage({ type: 'idle' });
       generalChordTargetsRef.current = [];
-      generalChordPresentRef.current.clear();
       detectorArmedRef.current = false;
       listeningRef.current = false;
       finishedRef.current = false;
@@ -2500,7 +2528,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
       planRef.current = plan;
       generalChordTargetsRef.current = polyphonicTargetsForPlan(plan);
-      generalChordPresentRef.current.clear();
       proofRef.current = null;
       proofHoldByMidiRef.current.clear();
       proofMidiByDetectorRef.current.clear();

@@ -186,7 +186,7 @@ try {
 
             const writtenPitches = staff.notes
               .filter((note) => !note.duration.endsWith('r'))
-              .map((note) => toScientific(note.keys[0]));
+              .flatMap((note) => note.keys.map(toScientific));
             assert.deepEqual(writtenPitches, question.expectedSequence,
               `Lesson ${concept.index}, drill ${questionNumber} notation and grading pitches diverged.`);
 

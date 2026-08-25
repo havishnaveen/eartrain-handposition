@@ -110,18 +110,29 @@ export function planFor(
   // overwhelming majority of exercises have exactly one staff, so this
   // reduces to the original single-staff walk. A genuine two-hand grand
   // staff (see progressiveCurriculum.ts) is built so that at any one beat
-  // exactly one staff carries a sounded note and the other rests — hands
-  // alternate rather than strike together — so pitches from different
-  // staves never collide once merged, and grading stays the same simple
-  // one-pitch-at-a-time matcher used everywhere else.
-  interface RawEntry { beat: number; beats: number; isRest: boolean; staffIndex: number }
+  // exactly one staff carries a sounded event and the other rests. A sounded
+  // event may contain several noteheads; each becomes an expected slot on the
+  // same beat so the polyphonic detector can verify the stack concurrently.
+  interface RawEntry {
+    beat: number;
+    beats: number;
+    isRest: boolean;
+    staffIndex: number;
+    soundedCount: number;
+  }
   const raw: RawEntry[] = [];
   cue.staves.forEach((staff, staffIndex) => {
     let staffBeat = 0;
     staff.notes.forEach((note) => {
       const isRest = note.duration.endsWith('r');
       const beats = beatsForDuration(note.duration);
-      raw.push({ beat: staffBeat, beats, isRest, staffIndex });
+      raw.push({
+        beat: staffBeat,
+        beats,
+        isRest,
+        staffIndex,
+        soundedCount: isRest ? 0 : Math.max(1, note.keys.length),
+      });
       staffBeat += beats;
     });
   });
@@ -139,17 +150,23 @@ export function planFor(
       isRest: entry.isRest,
       pitch: entry.isRest ? null : (expectedSequence[pitchIndex] ?? null),
     });
-    if (!entry.isRest) pitchIndex += 1;
+    if (!entry.isRest) pitchIndex += entry.soundedCount;
     beat = Math.max(beat, entry.beat + entry.beats);
   });
 
   // A guide-note cue shows one note but is played as a five-note run, so the
   // window must cover every note played, not every note drawn.
-  const guideNote = notes.length < expectedSequence.length;
+  const writtenPitchSlots = raw.reduce((sum, entry) => sum + entry.soundedCount, 0);
+  const guideNote = writtenPitchSlots < expectedSequence.length;
   const written = guideNote ? Math.max(beat, expectedSequence.length) : beat;
-  const soundedNotes = notes.filter((note) => !note.isRest);
+  const writtenSlots = raw.flatMap((entry) =>
+    Array.from({ length: entry.soundedCount }, () => ({
+      beat: entry.beat,
+      beats: entry.beats,
+    })),
+  );
   const expectedNotes: ExpectedNoteSlot[] = expectedSequence.map((pitch, index) => {
-    const writtenNote = soundedNotes[index];
+    const writtenNote = writtenSlots[index];
     return {
       pitch,
       beat: guideNote ? index : (writtenNote?.beat ?? index),

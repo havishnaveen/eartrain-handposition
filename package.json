@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "audit:curriculum": "node scripts/audit-curriculum.mjs",
+    "audit:late-chords": "node scripts/audit-late-standard-chords.mjs",
     "audit:audio": "node scripts/audit-pitch-processor.mjs && node scripts/audit-chord-processor.mjs",
     "audit:score": "node scripts/audit-score-analyzer.mjs && node scripts/audit-pcm-capture.mjs && node scripts/audit-live-regressions.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
