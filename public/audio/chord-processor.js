@@ -11,7 +11,9 @@
  * from the same frame — however many are given (three for a triad, up to
  * seven or more for a wide chord), since each tone is scored on its own.
  */
-const WINDOW = 2048;
+// Four thousand samples separate adjacent fundamentals cleanly enough that a
+// strong partial of one piano key cannot masquerade as another chord tone.
+const WINDOW = 4096;
 const HOP = 512;
 const CALIBRATION_FRAMES = 5;
 // A tone must disappear for several consecutive hops before it can become a
@@ -83,6 +85,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     const fundamental = 440 * Math.pow(2, (midi - 69) / 12);
     let bestFundamental = 0;
     let bestScore = 0;
+    let bestFrequency = fundamental;
     for (const tuning of TUNING_RATIOS) {
       for (const stretch of STRETCH) {
         let score = 0;
@@ -98,10 +101,31 @@ class ChordProcessor extends AudioWorkletProcessor {
         if (score > bestScore) {
           bestScore = score;
           bestFundamental = first;
+          bestFrequency = fundamental * tuning;
         }
       }
     }
-    return { fundamental: bestFundamental, score: bestScore };
+    // Harmonic templates alone are ambiguous: C's upper partials can line up
+    // with parts of E/G templates. A real target key must contribute its own
+    // fundamental, and that fundamental must not merely be an overtone of a
+    // louder key one or more octaves/partials below it.
+    let strongestLowerParent = 0;
+    for (let divisor = 2; divisor <= 5; divisor++) {
+      const parentFrequency = bestFrequency / divisor;
+      if (parentFrequency < 27.5) continue;
+      strongestLowerParent = Math.max(strongestLowerParent, this._magnitude(parentFrequency));
+    }
+    const adjacentEnergy = Math.max(
+      this._magnitude(bestFrequency * Math.pow(2, -1 / 12)),
+      this._magnitude(bestFrequency * Math.pow(2, 1 / 12)),
+    );
+    return {
+      fundamental: bestFundamental,
+      score: bestScore,
+      purity: bestFundamental / Math.max(1e-10, bestScore),
+      parentRatio: strongestLowerParent / Math.max(1e-10, bestFundamental),
+      neighborRatio: bestFundamental / Math.max(1e-10, adjacentEnergy),
+    };
   }
 
   _analyze() {
@@ -139,7 +163,12 @@ class ChordProcessor extends AudioWorkletProcessor {
         baseline.score * 2 + 0.00004,
         rms * 0.055,
       );
-      const present = tone.fundamental >= fundamentalThreshold && tone.score >= scoreThreshold;
+      const present =
+        tone.fundamental >= fundamentalThreshold &&
+        tone.score >= scoreThreshold &&
+        tone.purity >= 0.2 &&
+        tone.parentRatio <= 1.05 &&
+        tone.neighborRatio >= 1.06;
       const stable = present ? (this.stableFrames.get(tone.midi) || 0) + 1 : 0;
       this.stableFrames.set(tone.midi, stable);
       const missing = present ? 0 : (this.missingFrames.get(tone.midi) || 0) + 1;

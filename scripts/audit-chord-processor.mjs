@@ -6,7 +6,7 @@ const sampleRate = 44_100;
 const quantum = 128;
 const source = await readFile(new URL('../public/audio/chord-processor.js', import.meta.url), 'utf8');
 
-function run(targetMidi, playedMidi = []) {
+function run(targetMidi, playedMidi = [], gainsByMidi = {}) {
   const messages = [];
   let Processor;
   class MockAudioWorkletProcessor {
@@ -47,10 +47,11 @@ function run(targetMidi, playedMidi = []) {
         const age = time - 0.24;
         const envelope = Math.min(1, age / 0.012) * Math.exp(-age / 1.9) * 0.014;
         for (const midi of playedMidi) {
+          const toneGain = gainsByMidi[midi] ?? 1;
           const fundamental = 440 * 2 ** ((midi - 69) / 12);
           for (let harmonic = 1; harmonic <= 5; harmonic++) {
             const stretched = fundamental * harmonic * (1 + 0.00012 * harmonic * harmonic);
-            sample += envelope * (1 / harmonic ** 1.15) *
+            sample += envelope * toneGain * (1 / harmonic ** 1.15) *
               Math.sin(2 * Math.PI * stretched * time + midi * 0.07);
           }
         }
@@ -63,7 +64,7 @@ function run(targetMidi, playedMidi = []) {
   return messages;
 }
 
-for (const chord of [[60, 64, 67], [59, 63, 66], [71, 75, 78]]) {
+for (const chord of [[48, 52, 55], [60, 64, 67], [59, 63, 66], [71, 75, 78]]) {
   const messages = run(chord, chord);
   assert.ok(messages.some((message) => message.type === 'chord-ready'));
   const found = new Set(messages.filter((message) => message.type === 'chord-tones').flatMap((message) => message.midi));
@@ -82,10 +83,41 @@ for (const chord of [[60, 64, 67], [59, 63, 66], [71, 75, 78]]) {
   );
 }
 
+assert.ok(
+  run([60, 64, 67], [60, 64, 67], { 60: 1, 64: 0.42, 67: 0.55 })
+    .filter((message) => message.type === 'chord-tones')
+    .some((message) => [60, 64, 67].every((midi) => message.midi.includes(midi))),
+  'A loud root must not hide softly played inner and upper chord tones.',
+);
+
+const cMajor = [60, 64, 67];
+for (const played of [[60], [64], [67], [60, 64], [60, 67], [64, 67]]) {
+  const toneMessages = run(cMajor, played)
+    .filter((message) => message.type === 'chord-tones');
+  assert.equal(
+    toneMessages.some((message) => cMajor.every((midi) => message.midi.includes(midi))),
+    false,
+    `${played.join('-')} must never be promoted to a complete C-major chord.`,
+  );
+  const reported = new Set(toneMessages.flatMap((message) => message.midi));
+  assert.ok(
+    [...reported].every((midi) => played.includes(midi)),
+    `${played.join('-')} manufactured an unplayed target tone.`,
+  );
+}
+
+assert.deepEqual(
+  run(cMajor, [59])
+    .filter((message) => message.type === 'chord-tones')
+    .flatMap((message) => message.midi),
+  [],
+  'An unrelated B must not satisfy any part of C major.',
+);
+
 assert.equal(
   run([60, 64, 67]).filter((message) => message.type === 'chord-tones').length,
   0,
   'Room noise must not produce chord tones.',
 );
 
-console.log('Chord processor audit passed: simultaneous C, B, and upper-register B triads.');
+console.log('Chord processor audit passed: full triads, partial-chord rejection, unrelated-note rejection, and bounded holds.');

@@ -373,7 +373,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           ? spatialWrongGuesses >= 3
             ? 'Compare nearby keys to the broken-chord replay'
             : 'Listen to the distance above the anchor'
-          : 'Match the outside note you heard in the replay';
+          : 'Hold all three keys together until the chord confirms';
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">

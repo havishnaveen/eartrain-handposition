@@ -28,6 +28,7 @@ try {
     proofDetectorWarmupRemaining,
     resolveContextualPitch,
     unheldProofNoteIndices,
+    updateSpatialChordPresence,
   } = await server.ssrLoadModule('/src/audio/useDrillAudio.ts');
   const {
     beatsForDuration,
@@ -677,7 +678,13 @@ try {
   assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[2], 1.3).progress, 1,
     'The fifth must not skip the middle-tone step.');
   assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[1], 1.5).progress, 2);
-  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[2], 1.8).complete, true);
+  assert.equal(advanceSpatialChord(activeSpatial, spatialMidi[2], 1.8).complete, false,
+    'Sequential tone discovery must never prove a simultaneous chord.');
+  assert.equal(
+    updateSpatialChordPresence(activeSpatial, new Set(spatialMidi), 1.9).progress,
+    3,
+    'A simultaneous target set may arm final hold verification.',
+  );
 
   assert.equal(isClearSamePitchRetrigger(
     { time: 1, peakRms: 0.1 },

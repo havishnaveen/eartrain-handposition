@@ -14,8 +14,8 @@ const server = await createServer({
 });
 
 try {
-  const { gradeSequence } = await server.ssrLoadModule('/src/audio/timing.ts');
-  const { polyphonicTargetsForPlan } = await server.ssrLoadModule(
+  const { gradeSequence, gradeSpatialChord } = await server.ssrLoadModule('/src/audio/timing.ts');
+  const { advanceSpatialChord, polyphonicTargetsForPlan, updateSpatialChordPresence } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
   );
 
@@ -31,6 +31,63 @@ try {
   assert.deepEqual(polyphonicTargetsForPlan({
     expectedNotes: sequentialPlan.expectedNotes.map((slot) => ({ ...slot, beat: 0 })),
   }), [60, 64, 67], 'A genuine simultaneous chord must retain polyphonic support.');
+
+  const chordSpec = {
+    chordName: 'C Major',
+    hand: 'right',
+    quality: 'major',
+    rootPitch: 'C4',
+    chordPitches: ['C4', 'E4', 'G4'],
+    intervals: [4, 7],
+    rootSupport: 'shown',
+    buildOrder: [0, 1, 2],
+    context: {
+      targetInstrument: 'piano',
+      layers: [],
+      progression: [['C4', 'E4', 'G4']],
+      targetChordIndex: 0,
+      secondsPerChord: 1,
+      targetRepeats: 1,
+    },
+    rootSearchSeconds: 4,
+    shapeSearchSeconds: 8,
+    maxWrongGuesses: 4,
+  };
+  const activeChord = {
+    spec: chordSpec,
+    targetMidi: [60, 64, 67],
+    startedAt: 1,
+    rootFoundAt: null,
+    completedAt: null,
+    foundMidi: new Set(),
+    foundAtByMidi: new Map(),
+    wrongRootGuesses: 0,
+    wrongShapeGuesses: 0,
+    totalGuesses: 0,
+  };
+  assert.equal(advanceSpatialChord(activeChord, 59, 1.1).progress, 0,
+    'An unrelated B must not advance C major.');
+  assert.equal(activeChord.wrongRootGuesses, 1,
+    'An unrelated B must be recorded as a wrong guess.');
+  assert.equal(updateSpatialChordPresence(activeChord, new Set([60]), 1.2).progress, 1,
+    'A lone C may find the anchor but must not complete C major.');
+  assert.equal(updateSpatialChordPresence(activeChord, new Set(), 1.4).progress, 0,
+    'Released chord tones must be removed from current progress.');
+  assert.equal(updateSpatialChordPresence(activeChord, new Set([60, 64, 67]), 1.6).complete, false,
+    'Even one full spectral frame must wait for the simultaneous hold confirmation.');
+  const unconfirmedChord = gradeSpatialChord(chordSpec, [], {
+    startedAt: 1,
+    rootFoundAt: 1.2,
+    completedAt: null,
+    rootFound: true,
+    foundMidi: [60, 64, 67],
+    wrongRootGuesses: 0,
+    wrongShapeGuesses: 0,
+    totalGuesses: 3,
+    timedOut: true,
+  });
+  assert.equal(unconfirmedChord.passed, false,
+    'Three accumulated target names without a confirmed concurrent hold must fail.');
 
   const expected = ['C4', 'D4', 'E4', 'F4'];
   const perfect = [60, 62, 64, 65].map((midi, index) => ({

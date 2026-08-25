@@ -941,7 +941,15 @@ export function gradeSpatialChord(
   const matched = found.size;
   const expectedCount = targetMidi.length;
   const missed = Math.max(0, expectedCount - matched);
-  const completed = expectedCount > 0 && matched === expectedCount;
+  // Seeing the three pitch classes at some point is not a chord. Spatial
+  // completion is issued only after the polyphonic lane confirms that every
+  // target is concurrently present for the required hold window.
+  const completed = Boolean(
+    expectedCount > 0 &&
+    matched === expectedCount &&
+    performance.completedAt !== null &&
+    !performance.timedOut
+  );
 
   const rootLatencySec = performance.rootFoundAt === null
     ? null

@@ -355,6 +355,8 @@ const DETECTOR_PREROLL_SEC = 0.22;
 const PITCH_FLUSH_MS = 380;
 /** Quiet frames needed before the first Prove It attack can be judged. */
 const PROOF_DETECTOR_WARMUP_MS = 260;
+/** All chord tones must remain concurrently present this long to complete. */
+const SPATIAL_CHORD_HOLD_MS = 520;
 
 /**
  * Read-only diagnostic switch for the Prove It note pipeline. Off by default
@@ -604,20 +606,9 @@ export interface SpatialChordAdvance {
 }
 
 /**
- * Order-tolerant chord construction with monotonic progress.
- *
- * A real chord reaches the microphone with all three notes within
- * milliseconds of each other, not in strict textbook root-third-fifth
- * order — a hand naturally lands with the outer notes fractionally ahead of
- * or behind the root. The previous version required the root to be the
- * *first* tone detected and silently discarded anything else heard before
- * it as a "wrong root guess" — so a genuinely correct chord, struck as a
- * block, regularly registered as at most one note. Any of the three target
- * tones is now accepted the instant it is heard, in any order; root-finding
- * is tracked separately (it still arms the shape-search deadline and drives
- * the "root found" UI moment) rather than gating acceptance of the other
- * two. Only a pitch that is not one of the three target tones counts as a
- * wrong guess.
+ * Sequential discovery helper for the 1-3-5 teaching flow. This never proves
+ * the final chord: completion is reserved for the independent polyphonic
+ * detector after all target tones overlap for a stable hold.
  */
 export function advanceSpatialChord(
   active: ActiveSpatialChord,
@@ -626,23 +617,31 @@ export function advanceSpatialChord(
 ): SpatialChordAdvance {
   const orderedTargets = active.spec.buildOrder.map((index) => active.targetMidi[index]);
   const root = orderedTargets[0];
+  const wanted = orderedTargets[Math.min(active.foundMidi.size, orderedTargets.length - 1)];
 
   if (active.foundMidi.has(midi)) {
     // A held/repeated target does not move backward and is not a fresh guess.
     return {
       progress: active.foundMidi.size as 0 | 1 | 2 | 3,
       rootJustFound: false,
-      complete: active.foundMidi.size === 3,
+      complete: false,
       countedGuess: false,
     };
   }
 
   active.totalGuesses += 1;
 
-  if (!orderedTargets.includes(midi)) {
-    // Attribute the miss to whichever mistake it resembles so the existing
-    // report fields (wrongRootGuesses/wrongShapeGuesses) stay meaningful,
-    // even though tone acceptance itself no longer requires strict order.
+  if (midi !== wanted) {
+    // A valid tone played ahead of its teaching step is ignored rather than
+    // marked wrong. An unrelated key is a real guess and never advances.
+    if (orderedTargets.includes(midi)) {
+      return {
+        progress: active.foundMidi.size as 0 | 1 | 2,
+        rootJustFound: false,
+        complete: false,
+        countedGuess: false,
+      };
+    }
     if (active.rootFoundAt === null) active.wrongRootGuesses += 1;
     else active.wrongShapeGuesses += 1;
     return {
@@ -658,11 +657,40 @@ export function advanceSpatialChord(
   const rootJustFound = midi === root && active.rootFoundAt === null;
   if (rootJustFound) active.rootFoundAt = time;
   const progress = active.foundMidi.size as 1 | 2 | 3;
-  if (progress === 3) active.completedAt = time;
   return {
     progress,
     rootJustFound,
-    complete: progress === 3,
+    complete: false,
+    countedGuess: false,
+  };
+}
+
+/** Current held-tone prefix for the guided root → third → fifth UI. */
+export function updateSpatialChordPresence(
+  active: ActiveSpatialChord,
+  presentMidi: ReadonlySet<number>,
+  time: number,
+): SpatialChordAdvance {
+  const orderedTargets = active.spec.buildOrder.map((index) => active.targetMidi[index]);
+  let progress = 0;
+  while (progress < orderedTargets.length && presentMidi.has(orderedTargets[progress])) {
+    progress += 1;
+  }
+  const previous = new Set(active.foundMidi);
+  active.foundMidi.clear();
+  orderedTargets.slice(0, progress).forEach((midi) => {
+    active.foundMidi.add(midi);
+    if (!previous.has(midi)) active.foundAtByMidi.set(midi, time);
+  });
+  const rootJustFound = progress > 0 && active.rootFoundAt === null;
+  if (rootJustFound) active.rootFoundAt = time;
+  active.totalGuesses += Math.max(0, progress - previous.size);
+  return {
+    progress: progress as 0 | 1 | 2 | 3,
+    rootJustFound,
+    // Presence alone is not completion. The caller must verify a stable
+    // simultaneous hold before it may finish the exercise.
+    complete: false,
     countedGuess: false,
   };
 }
@@ -720,7 +748,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
     workletUrl = '/audio/pitch-processor.js?v=proof-recovery-v17-2026-08-23',
-    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v2-2026-08-24',
+    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v3-2026-08-24',
   } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
@@ -792,6 +820,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const proofMidiByDetectorRef = useRef(new Map<number, number>());
   const spatialRef = useRef<ActiveSpatialChord | null>(null);
   const spatialTimeoutRef = useRef(0);
+  const spatialChordHoldTimerRef = useRef(0);
   const spatialSourcesRef = useRef(new Set<AudioScheduledSourceNode>());
   const finishSpatialRef = useRef<((timedOut: boolean) => void) | null>(null);
   const armSpatialDeadlineRef = useRef<((milliseconds: number) => void) | null>(null);
@@ -995,6 +1024,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     if (spatialTimeoutRef.current) {
       window.clearTimeout(spatialTimeoutRef.current);
       spatialTimeoutRef.current = 0;
+    }
+    if (spatialChordHoldTimerRef.current) {
+      window.clearTimeout(spatialChordHoldTimerRef.current);
+      spatialChordHoldTimerRef.current = 0;
     }
     spatialSourcesRef.current.forEach((source) => {
       try {
@@ -1438,38 +1471,13 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
           if (spatialRef.current) {
             const active = spatialRef.current;
-            const orderedTargets = active.spec.buildOrder.map(
-              (index) => active.targetMidi[index],
-            );
-            const wanted = [orderedTargets[Math.min(active.foundMidi.size, 2)]];
-            const alternative = hypotheses.find((hypothesis) =>
-              wanted.some((targetMidi) =>
-                supportsExpectedPitch(hypothesis, targetMidi, !isCandidate),
-              ),
-            );
-            if (!wanted.includes(midi) && alternative) {
-              midi = alternative.midi;
-              diagnosticsRef.current.contextDisambiguated += 1;
-            }
-            const referenceOctaveRescue = Boolean(
-              isCandidate &&
-              data.referenceTransient === true &&
-              alternative &&
-              midi !== primaryMidi &&
-              Math.abs(midi - primaryMidi) === 12 &&
-              Number(data.pianoAttackConfidence) >= 0.72
-            );
-            if (directVoiceVeto && !referenceOctaveRescue) {
-              diagnosticsRef.current.candidatesIgnored += 1;
-              return;
-            }
-            const recoverySupported = !isCandidate || hypotheses.some(
-              (hypothesis) => supportsExpectedPitch(hypothesis, midi, false),
-            );
-            // Borderline candidates may rescue an expected chord tone, but
-            // never become a wrong-guess penalty. Only strict physical onsets
-            // are allowed to count as guesses.
-            if (isCandidate && (!wanted.includes(midi) || !recoverySupported)) {
+            // Spatial chord success belongs exclusively to the independent
+            // simultaneous-tone processor. The monophonic recovery lane used
+            // to retarget almost any onset toward the next expected pitch;
+            // one C or even an unrelated B could therefore fill three slots.
+            // Here it may record a confident wrong-key guess, but it can never
+            // add a target tone or complete the chord.
+            if (isCandidate || directVoiceVeto) {
               diagnosticsRef.current.candidatesIgnored += 1;
               return;
             }
@@ -1477,8 +1485,11 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               diagnosticsRef.current.candidatesIgnored += 1;
               return;
             }
+            if (Number(data.time) < active.startedAt - 0.03) return;
+            if (active.targetMidi.includes(primaryMidi)) return;
 
-            const previousStrike = lastStrikeByMidiRef.current.get(midi);
+            midi = primaryMidi;
+            const previousStrike = lastStrikeByMidiRef.current.get(primaryMidi);
             if (
               previousStrike &&
               !isClearSamePitchRetrigger(previousStrike, {
@@ -1488,24 +1499,22 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                 attackRatio: data.attackRatio,
                 frameAttackRatio: data.frameAttackRatio,
                 novelty: data.novelty,
-                candidate: isCandidate,
-                contextExpected: wanted.includes(midi),
+                candidate: false,
+                contextExpected: false,
               })
             ) {
-              if (isCandidate) diagnosticsRef.current.candidatesIgnored += 1;
               return;
             }
-            if (Number(data.time) < active.startedAt - 0.03) return;
 
             const detectedNote: DetectedNote = {
-              midi,
+              midi: primaryMidi,
               time: Number(data.time),
               clarity: data.clarity ?? 0,
               strength: data.strength ?? 1,
               sustain: data.sustain ?? 1,
               detectorId: Number.isFinite(data.id) ? Number(data.id) : undefined,
-              detectorLane: isCandidate ? 'context-recovery' : 'strict',
-              scoreContextAccepted: wanted.includes(midi),
+              detectorLane: 'strict',
+              scoreContextAccepted: false,
               pianoAttackConfidence: Number(data.pianoAttackConfidence) || 0,
               consensus: Number(data.consensus) || 0,
               pitchMad: Number(data.pitchMad) || 0,
@@ -1523,47 +1532,20 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             if (detectedNote.detectorId !== undefined) {
               onsetByDetectorIdRef.current.set(detectedNote.detectorId, detectedNote);
             }
-            lastStrikeByMidiRef.current.set(midi, {
+            lastStrikeByMidiRef.current.set(primaryMidi, {
               time: Number(data.time),
               peakRms: Number.isFinite(data.peakRms) ? data.peakRms : 0,
               detectorId: detectedNote.detectorId,
-              candidate: isCandidate,
+              candidate: false,
             });
-            if (isCandidate) {
-              diagnosticsRef.current.expectedRecovered += 1;
-              worklet.port.postMessage({
-                type: 'accept-candidate',
-                id: data.id,
-                frequency: 440 * Math.pow(2, (midi - 69) / 12),
-                time: data.time,
-              });
-            } else {
-              diagnosticsRef.current.strictAccepted += 1;
-              if (midi !== primaryMidi) {
-                worklet.port.postMessage({
-                  type: 'retarget-note',
-                  id: data.id,
-                  frequency: 440 * Math.pow(2, (midi - 69) / 12),
-                });
-              }
-            }
+            diagnosticsRef.current.strictAccepted += 1;
 
-            const result = advanceSpatialChord(active, midi, Number(data.time));
+            advanceSpatialChord(active, primaryMidi, Number(data.time));
             safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
-            safeSet(setSpatialProgress, result.progress);
-            safeSet(setSpatialFoundMidi, [...active.foundMidi]);
             safeSet(
               setSpatialWrongGuesses,
               active.wrongRootGuesses + active.wrongShapeGuesses,
             );
-            if (result.rootJustFound) {
-              armSpatialDeadlineRef.current?.(active.spec.shapeSearchSeconds * 1000);
-              cbRef.current.onSpatialRootFound?.();
-            }
-            if (result.complete) {
-              playProofSuccessChime(ctx);
-              finishSpatialRef.current?.(false);
-            }
             return;
           }
 
@@ -1966,27 +1948,19 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         }
 
         const active = spatialRef.current;
-        const heard = new Set(
+        const heard = new Set<number>(
           (Array.isArray(data.midi) ? data.midi : [])
             .map(Number)
-            .filter(Number.isFinite)
+            .filter((value: unknown): value is number => Number.isFinite(value))
             .map(Math.round),
         );
         const baseTime = Number.isFinite(data.time) ? Number(data.time) : ctx.currentTime;
-        const orderedMidi = active.spec.buildOrder
-          .map((index) => active.targetMidi[index])
-          .filter((midi) => heard.has(midi) && !active.foundMidi.has(midi));
-        if (orderedMidi.length === 0) return;
-
-        orderedMidi.forEach((midi, index) => {
-          // orderedMidi is already every currently-heard, not-yet-found
-          // target tone — advanceSpatialChord below accepts each of them
-          // regardless of arrival order, which is what makes a genuinely
-          // simultaneous chord register as three notes instead of one.
-          // Tiny offsets keep result ordering stable when several tones
-          // arrive in the same analysis frame.
+        const previousFound = new Set(active.foundMidi);
+        const result = updateSpatialChordPresence(active, heard, baseTime);
+        const newlyPresent = [...active.foundMidi].filter((midi) => !previousFound.has(midi));
+        newlyPresent.forEach((midi, index) => {
           const time = baseTime + index * 0.001;
-          const note: DetectedNote = {
+          onsetsRef.current.push({
             midi,
             time,
             clarity: 1,
@@ -1994,24 +1968,38 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             sustain: 1,
             detectorLane: 'strict',
             scoreContextAccepted: true,
-          };
-          onsetsRef.current.push(note);
+          });
           diagnosticsRef.current.strictAccepted += 1;
-          const result = advanceSpatialChord(active, midi, time);
-          safeSet(setSpatialProgress, result.progress);
-          safeSet(setSpatialFoundMidi, [...active.foundMidi]);
-          if (result.rootJustFound) {
-            armSpatialDeadlineRef.current?.(active.spec.shapeSearchSeconds * 1000);
-            cbRef.current.onSpatialRootFound?.();
-          }
-          if (result.complete) {
-            active.completedAt = time;
-            playProofSuccessChime(ctx);
-            finishSpatialRef.current?.(false);
-          }
         });
-        onsetsRef.current.sort((a, b) => a.time - b.time);
-        safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
+        safeSet(setSpatialProgress, result.progress);
+        safeSet(setSpatialFoundMidi, [...active.foundMidi]);
+        if (result.rootJustFound) {
+          armSpatialDeadlineRef.current?.(active.spec.shapeSearchSeconds * 1000);
+          cbRef.current.onSpatialRootFound?.();
+        }
+
+        if (result.progress === active.targetMidi.length) {
+          if (!spatialChordHoldTimerRef.current) {
+            spatialChordHoldTimerRef.current = window.setTimeout(() => {
+              spatialChordHoldTimerRef.current = 0;
+              const current = spatialRef.current;
+              if (current !== active || finishedRef.current) return;
+              const targets = current.spec.buildOrder.map((index) => current.targetMidi[index]);
+              if (!targets.every((midi) => current.foundMidi.has(midi))) return;
+              current.completedAt = ctx.currentTime;
+              playProofSuccessChime(ctx);
+              finishSpatialRef.current?.(false);
+            }, SPATIAL_CHORD_HOLD_MS);
+          }
+        } else if (spatialChordHoldTimerRef.current) {
+          window.clearTimeout(spatialChordHoldTimerRef.current);
+          spatialChordHoldTimerRef.current = 0;
+        }
+
+        if (newlyPresent.length > 0) {
+          onsetsRef.current.sort((a, b) => a.time - b.time);
+          safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
+        }
       };
 
       // Analysis only — never routed to the speakers, so no feedback path.
@@ -2431,6 +2419,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         armSpatialDeadlineRef.current = null;
         if (spatialTimeoutRef.current) window.clearTimeout(spatialTimeoutRef.current);
         spatialTimeoutRef.current = 0;
+        if (spatialChordHoldTimerRef.current) {
+          window.clearTimeout(spatialChordHoldTimerRef.current);
+          spatialChordHoldTimerRef.current = 0;
+        }
         cbRef.current.onAnalysisStart?.();
         const recordingDone = stopMicRecording();
         safeSet(setPhase, 'idle' as DrillPhase);
