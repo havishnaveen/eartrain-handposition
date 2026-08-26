@@ -152,7 +152,7 @@ try {
 
             if (question.exerciseMode === 'anchor-shift') {
               const stagedReveal = concept.index >= 15;
-              const expectedWaitSeconds = concept.index === 15 ? 4 : concept.index === 16 ? 3 : 2;
+              const expectedWaitSeconds = concept.index === 15 ? 5 : concept.index === 16 ? 3.5 : 2;
               if (!stagedReveal) {
                 assert.equal(question.anchorShift?.timedShift, undefined,
                   `Lesson ${concept.index} must preserve the original always-visible switch.`);

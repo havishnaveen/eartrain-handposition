@@ -15,7 +15,12 @@ const server = await createServer({
 
 try {
   const { gradeSequence, gradeSpatialChord } = await server.ssrLoadModule('/src/audio/timing.ts');
-  const { advanceSpatialChord, polyphonicTargetsForPlan, updateSpatialChordPresence } = await server.ssrLoadModule(
+  const {
+    advanceSpatialChord,
+    formatDetectedNoteGroups,
+    polyphonicTargetsForPlan,
+    updateSpatialChordPresence,
+  } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
   );
 
@@ -31,6 +36,15 @@ try {
   assert.deepEqual(polyphonicTargetsForPlan({
     expectedNotes: sequentialPlan.expectedNotes.map((slot) => ({ ...slot, beat: 0 })),
   }), [60, 64, 67], 'A genuine simultaneous chord must retain polyphonic support.');
+  assert.deepEqual(
+    formatDetectedNoteGroups([
+      { midi: 60, time: 1, clarity: 1, strength: 1 },
+      { midi: 64, time: 1.001, clarity: 1, strength: 1 },
+      { midi: 67, time: 1.002, clarity: 1, strength: 1 },
+    ]),
+    ['Chord: C4 + E4 + G4'],
+    'A detected chord must be displayed as one simultaneous chord, not random note labels.',
+  );
 
   const chordSpec = {
     chordName: 'C Major',
@@ -114,6 +128,17 @@ try {
   assert.ok(grade.scores.overall < 2, 'A performance full of extra notes must score as incorrect.');
   assert.match(grade.detail, /too many extra notes/i,
     'The retry must explain that the played pattern contained too many notes.');
+
+  const oneRoomArtifact = gradeSequence(expected, [{
+    midi: 60,
+    time: 10,
+    clarity: 0.9,
+    strength: 1,
+  }]);
+  assert.equal(oneRoomArtifact.scores.timing, 0,
+    'One accidental room detection must not receive Timing credit.');
+  assert.equal(oneRoomArtifact.scores.cleanliness, 0,
+    'One accidental room detection must not look like a clean performance.');
 
   const acousticEchoes = [
     ...perfect,

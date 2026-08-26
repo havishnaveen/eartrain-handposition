@@ -400,7 +400,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               {status === 'prompt'
                 ? `${rootName} is supplied. Hear the chord whole, then copy its 1–3–5 shape without seeing the answer.`
                 : isCue
-                  ? `Three passes: anchor, whole chord, then broken 1–3–5.`
+                  ? `First hear the chord together. Then hear its notes as 1–3–5.`
                   : isComplete
                     ? chordSucceeded
                       ? 'You found the whole hand shape.'
@@ -429,25 +429,20 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             {isCue ? (
               <div className="et-spatial__cue-card">
                 <div className="et-spatial__listen-passes" aria-label={`${rootName} is supplied; the other chord tones remain hidden`}>
-                  <div className="et-spatial__listen-pass et-spatial__listen-pass--anchor">
-                    <small>1 · Anchor</small>
-                    <strong>{rootName}</strong>
-                    <span>Finger {rootFinger}</span>
-                  </div>
                   <div className="et-spatial__listen-pass">
-                    <small>2 · Whole chord</small>
+                    <small>1 · Whole chord</small>
                     <span className="et-spatial__chord-dots" aria-hidden="true"><i /><i /><i /></span>
                     <strong>One blended sound</strong>
                   </div>
                   <div className="et-spatial__listen-pass">
-                    <small>3 · Broken shape</small>
+                    <small>2 · Broken notes</small>
                     <span className="et-spatial__finger-shape" aria-hidden="true">1 · 3 · 5</span>
                     <strong>Bottom · middle · top</strong>
                   </div>
                 </div>
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-                  <span><strong>Listen in three passes</strong><small>The hidden note names are never shown</small></span>
+                  <span><strong>Chord, then broken notes</strong><small>Only the target is played</small></span>
                 </div>
                 {spatialAudioIssue ? (
                   <div className="et-spatial__audio-issue" role="alert">

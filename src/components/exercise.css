@@ -1762,7 +1762,7 @@
 .et-spatial__listen-passes {
   min-height: 215px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 14px;
   padding: 28px;
@@ -2345,6 +2345,19 @@
 .et-kid-steps span.is-done { color: #08705f; border-color: rgba(10,129,110,.22); background: rgba(226,249,242,.72); }
 .et-kid-steps span.is-done b { background: #0a816e; }
 .et-kid-steps--shift span { color: var(--et-ink-strong); }
+.et-exercise:has(.et-anchor-cue[data-active-position='from']) .et-kid-steps--shift span:nth-child(1),
+.et-exercise:has(.et-anchor-cue[data-active-position='move']) .et-kid-steps--shift span:nth-child(2),
+.et-exercise:has(.et-anchor-cue[data-active-position='to']) .et-kid-steps--shift span:nth-child(3) {
+  color: var(--et-orange-deep);
+  border-color: var(--et-orange-edge);
+  background: var(--et-orange-wash);
+  box-shadow: 0 6px 16px rgba(239,106,71,.1);
+}
+.et-exercise:has(.et-anchor-cue[data-active-position='from']) .et-kid-steps--shift span:nth-child(1) b,
+.et-exercise:has(.et-anchor-cue[data-active-position='move']) .et-kid-steps--shift span:nth-child(2) b,
+.et-exercise:has(.et-anchor-cue[data-active-position='to']) .et-kid-steps--shift span:nth-child(3) b {
+  background: var(--et-orange);
+}
 
 .et-orientation-tip button:hover { background: var(--et-orange-deep); }
 .et-orientation-tip button:focus-visible { outline: 3px solid rgba(239, 106, 71, 0.3); outline-offset: 2px; }

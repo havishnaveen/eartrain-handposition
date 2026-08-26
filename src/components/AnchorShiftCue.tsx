@@ -48,15 +48,11 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
       Math.max(1, (staff?.notes.length ?? 2) - 1),
     );
 
-    const { firstCue, secondCue, firstBeats, sharedPanelBeats } = useMemo(() => {
-      if (!staff) return { firstCue: cue, secondCue: cue, firstBeats: 0, sharedPanelBeats: 0 };
+    const { firstCue, secondCue, firstBeats } = useMemo(() => {
+      if (!staff) return { firstCue: cue, secondCue: cue, firstBeats: 0 };
       const firstNotes = staff.notes.slice(0, split);
       const secondNotes = staff.notes.slice(split);
       const firstDuration = firstNotes.reduce(
-        (sum, note) => sum + beatsForDuration(note.duration),
-        0,
-      );
-      const secondDuration = secondNotes.reduce(
         (sum, note) => sum + beatsForDuration(note.duration),
         0,
       );
@@ -64,7 +60,6 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         firstCue: { ...cue, staves: [{ ...staff, notes: firstNotes }] },
         secondCue: { ...cue, staves: [{ ...staff, notes: secondNotes }] },
         firstBeats: firstDuration,
-        sharedPanelBeats: Math.max(firstDuration, secondDuration),
       };
     }, [cue, split, staff]);
     const waitSeconds = Math.max(0, shift.timedShift?.waitSeconds ?? 0);
@@ -136,7 +131,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
             <b className="et-anchor-cue__step">1</b>
             <span><small>Play here first</small><strong>{shift.fromPositionName}</strong></span>
           </header>
-          <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} minimumTimelineBeats={sharedPanelBeats} />
+          <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} />
         </section>
 
         <div className="et-anchor-cue__bridge" aria-label={waitSeconds > 0 ? `${waitSeconds}-second phrase-preview countdown` : 'Move your hand'}>
@@ -159,7 +154,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
             <b className="et-anchor-cue__step">3</b>
             <span><small>Land here</small><strong>{shift.toPositionName}</strong></span>
           </header>
-          <StaffCue ref={secondRef} cue={secondCue} accentColor={accentColor} inkColor={inkColor} minimumTimelineBeats={sharedPanelBeats} />
+          <StaffCue ref={secondRef} cue={secondCue} accentColor={accentColor} inkColor={inkColor} />
         </section>
       </div>
     );

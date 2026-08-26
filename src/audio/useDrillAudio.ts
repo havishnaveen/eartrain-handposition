@@ -101,7 +101,21 @@ const EMPTY_DIAGNOSTICS: RecognitionDiagnostics = {
 const PROOF_FINAL_HOLD_VERIFY_MS = 520;
 /** Prove It must not reset from a weak, ambiguous decay estimate. */
 const PROOF_RELEASE_MIN_CONFIDENCE = 0.66;
-const OUTPUT_GAIN_MULTIPLIER = 1.35;
+const OUTPUT_GAIN_MULTIPLIER = 2.025;
+
+/** Present simultaneous detections as one chord instead of random-looking notes. */
+export function formatDetectedNoteGroups(notes: readonly DetectedNote[]): string[] {
+  const groups: DetectedNote[][] = [];
+  [...notes].sort((a, b) => a.time - b.time).forEach((note) => {
+    const group = groups[groups.length - 1];
+    if (!group || note.time - group[0].time > 0.045) groups.push([note]);
+    else group.push(note);
+  });
+  return groups.map((group) => {
+    const names = [...new Set(group.map((note) => midiToName(note.midi)))];
+    return names.length > 1 ? `Chord: ${names.join(' + ')}` : names[0];
+  });
+}
 
 interface PcmCaptureSession {
   id: number;
@@ -1593,7 +1607,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             if (detectedNote.detectorId !== undefined) {
               active.wrongHeldDetectorIds.add(detectedNote.detectorId);
             }
-            safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
+            safeSet(setDetectedNames, formatDetectedNoteGroups(onsetsRef.current));
             safeSet(
               setSpatialWrongGuesses,
               active.wrongRootGuesses + active.wrongShapeGuesses,
@@ -1928,7 +1942,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             });
           }
           onsetsRef.current.sort((a, b) => a.time - b.time);
-          safeSet(setDetectedNames, onsetsRef.current.map((n) => midiToName(n.midi)));
+          safeSet(setDetectedNames, formatDetectedNoteGroups(onsetsRef.current));
         }
       };
 
@@ -1993,7 +2007,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           });
           if (added) {
             onsetsRef.current.sort((a, b) => a.time - b.time);
-            safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
+            safeSet(setDetectedNames, formatDetectedNoteGroups(onsetsRef.current));
           }
           return;
         }
@@ -2064,7 +2078,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
         if (newlyPresent.length > 0) {
           onsetsRef.current.sort((a, b) => a.time - b.time);
-          safeSet(setDetectedNames, onsetsRef.current.map((note) => midiToName(note.midi)));
+          safeSet(setDetectedNames, formatDetectedNoteGroups(onsetsRef.current));
         }
       };
 
@@ -2157,32 +2171,21 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     // by design; this path never falls back to oscillators or synthetic
     // "instrument layers". Every pitched example the child hears is piano.
     await initPianoAudio();
-    const progression = spec.context.progression.length > 0
-      ? spec.context.progression
-      : [spec.chordPitches];
-    const allPitches = new Set([
-      ...progression.flat(),
-      ...spec.chordPitches,
-      spec.rootPitch,
-    ]);
+    const allPitches = new Set(spec.chordPitches);
     const loaded = new Map<string, unknown>();
     await Promise.all([...allPitches].map(async (pitch) => {
       const parsed = splitPianoPitch(pitch);
       const buffer = parsed ? await loadPianoSample(parsed.note, parsed.octave) : null;
       loaded.set(pitch, buffer);
     }));
-    // The progression and the "matched" root replay are decorative — the
-    // three pitches the student is actually graded on are not. If any of
-    // those specifically failed to load (a CDN hiccup), tell the UI so it
-    // can say so instead of leaving the student listening for silence.
+    // If any target sample failed to load, tell the UI instead of leaving the
+    // student listening for silence.
     const missingTarget = spec.chordPitches.some((pitch) => !loaded.get(pitch));
     safeSet(setSpatialAudioIssue, missingTarget);
 
     const pianoContext = getPianoAudioContext();
     if (!pianoContext) return ctx.currentTime;
     const start = pianoContext.currentTime + 0.16;
-    const chordDuration = Math.max(0.8, spec.context.secondsPerChord);
-
     const schedulePitches = (
       pitches: readonly string[],
       offset: number,
@@ -2204,40 +2207,13 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       });
     };
 
-    // Supply the anchor before the harmony. The remaining tones can stay
-    // visually hidden because the learner now has a concrete relative-pitch
-    // reference instead of being asked to identify an absolute chord blind.
-    schedulePitches([spec.rootPitch], 0, 0.72, 0.82);
-    let offset = 0.95;
-
-    // A short voice-led context gives the chord a tonal home without burying
-    // the sound the learner must copy. Single-chord questions skip it.
-    if (progression.length > 1) {
-      progression.forEach((chord, index) => {
-        const resolvesToTarget = index === progression.length - 1;
-        schedulePitches(
-          chord,
-          offset,
-          resolvesToTarget ? chordDuration * 1.22 : chordDuration * 0.82,
-          resolvesToTarget ? 0.94 : 0.78,
-        );
-        offset += resolvesToTarget ? chordDuration * 1.3 : chordDuration * 0.92;
-      });
-      offset += 0.18;
-    }
-
-    // Three unambiguous listening passes: whole shape, 1-3-5, whole shape.
-    // The final sound is the complete tonic chord—not an isolated note—so
-    // the harmonic memory and the required simultaneous response agree.
-    const wholeRepeats = Math.max(1, Math.min(2, spec.context.targetRepeats));
-    for (let repeat = 0; repeat < wholeRepeats; repeat++) {
-      schedulePitches(spec.chordPitches, offset, 0.9, 0.96);
-      offset += 1.08;
-    }
-    schedulePitches(spec.chordPitches, offset, 0.62, 0.84, 0.48);
-    offset += 0.48 * spec.chordPitches.length + 0.28;
-    schedulePitches(spec.chordPitches, offset, 1.35, 1);
-    offset += 1.55;
+    // Exactly two examples: the target chord together, then the same notes
+    // broken from bottom to top. No lead-in chord, anchor replay, background
+    // harmony or decorative ending can be confused with the answer.
+    schedulePitches(spec.chordPitches, 0, 1.05, 1);
+    const brokenStart = 1.35;
+    schedulePitches(spec.chordPitches, brokenStart, 0.7, 0.9, 0.52);
+    const offset = brokenStart + 0.52 * spec.chordPitches.length + 0.34;
 
     // Return an equivalent end time on the microphone context's clock.
     return ctx.currentTime + 0.16 + offset;

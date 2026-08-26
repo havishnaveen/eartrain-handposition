@@ -52,7 +52,15 @@ try {
       const chordNotes = question.cue.staves
         .flatMap((staff) => staff.notes)
         .filter((note) => !note.duration.endsWith('r') && note.keys.length >= 2);
-      assert.ok(chordNotes.length >= 2, `Lesson ${lesson.index} normal exercise needs chords.`);
+      assert.ok(chordNotes.length >= 1, `Lesson ${lesson.index} normal exercise needs chords.`);
+      if (lesson.index === 17) {
+        const sounded = question.cue.staves.flatMap((staff) => staff.notes)
+          .filter((note) => !note.duration.endsWith('r'));
+        assert.equal(sounded.length, 5, 'Lesson 17 must stay at a short late-Level-5 phrase length.');
+        assert.equal(sounded.at(-1).keys.length, 3, 'Lesson 17 introduces its only chord at the end.');
+        assert.ok(sounded.slice(0, -1).every((note) => note.keys.length === 1),
+          'Lesson 17 must build from single notes before its final chord.');
+      }
       assert.deepEqual(
         question.cue.staves.flatMap((staff) => staff.notes)
           .filter((note) => !note.duration.endsWith('r'))
@@ -90,7 +98,46 @@ try {
     });
   }
 
-  console.log('Late standard-chord audit passed: Lessons 16-19 retain normal reading, and every normal rep contains simultaneous chords.');
+  const switchExpectations = new Map([
+    [14, { landingNotes: 4, waitSeconds: 0 }],
+    [15, { landingNotes: 4, waitSeconds: 5 }],
+    [18, { landingNotes: 5, waitSeconds: 2 }],
+  ]);
+  for (const [lessonIndex, expected] of switchExpectations) {
+    const lesson = PROGRESSIVE_CONCEPTS[lessonIndex - 1];
+    const question = lesson.generate(
+      lessonIndex * 100 + 1,
+      makeRandom(20260826 + lessonIndex),
+      0.5,
+      'normal',
+      1,
+    );
+    assert.equal(question.exerciseMode, 'anchor-shift');
+    assert.equal(
+      question.cue.staves[0].notes.length - question.anchorShift.splitIndex,
+      expected.landingNotes,
+      `Lesson ${lessonIndex} must use its gradual destination-phrase length.`,
+    );
+    assert.equal(
+      question.anchorShift.timedShift?.waitSeconds ?? 0,
+      expected.waitSeconds,
+      `Lesson ${lessonIndex} must use its gradual reveal time.`,
+    );
+  }
+
+  const dedicatedChordRoots = PROGRESSIVE_CONCEPTS
+    .filter(({ index }) => index >= 19 && index <= 24)
+    .map((lesson) => lesson.generate(
+      lesson.index * 100 + 1,
+      makeRandom(303000 + lesson.index),
+      0.5,
+      'normal',
+      1,
+    ).spatialChord.rootPitch.replace(/-?\d+$/, ''));
+  assert.ok(new Set(dedicatedChordRoots).size >= 4,
+    `Dedicated chord lessons must rotate starting roots, received ${dedicatedChordRoots.join(', ')}.`);
+
+  console.log('Late curriculum audit passed: readable switch phrases, varied chord roots, and simultaneous late-reading chords.');
 } finally {
   await server.close();
   await rm(auditCacheDir, { recursive: true, force: true });

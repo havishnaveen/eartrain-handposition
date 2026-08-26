@@ -476,17 +476,17 @@ export function timingLeniencyForLesson(
   const linear = clamp01((Math.max(1, lessonLevel) - 1) / (safeTotal - 1));
   const progress = linear * linear * (3 - 2 * linear);
   return {
-    onBeatWindow: mix(0.65, 0.42, progress),
+    onBeatWindow: mix(0.68, 0.46, progress),
     // Speaker-to-microphone and browser input latency shifts an otherwise
     // steady phrase as a block. Grade the intervals, not that fixed hardware
     // delay; a non-uniform or genuinely late rhythm still survives below.
-    startOffsetAllowance: mix(0.90, 0.65, progress),
+    startOffsetAllowance: mix(0.95, 0.70, progress),
     // A continuous curve with no plateau penalised even a dead-centre take:
     // ordinary microphone/onset uncertainty turned 5.0 into 4.6. Preserve a
     // small, lesson-aware full-credit region, then grade the residual error.
-    fullCreditOnsetWindow: mix(0.24, 0.17, progress),
-    fullCreditDurationWindow: mix(0.38, 0.25, progress),
-    zeroScoreWindow: mix(1.80, 1.20, progress),
+    fullCreditOnsetWindow: mix(0.28, 0.20, progress),
+    fullCreditDurationWindow: mix(0.42, 0.28, progress),
+    zeroScoreWindow: mix(1.90, 1.30, progress),
   };
 }
 
@@ -1365,6 +1365,13 @@ export function gradeSequence(
     totalMissed === 0;
   const cleanPerformance = significantExtraCount === 0;
   const completeAndClean = completePitch && cleanPerformance;
+  // One room artefact is not a performance. Timing and Cleanliness need a
+  // minimum amount of played musical evidence before either can earn credit.
+  const minimumPerformanceMatches = Math.min(
+    expectedCount,
+    Math.max(2, Math.ceil(expectedCount * 0.25)),
+  );
+  const hasPerformanceEvidence = matches.length >= minimumPerformanceMatches;
 
   // Five means there is no useful timing correction to give—not that every
   // FFT timestamp landed inside an artificially tiny mathematical plateau.
@@ -1387,19 +1394,21 @@ export function gradeSequence(
     transitionSupportsFullCredit,
   );
   const timingScore =
-    fullCreditTiming
-      ? 5
-      : baseTimingScore === null
-        ? transition?.score ?? null
-        : transition
-          ? clamp5(baseTimingScore * 0.65 + transition.score * 0.35)
-          : baseTimingScore;
+    !hasPerformanceEvidence
+      ? 0
+      : fullCreditTiming
+        ? 5
+        : baseTimingScore === null
+          ? transition?.score ?? null
+          : transition
+            ? clamp5(baseTimingScore * 0.65 + transition.score * 0.35)
+            : baseTimingScore;
 
   // Cleanliness: penalises only what the student actually did. Echoes and
   // resonances are the room's doing and cost nothing.
   // Nothing played is not a clean performance — it is no performance.
   const cleanScore =
-    detected.length === 0
+    !hasPerformanceEvidence
       ? 0
       : completeAndClean
         // Quiet-room recoveries, sympathetic resonance, and harmless

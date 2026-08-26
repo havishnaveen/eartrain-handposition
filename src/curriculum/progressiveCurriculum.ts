@@ -318,8 +318,8 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'prove-it', hands: BOTH_HANDS,
     // Deliberate B, B, F# order: each hand meets B before F# is introduced.
     positions: [B, B, FS], rightOctaves: [4], leftOctaves: [3],
-    contours: [...MUSICAL_BEGINNER, ...MUSICAL_GENTLE_SKIPS], meters: [4],
-    showKeySignature: true, tempoEasy: 13.2, tempoHard: 11.8,
+    contours: FIVE_FINGER_PATHS, meters: [4],
+    showKeySignature: true, tempoEasy: 15, tempoHard: 14,
     standardChordReps: [2],
   },
   {
@@ -830,11 +830,17 @@ function chordalStandardQuestion(
     Math.floor((questionNumber - 1) / lesson.positions.length),
   );
   const position = buildPosition(positionTemplate, octave);
-  const phraseBanks: readonly (readonly (readonly number[])[])[] = [
-    [[0, 2, 4], [1], [2], [0, 2, 4], [4], [3], [0, 4], [0, 2, 4]],
-    [[0], [1], [0, 2, 4], [2], [3], [4], [0, 4], [0, 2, 4]],
-    [[4], [3], [0, 2, 4], [1], [2], [1], [0, 4], [0, 2, 4]],
-  ];
+  const phraseBanks: readonly (readonly (readonly number[])[])[] = lesson.index === 17
+    ? [
+      [[0], [1], [2], [1], [0, 2, 4]],
+      [[2], [1], [0], [1], [0, 2, 4]],
+      [[0], [1], [2], [3], [0, 2, 4]],
+    ]
+    : [
+      [[0, 2, 4], [1], [2], [0, 2, 4], [4], [3], [0, 4], [0, 2, 4]],
+      [[0], [1], [0, 2, 4], [2], [3], [4], [0, 4], [0, 2, 4]],
+      [[4], [3], [0, 2, 4], [1], [2], [1], [0, 4], [0, 2, 4]],
+    ];
   const events = cyclePick(phraseBanks, ordinal + lesson.index);
   const notes: CueNote[] = events.map((degrees, index) => ({
     keys: degrees.map((degree) => position.vf[degree]),
@@ -881,7 +887,12 @@ function spatialChordQuestion(
   // every later chord lesson: a learner could meet F-sharp first in Lesson 24
   // simply because they needed extra practice in Lesson 6. Local rep order
   // keeps each lesson's intended easiest-to-hardest sequence stable.
-  const rootTemplate = cyclePick(recipe.roots, localRep);
+  // Dedicated chord lessons should not all restart on C. Preserve the
+  // within-lesson progression while rotating each lesson's starting root.
+  const lessonRootOffset = lesson.exerciseMode === 'spatial-chord'
+    ? Math.max(0, lesson.index - 19)
+    : 0;
+  const rootTemplate = cyclePick(recipe.roots, localRep + lessonRootOffset);
   const quality = cyclePick(recipe.qualities, localRep);
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
   // Ear work stays in the already-established register until the dedicated
@@ -1017,10 +1028,7 @@ function questionFor(
       [2, 0, 1],
       [0, 1, 3],
     ];
-    const landingPool: readonly Contour[] = [
-      // Six landing notes leave enough room for an eighth/sixteenth group
-      // after the protected hand-off. Faster rhythm is therefore still taught
-      // in late lessons without ever making the actual jump a rapid note.
+    const fullLandingPool: readonly Contour[] = [
       [0, 1, 2, 3, 2, 0],
       [0, 2, 1, 3, 2, 0],
       [2, 3, 1, 4, 2, 0],
@@ -1030,6 +1038,11 @@ function questionFor(
       [0, 2, 4, 3, 1, 0],
       [3, 1, 2, 4, 2, 0],
     ];
+    // The physical switch is introduced before phrase complexity. Lessons
+    // 13-15 use only three/four destination notes; later switches expand
+    // gradually, never jumping straight to a dense six-note landing.
+    const landingLength = lesson.index <= 13 ? 3 : lesson.index <= 15 ? 4 : 5;
+    const landingPool = fullLandingPool.map((contour) => contour.slice(0, landingLength));
     const opening = variedPick(openingPool, modeDifficulty, ordinal + lesson.index);
     const landing = variedPick(landingPool, modeDifficulty, ordinal * 2 + lesson.index);
     const splitIndex = opening.length;
@@ -1054,7 +1067,7 @@ function questionFor(
       0.42,
       1.1 - (lesson.index - 13) * 0.12 - modeDifficulty * 0.18,
     );
-    const waitSeconds = lesson.index === 15 ? 4 : lesson.index === 16 ? 3 : 2;
+    const waitSeconds = lesson.index === 15 ? 5 : lesson.index === 16 ? 3.5 : 2;
     const stagedReveal = lesson.index >= 15;
 
     return {
