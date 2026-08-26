@@ -20,7 +20,7 @@ export interface ScoreAnalysisResult {
   reason: string;
 }
 
-const WORKER_URL = '/audio/score-analyzer-worker.js?v=piano-stretch-v16-2026-08-25';
+const WORKER_URL = '/audio/score-analyzer-worker.js?v=physical-evidence-v17-2026-08-26';
 const ANALYSIS_TIMEOUT_MS = 10_000;
 
 function combineChunks(chunks: readonly Float32Array[]): Float32Array {
@@ -45,48 +45,31 @@ function isDetectedNote(value: unknown): value is DetectedNote {
   );
 }
 
-/**
- * Final invariant: an exact written slot that cleared the live detector and
- * was shown to the student cannot disappear merely because a second FFT pass
- * chose a different local maximum. The worker may refine its time/duration;
- * it may not delete it. Unassigned events, voice, and unsupported harmonic
- * shadows receive no protection and remain subject to offline rejection.
- */
-export function preserveConfirmedLiveNotes(
-  analyzed: readonly DetectedNote[],
+/** Conservative emergency path when whole-take PCM analysis is unavailable. */
+export function credibleRealtimeFallback(
   realtime: readonly DetectedNote[],
-): { notes: DetectedNote[]; preserved: number } {
-  const notes = [...analyzed];
-  const representedSlots = new Set(
-    notes
-      .map((note) => note.expectedSlot)
-      .filter((slot): slot is number => Number.isInteger(slot)),
-  );
-  let preserved = 0;
-
-  realtime.forEach((note) => {
-    const slot = note.expectedSlot;
+): DetectedNote[] {
+  return realtime.filter((note) => {
+    if (note.detectorLane === 'polyphonic') return true;
     if (
-      !Number.isInteger(slot) ||
-      representedSlots.has(slot as number) ||
-      note.scoreContextAccepted !== true ||
+      note.detectorLane !== 'strict' ||
       note.voiceVeto === true ||
       note.voiceBurst === true ||
       (note.harmonicShadow === true && note.harmonicIndependentAttack !== true)
-    ) return;
-    notes.push({ ...note, analysisSource: 'realtime-final-invariant' });
-    representedSlots.add(slot as number);
-    preserved += 1;
+    ) return false;
+    const gate = Math.max(0.0005, Number(note.gate) || 0);
+    return (
+      (Number(note.peakRms) || 0) >= gate * 1.02 &&
+      (Number(note.pianoAttackConfidence) || 0) >= 0.56 &&
+      (Number(note.consensus) || 0) >= 0.68 &&
+      (Number(note.clarity) || 0) >= 0.55 &&
+      (Number(note.frameAttackRatio) || 0) >= 0.98 &&
+      (Number(note.novelty) || 0) >= 0.2
+    );
   });
-
-  notes.sort((a, b) => a.time - b.time);
-  return { notes, preserved };
 }
 
-/**
- * Run score-aware analysis off the UI and audio threads. Failure is always
- * recoverable: callers retain the real-time notes as their fallback.
- */
+/** Run score-aware analysis off the UI and audio threads. */
 export function analyzeCapturedTake(
   capture: CapturedPcm,
   plan: DrillPlan,
@@ -100,7 +83,7 @@ export function analyzeCapturedTake(
     !Number.isFinite(capture.sampleRate)
   ) {
     return Promise.resolve({
-      notes: [...realtime],
+      notes: credibleRealtimeFallback(realtime),
       recovered: 0,
       livePreserved: 0,
       rejected: 0,
@@ -124,7 +107,7 @@ export function analyzeCapturedTake(
       resolve(result);
     };
     const fallback = (reason: string): ScoreAnalysisResult => ({
-      notes: [...realtime],
+      notes: credibleRealtimeFallback(realtime),
       recovered: 0,
       livePreserved: 0,
       rejected: 0,
@@ -151,16 +134,12 @@ export function analyzeCapturedTake(
           ? (data.notes as unknown[])
               .filter(isDetectedNote)
               .sort((a: DetectedNote, b: DetectedNote) => a.time - b.time)
-          : [...realtime];
-        const reconciled = preserveConfirmedLiveNotes(notes, realtime);
+          : credibleRealtimeFallback(realtime);
         finish({
-          notes: reconciled.notes,
+          notes,
           recovered: Number.isFinite(data.recovered) ? data.recovered : 0,
-          livePreserved: (Number.isFinite(data.livePreserved) ? data.livePreserved : 0) + reconciled.preserved,
-          rejected: Math.max(
-            0,
-            (Number.isFinite(data.rejected) ? data.rejected : 0) - reconciled.preserved,
-          ),
+          livePreserved: Number.isFinite(data.livePreserved) ? data.livePreserved : 0,
+          rejected: Number.isFinite(data.rejected) ? data.rejected : 0,
           expectedAccepted: Number.isFinite(data.expectedAccepted) ? data.expectedAccepted : 0,
           expectedCount: Number.isFinite(data.expectedCount)
             ? data.expectedCount

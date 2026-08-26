@@ -20,6 +20,10 @@ const CALIBRATION_FRAMES = 12;
 // new arrival again. Brief threshold flutter inside one piano decay is not a
 // second hammer strike.
 const RELEASE_FRAMES = 10;
+// Adjacent guard tones are most ambiguous during the first FFT attack frame.
+// Wait through that smear before declaring a wrong key; a real held extra
+// remains present, while leakage from the correct chord settles away.
+const GUARD_STABLE_FRAMES = 10;
 const TUNING_RATIOS = [Math.pow(2, -22 / 1200), 1, Math.pow(2, 22 / 1200)];
 const STRETCH = [0, 0.00055];
 
@@ -34,6 +38,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.write = 0;
     this.sinceHop = 0;
     this.targets = [];
+    this.expectedTargets = [];
     this.baselines = new Map();
     this.calibrationEvidence = new Map();
     this.stableFrames = new Map();
@@ -44,10 +49,15 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.port.onmessage = (event) => {
       const data = event.data || {};
       if (data.type === 'prepare-chord' || data.type === 'listen-chord') {
-        const targets = (Array.isArray(data.targetMidi) ? data.targetMidi : [])
+        const expectedTargets = (Array.isArray(data.targetMidi) ? data.targetMidi : [])
           .map(Number)
           .filter((midi) => Number.isFinite(midi) && midi >= 21 && midi <= 108)
           .map(Math.round);
+        const monitorTargets = (Array.isArray(data.monitorMidi) ? data.monitorMidi : expectedTargets)
+          .map(Number)
+          .filter((midi) => Number.isFinite(midi) && midi >= 21 && midi <= 108)
+          .map(Math.round);
+        const targets = [...new Set([...expectedTargets, ...monitorTargets])].sort((a, b) => a - b);
         const canReuseBaseline =
           data.type === 'listen-chord' &&
           data.reuseBaseline === true &&
@@ -55,6 +65,7 @@ class ChordProcessor extends AudioWorkletProcessor {
           targets.every((midi, index) => midi === this.targets[index]) &&
           targets.every((midi) => this.baselines.has(midi));
         this.targets = targets;
+        this.expectedTargets = expectedTargets;
         if (!canReuseBaseline) this.baselines.clear();
         this.calibrationEvidence.clear();
         this.stableFrames.clear();
@@ -68,6 +79,7 @@ class ChordProcessor extends AudioWorkletProcessor {
         this.listening = false;
         this.reportEnabled = false;
         this.targets = [];
+        this.expectedTargets = [];
         this.calibrationFrames = 0;
         this.calibrationEvidence.clear();
         this.stableFrames.clear();
@@ -78,6 +90,9 @@ class ChordProcessor extends AudioWorkletProcessor {
   }
 
   _magnitude(frequency) {
+    const cacheKey = Math.round(frequency * 100);
+    const cached = this.magnitudeCache.get(cacheKey);
+    if (cached !== undefined) return cached;
     const omega = (2 * Math.PI * frequency) / sampleRate;
     const cosine = Math.cos(omega);
     const sine = Math.sin(omega);
@@ -92,7 +107,9 @@ class ChordProcessor extends AudioWorkletProcessor {
     }
     const real = previous - previousTwo * cosine;
     const imaginary = previousTwo * sine;
-    return (2 * Math.sqrt(real * real + imaginary * imaginary)) / WINDOW;
+    const magnitude = (2 * Math.sqrt(real * real + imaginary * imaginary)) / WINDOW;
+    this.magnitudeCache.set(cacheKey, magnitude);
+    return magnitude;
   }
 
   _toneEvidence(midi) {
@@ -100,8 +117,9 @@ class ChordProcessor extends AudioWorkletProcessor {
     let bestFundamental = 0;
     let bestScore = 0;
     let bestFrequency = fundamental;
+    const expected = this.expectedTargets.includes(midi);
     for (const tuning of TUNING_RATIOS) {
-      for (const stretch of STRETCH) {
+      for (const stretch of expected ? STRETCH : [0]) {
         let score = 0;
         let first = 0;
         for (let harmonic = 1; harmonic <= 5; harmonic++) {
@@ -143,6 +161,7 @@ class ChordProcessor extends AudioWorkletProcessor {
   }
 
   _analyze() {
+    this.magnitudeCache = new Map();
     let squareSum = 0;
     for (let index = 0; index < WINDOW; index++) {
       const sample = this.ring[index];
@@ -179,6 +198,7 @@ class ChordProcessor extends AudioWorkletProcessor {
 
     const currentlyPresent = new Set();
     for (const tone of evidence) {
+      const expectedTone = this.expectedTargets.includes(tone.midi);
       const baseline = this.baselines.get(tone.midi) || { fundamental: 0, score: 0 };
       const fundamentalThreshold = Math.max(
         0.000035,
@@ -193,14 +213,18 @@ class ChordProcessor extends AudioWorkletProcessor {
       const present =
         tone.fundamental >= fundamentalThreshold &&
         tone.score >= scoreThreshold &&
-        tone.purity >= 0.2 &&
+        tone.purity >= (expectedTone ? 0.2 : 0.23) &&
         tone.parentRatio <= 1.05 &&
-        tone.neighborRatio >= 1.06;
+        tone.neighborRatio >= (expectedTone ? 1.06 : 0.72);
       const stable = present ? (this.stableFrames.get(tone.midi) || 0) + 1 : 0;
       this.stableFrames.set(tone.midi, stable);
       const missing = present ? 0 : (this.missingFrames.get(tone.midi) || 0) + 1;
       this.missingFrames.set(tone.midi, missing);
-      if (stable >= 2 || (this.reportedPresent.has(tone.midi) && missing < RELEASE_FRAMES)) {
+      const requiredStableFrames = expectedTone ? 2 : GUARD_STABLE_FRAMES;
+      if (
+        stable >= requiredStableFrames ||
+        (this.reportedPresent.has(tone.midi) && missing < RELEASE_FRAMES)
+      ) {
         currentlyPresent.add(tone.midi);
       }
     }
@@ -211,7 +235,12 @@ class ChordProcessor extends AudioWorkletProcessor {
       // Send the complete current set on edges only. A held chord therefore
       // produces one arrival, not dozens of fake repeated notes; adding the
       // root later still re-sends the already-held third/fifth in this set.
-      this.port.postMessage({ type: 'chord-tones', midi: [...currentlyPresent], time: currentTime });
+      this.port.postMessage({
+        type: 'chord-tones',
+        midi: [...currentlyPresent],
+        expectedMidi: [...this.expectedTargets],
+        time: currentTime,
+      });
       this.reportedPresent = currentlyPresent;
     }
   }

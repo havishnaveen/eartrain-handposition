@@ -275,7 +275,7 @@ export interface DetectedNote {
    */
   expectedSlot?: number;
   /** Strict physical onset or a deliberately provisional score recovery. */
-  detectorLane?: 'strict' | 'context-recovery' | 'offline-recovered';
+  detectorLane?: 'strict' | 'context-recovery' | 'offline-recovered' | 'polyphonic';
   /** True only when the hook matched this event to the exact written pitch. */
   scoreContextAccepted?: boolean;
   /** DSP evidence retained so post-take reconciliation can be auditable. */

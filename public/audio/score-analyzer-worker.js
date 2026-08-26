@@ -460,6 +460,8 @@ function evidenceAt(analysis, midi, frameIndex, noise, expectedTime, secondsPerB
   const rmsBefore = meanRange(analysis.rms, frameIndex - 8, frameIndex - 3);
   const rmsAfter = meanRange(analysis.rms, frameIndex + 1, frameIndex + 5);
   const rmsRise = rmsAfter / Math.max(1e-10, rmsBefore);
+  const rmsNoise = Math.max(1e-10, analysis.rmsNoise || 0);
+  const rmsSnr = rmsAfter / rmsNoise;
   // A repeated expected MIDI may not reuse the ringing tail of its previous
   // note. It needs a fresh broadband hammer pulse plus either renewed target
   // energy or a visible envelope attack. Requiring two independent cues is
@@ -495,6 +497,24 @@ function evidenceAt(analysis, midi, frameIndex, noise, expectedTime, secondsPerB
     rise < 2.4 &&
     persistentFrames <= 13;
 
+  /* Score knowledge may identify WHICH stable pitch followed an attack, but
+   * it must never supply the attack itself. This is the worker's hard event
+   * boundary: a real key needs an audible level above the calibrated room,
+   * a fresh broadband edge, and a pitched/tonal tail. A metronome click has
+   * the first two but not the tail; hum has the tail but not the edge. */
+  const physicalAttack = Boolean(
+    rmsAfter >= Math.max(0.00032, rmsNoise * 1.3) &&
+    rmsSnr >= 1.3 &&
+    persistentFrames >= 6 &&
+    fundamentalSnr >= 1.35 &&
+    postFlatness <= 0.9 &&
+    (
+      (fluxRatio >= 1.35 && (rise >= 1.02 || rmsRise >= 1.015)) ||
+      (fluxRatio >= 2.2 && rise >= 1.008) ||
+      (rise >= 1.1 && rmsRise >= 1.025)
+    )
+  );
+
   let evidence =
     clamp(Math.log2(Math.max(1, snr)) / 2.8) * 0.29 +
     clamp(Math.log2(Math.max(1, contrast)) / 1.25) * 0.23 +
@@ -521,6 +541,8 @@ function evidenceAt(analysis, midi, frameIndex, noise, expectedTime, secondsPerB
     harmonicParentMidi: strongestHarmonicParentMidi,
     fluxRatio,
     rmsRise,
+    rmsSnr,
+    physicalAttack,
     rearticulated,
     timingErrorBeats,
     attackFlatness,
@@ -540,6 +562,7 @@ function candidatesForSlot(analysis, slot, midi, noise, playStartTime, secondsPe
     if (!evidence) continue;
     const quietBass = midi <= 55;
     const acceptable =
+      evidence.physicalAttack &&
       !evidence.speechLike &&
       !evidence.octaveConflict &&
       !evidence.harmonicParentConflict && (
@@ -685,7 +708,15 @@ function analyzeTake(payload) {
     !Number.isFinite(secondsPerBeat) ||
     samples.length < FFT_SIZE
   ) {
-    return { notes: realtime, recovered: 0, rejected: 0, reason: 'invalid-capture' };
+    return {
+      notes: [],
+      recovered: 0,
+      livePreserved: 0,
+      rejected: realtime.length,
+      expectedAccepted: 0,
+      expectedCount: expectedNotes.length,
+      reason: 'invalid-capture',
+    };
   }
 
   const midiValues = new Set();
@@ -720,8 +751,18 @@ function analyzeTake(payload) {
     [...midiValues],
   );
   if (analysis.frameTimes.length === 0) {
-    return { notes: realtime, recovered: 0, rejected: 0, reason: 'empty-analysis' };
+    return {
+      notes: [],
+      recovered: 0,
+      livePreserved: 0,
+      rejected: realtime.length,
+      expectedAccepted: 0,
+      expectedCount: expectedNotes.length,
+      reason: 'empty-analysis',
+    };
   }
+
+  analysis.rmsNoise = localNoise(analysis.rms, analysis.frameTimes, playStartTime);
 
   const noiseByMidi = new Map();
   midiValues.forEach((midi) => {
@@ -822,32 +863,52 @@ function analyzeTake(payload) {
       const note = realtime[index];
       const strictLive = note.detectorLane === 'strict';
       const contextualLive = note.detectorLane === 'context-recovery';
+      const polyphonicLive = note.detectorLane === 'polyphonic';
       if (
         Number(note.midi) !== midi ||
         Number(note.expectedSlot) !== slotIndex ||
-        (!strictLive && !contextualLive) ||
+        (!strictLive && !contextualLive && !polyphonicLive) ||
         note.scoreContextAccepted !== true ||
         note.voiceVeto === true ||
         note.voiceBurst === true ||
         (note.harmonicShadow === true && note.harmonicIndependentAttack !== true)
       ) continue;
       const timingErrorBeats = Math.abs(Number(note.time) - expectedTime) / secondsPerBeat;
-      const frameIndex = nearestFrame(analysis.frameTimes, Number(note.time));
-      const evidence = evidenceAt(
-        analysis,
-        midi,
-        frameIndex,
-        noiseByMidi.get(midi) ?? 1e-10,
-        expectedTime,
-        secondsPerBeat,
-      );
-      // The live lane already completed attack, pitch-stability, voice, and
-      // harmonic checks before showing this exact score-slot note to the
-      // student. Offline PCM may refine it, but may never silently delete it.
-      // Unassigned events still receive the strict open-world verification
-      // below, so room sound cannot become a credited written note here.
+      let evidence = null;
+      const centerFrame = nearestFrame(analysis.frameTimes, Number(note.time));
+      const searchRadius = Math.max(2, Math.round(0.1 * sampleRate / HOP));
+      for (
+        let candidateFrame = Math.max(12, centerFrame - searchRadius);
+        candidateFrame <= Math.min(analysis.frameTimes.length - 20, centerFrame + searchRadius);
+        candidateFrame++
+      ) {
+        const nearby = evidenceAt(
+          analysis,
+          midi,
+          candidateFrame,
+          noiseByMidi.get(midi) ?? 1e-10,
+          expectedTime,
+          secondsPerBeat,
+        );
+        if (!nearby?.physicalAttack) continue;
+        if (!evidence || nearby.evidence > evidence.evidence) evidence = nearby;
+      }
+      /* Live metadata is not ground truth. It can guide this narrow PCM
+       * search, but if the recorded waveform does not independently contain
+       * a physical piano event, the note is rejected—even when it matched the
+       * written answer and was briefly shown by the responsive UI. */
+      if (
+        !evidence ||
+        evidence.speechLike ||
+        evidence.octaveConflict ||
+        evidence.harmonicParentConflict ||
+        evidence.evidence < (contextualLive ? 0.4 : 0.31) ||
+        evidence.snr < (contextualLive ? 1.32 : 1.18) ||
+        evidence.contrast < (contextualLive ? 0.92 : 0.95) ||
+        evidence.persistentFrames < (contextualLive ? 7 : 6)
+      ) continue;
       const quality =
-        (evidence?.evidence ?? 0) * 0.32 +
+        evidence.evidence * 0.32 +
         Math.min(1, Number(note.pianoAttackConfidence) || 0) * 0.2 +
         Math.min(1, Number(note.consensus) || 0) * 0.28 +
         Math.max(0, 1 - timingErrorBeats / 1.5) * 0.2;
@@ -855,22 +916,15 @@ function analyzeTake(payload) {
     }
     if (!best) return;
     usedRealtime.add(best.index);
-    const canRefine = Boolean(
-      best.evidence &&
-      !best.evidence.octaveConflict &&
-      !best.evidence.harmonicParentConflict &&
-      Math.abs(best.evidence.time - Number(best.note.time)) <= 0.24
-    );
+    const canRefine = Math.abs(best.evidence.time - Number(best.note.time)) <= 0.24;
     const refinedTime = canRefine
       ? refineOnset(analysis, midi, Number(best.note.time))
       : Number(best.note.time);
-    const refinedCandidate = best.evidence
-      ? {
-          ...best.evidence,
-          time: refinedTime,
-          frameIndex: nearestFrame(analysis.frameTimes, refinedTime),
-        }
-      : null;
+    const refinedCandidate = {
+      ...best.evidence,
+      time: refinedTime,
+      frameIndex: nearestFrame(analysis.frameTimes, refinedTime),
+    };
     const nextCandidate = chosen.slice(slotIndex + 1).find(Boolean);
     notes.push({
       ...best.note,
@@ -878,22 +932,20 @@ function analyzeTake(payload) {
       time: refinedTime,
       expectedSlot: slotIndex,
       scoreContextAccepted: true,
-      ...(refinedCandidate
-        ? sustainFor(
-            analysis,
-            midi,
-            refinedCandidate,
-            noiseByMidi.get(midi) ?? 1e-10,
-            Number(slot.beats) * secondsPerBeat,
-            nextCandidate?.time,
-          )
-        : {}),
+      ...sustainFor(
+        analysis,
+        midi,
+        refinedCandidate,
+        noiseByMidi.get(midi) ?? 1e-10,
+        Number(slot.beats) * secondsPerBeat,
+        nextCandidate?.time,
+      ),
       analysisSource: canRefine ? 'realtime-pcm-preserved' : 'realtime-preserved',
-      analysisConfidence: best.evidence?.evidence ?? (Number(best.note.clarity) || 0),
-      analysisSnr: best.evidence?.snr ?? (Number(best.note.strength) || 0),
-      analysisContrast: best.evidence?.contrast ?? 0,
-      analysisRise: best.evidence?.rise ?? (Number(best.note.frameAttackRatio) || 0),
-      analysisPersistence: best.evidence?.persistentFrames ?? 0,
+      analysisConfidence: best.evidence.evidence,
+      analysisSnr: best.evidence.snr,
+      analysisContrast: best.evidence.contrast,
+      analysisRise: best.evidence.rise,
+      analysisPersistence: best.evidence.persistentFrames,
     });
     livePreserved += 1;
   });

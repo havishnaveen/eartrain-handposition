@@ -18,11 +18,50 @@ try {
   const {
     advanceSpatialChord,
     formatDetectedNoteGroups,
+    hasCredibleAcousticAttack,
     polyphonicTargetsForPlan,
     updateSpatialChordPresence,
   } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
   );
+  const { credibleRealtimeFallback } = await server.ssrLoadModule(
+    '/src/audio/scoreAnalysis.ts',
+  );
+
+  assert.equal(hasCredibleAcousticAttack({
+    peakRms: 0.00026,
+    gate: 0.0005,
+    pianoAttackConfidence: 0.72,
+    attackBandCoverage: 3,
+    stableFrames: 5,
+    consensus: 0.8,
+    clarity: 0.8,
+    frameAttackRatio: 1.08,
+    novelty: 0.4,
+  }, 'candidate'), false,
+  'A pitch-like room fluctuation below the physical level floor must not enter score context.');
+  assert.equal(hasCredibleAcousticAttack({
+    peakRms: 0.0012,
+    gate: 0.0005,
+    pianoAttackConfidence: 0.7,
+    attackBandCoverage: 4,
+    stableFrames: 6,
+    consensus: 0.82,
+    clarity: 0.72,
+    frameAttackRatio: 1.05,
+    novelty: 0.35,
+    referenceTransient: true,
+  }, 'candidate'), true,
+  'A stable piano attack coincident with a click must survive the reference-transient guard.');
+  assert.deepEqual(credibleRealtimeFallback([{
+    midi: 60,
+    time: 1,
+    clarity: 0.9,
+    strength: 2,
+    detectorLane: 'context-recovery',
+    scoreContextAccepted: true,
+  }]), [],
+  'If PCM analysis fails, score-context-only recovery must not become a graded note.');
 
   const sequentialPlan = {
     expectedNotes: [
@@ -78,6 +117,7 @@ try {
     wrongRootGuesses: 0,
     wrongShapeGuesses: 0,
     totalGuesses: 0,
+    polyphonicWrongMidi: new Set(),
   };
   assert.equal(advanceSpatialChord(activeChord, 59, 1.1).progress, 0,
     'An unrelated B must not advance C major.');

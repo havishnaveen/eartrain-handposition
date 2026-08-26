@@ -94,6 +94,16 @@ try {
           findCompletePolyphonicGroup(plan, new Set(wanted), group.beat, new Set()),
           'The complete simultaneous chord must satisfy its written stack.',
         );
+        assert.equal(
+          findCompletePolyphonicGroup(
+            plan,
+            new Set([...wanted, wanted[0] - 1]),
+            group.beat,
+            new Set(),
+          ),
+          null,
+          'A correct chord plus a nearby wrong key must not satisfy the written stack.',
+        );
       });
     });
   }

@@ -31,7 +31,11 @@ function run(targetMidi, playedMidi = [], gainsByMidi = {}, options = {}) {
   new vm.Script(source, { filename: 'chord-processor.js' }).runInContext(context);
   const processor = new Processor();
   processor.port.onmessage({
-    data: { type: options.prepareFirst ? 'prepare-chord' : 'listen-chord', targetMidi },
+    data: {
+      type: options.prepareFirst ? 'prepare-chord' : 'listen-chord',
+      targetMidi,
+      monitorMidi: options.monitorMidi,
+    },
   });
 
   let randomState = 17;
@@ -45,7 +49,12 @@ function run(targetMidi, playedMidi = [], gainsByMidi = {}, options = {}) {
   for (let offset = 0; offset < duration * sampleRate; offset += quantum) {
     if (!armed && offset / sampleRate >= 0.22) {
       processor.port.onmessage({
-        data: { type: 'listen-chord', targetMidi, reuseBaseline: true },
+        data: {
+          type: 'listen-chord',
+          targetMidi,
+          monitorMidi: options.monitorMidi,
+          reuseBaseline: true,
+        },
       });
       armed = true;
     }
@@ -135,6 +144,21 @@ assert.deepEqual(
     .flatMap((message) => message.midi),
   [],
   'An unrelated B must not satisfy any part of C major.',
+);
+
+const cMajorWithWrongB = run(cMajor, [59, 60, 64, 67], {}, {
+  monitorMidi: Array.from({ length: 12 }, (_, index) => 58 + index),
+}).filter((message) => message.type === 'chord-tones');
+assert.ok(
+  cMajorWithWrongB.some((message) => [59, 60, 64, 67].every((midi) => message.midi.includes(midi))),
+  'The chord lane must explicitly expose a nearby wrong key alongside an otherwise complete triad.',
+);
+const monitoredCleanCMajor = run(cMajor, cMajor, {}, {
+  monitorMidi: Array.from({ length: 12 }, (_, index) => 58 + index),
+}).filter((message) => message.type === 'chord-tones');
+assert.ok(
+  monitoredCleanCMajor.every((message) => message.midi.every((midi) => cMajor.includes(midi))),
+  'Monitoring nearby wrong keys must not manufacture extras from a clean triad.',
 );
 
 assert.equal(

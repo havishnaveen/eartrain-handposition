@@ -183,6 +183,64 @@ assert.deepEqual(
   'Offline grading must recover detuned, inharmonic B4-D#5-F#5 notes.',
 );
 
+const simultaneousCMajor = [60, 64, 67].map((midi, index) => ({
+  midi,
+  beat: 0,
+  beats: 2,
+  index,
+}));
+const fullChordPcm = synthesize({
+  seconds: 2.8,
+  strikes: [60, 64, 67].map((midi) => ({
+    midi,
+    time: 1,
+    duration: 1,
+    amplitude: 0.006,
+  })),
+  seed: 135,
+});
+const fullChordResult = runWorker({
+  samples: fullChordPcm,
+  expected: simultaneousCMajor,
+  realtime: [60, 64, 67].map((midi, expectedSlot) => ({
+    midi,
+    time: 1 + expectedSlot * 0.001,
+    clarity: 0.82,
+    strength: 2,
+    expectedSlot,
+    detectorLane: 'polyphonic',
+    scoreContextAccepted: true,
+  })),
+});
+assert.deepEqual(
+  Array.from(fullChordResult.notes, (note) => note.midi).sort((a, b) => a - b),
+  [60, 64, 67],
+  'A complete simultaneous C-major chord must retain all three independently recorded tones.',
+);
+
+const partialChordResult = runWorker({
+  samples: synthesize({
+    seconds: 2.8,
+    strikes: [{ midi: 60, time: 1, duration: 1, amplitude: 0.006 }],
+    seed: 136,
+  }),
+  expected: simultaneousCMajor,
+  realtime: [60, 64, 67].map((midi, expectedSlot) => ({
+    midi,
+    time: 1 + expectedSlot * 0.001,
+    clarity: 0.82,
+    strength: 2,
+    expectedSlot,
+    detectorLane: 'polyphonic',
+    scoreContextAccepted: true,
+  })),
+});
+assert.deepEqual(
+  Array.from(partialChordResult.notes, (note) => note.midi),
+  [60],
+  'A lone C in the PCM must not be expanded into an expected C-major chord by live metadata.',
+);
+
 // The real-time UI can establish a strict, score-matched note from several
 // independent pitch frames even when the offline local-maximum search lands
 // one FFT frame away. That note must not vanish from the final report, but
@@ -223,9 +281,8 @@ assert.ok(
   'The final lane must explicitly reconcile or preserve the live bass note.',
 );
 
-// Once the strict live detector has already assigned a note to the exact
-// written slot, the offline pass may refine it but must never silently erase
-// it merely because a lossy/downsampled PCM frame is borderline.
+// A score-matching live event is still only a hypothesis. If lossless PCM is
+// room tone, score context must not manufacture a played note.
 const exactLiveSlotResult = runWorker({
   samples: synthesize({ seconds: 2.2, room: 0.00018, seed: 20260822 }),
   expected: [{ midi: 60, beat: 0, beats: 1 }],
@@ -247,8 +304,8 @@ const exactLiveSlotResult = runWorker({
 });
 assert.deepEqual(
   Array.from(exactLiveSlotResult.notes, (note) => [note.midi, note.expectedSlot]),
-  [[60, 0]],
-  'An exact strict note displayed live must remain assigned to its written slot in the report.',
+  [],
+  'A live false positive over silent PCM must be removed even when it claimed the exact written slot.',
 );
 
 // Repeated written pitches are separate musical events. Matching by MIDI and

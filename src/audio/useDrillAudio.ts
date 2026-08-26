@@ -142,6 +142,64 @@ interface PitchHypothesis {
   pitchSlope: number;
 }
 
+export interface AcousticAttackEvidence {
+  peakRms?: number;
+  gate?: number;
+  pianoAttackConfidence?: number;
+  attackBandCoverage?: number;
+  stableFrames?: number;
+  consensus?: number;
+  clarity?: number;
+  frameAttackRatio?: number;
+  novelty?: number;
+  referenceTransient?: boolean;
+}
+
+/**
+ * Shared live boundary between "a pitch is plausible" and "a key was
+ * physically struck." Score context is deliberately absent from this test.
+ */
+export function hasCredibleAcousticAttack(
+  evidence: AcousticAttackEvidence,
+  lane: 'strict' | 'candidate',
+): boolean {
+  const peakRms = Number(evidence.peakRms) || 0;
+  const gate = Math.max(0.0005, Number(evidence.gate) || 0);
+  const attackConfidence = Number(evidence.pianoAttackConfidence) || 0;
+  const bandCoverage = Number(evidence.attackBandCoverage) || 0;
+  const stableFrames = Number(evidence.stableFrames) || 0;
+  const consensus = Number(evidence.consensus) || 0;
+  const clarity = Number(evidence.clarity) || 0;
+  const frameRise = Number(evidence.frameAttackRatio) || 0;
+  const novelty = Number(evidence.novelty) || 0;
+  const candidate = lane === 'candidate';
+
+  if (
+    peakRms < Math.max(0.00038, gate * (candidate ? 0.7 : 0.98)) ||
+    attackConfidence < (candidate ? 0.4 : 0.5) ||
+    bandCoverage < 2 ||
+    stableFrames < (candidate ? 3 : 3) ||
+    consensus < (candidate ? 0.54 : 0.5) ||
+    clarity < (candidate ? 0.26 : 0.25) ||
+    frameRise < (candidate ? 0.965 : 0.96) ||
+    novelty < (candidate ? 0.14 : 0.16)
+  ) return false;
+
+  // App-generated clicks are known exactly. A coincident key is retained,
+  // but only with Oclef-style multi-frame pitch stability plus a much
+  // stronger independent hammer signature.
+  if (evidence.referenceTransient === true) {
+    return (
+      attackConfidence >= 0.68 &&
+      stableFrames >= 5 &&
+      consensus >= 0.72 &&
+      clarity >= 0.62 &&
+      bandCoverage >= 3
+    );
+  }
+  return true;
+}
+
 function readPitchHypotheses(value: unknown): PitchHypothesis[] {
   if (!Array.isArray(value)) return [];
   return value.filter((candidate): candidate is PitchHypothesis => {
@@ -612,6 +670,8 @@ export interface ActiveSpatialChord {
   totalGuesses: number;
   lastWrongAt: number | null;
   wrongHeldDetectorIds: Set<number>;
+  /** Nearby non-target tones currently present in the polyphonic frame. */
+  polyphonicWrongMidi: Set<number>;
 }
 
 export interface SpatialChordAdvance {
@@ -749,6 +809,22 @@ export function polyphonicTargetsForPlan(plan: DrillPlan): number[] {
   ));
 }
 
+/** Target tones plus nearby wrong keys that the chord lane must reject. */
+export function chordMonitorMidi(targetMidi: readonly number[]): number[] {
+  const monitored = new Set<number>();
+  targetMidi.forEach((midi) => {
+    for (let offset = -2; offset <= 2; offset++) {
+      const value = midi + offset;
+      if (value >= 21 && value <= 108) monitored.add(value);
+    }
+  });
+  return [...monitored].sort((a, b) => a - b);
+}
+
+export function polyphonicMonitorTargetsForPlan(plan: DrillPlan): number[] {
+  return chordMonitorMidi(polyphonicTargetsForPlan(plan));
+}
+
 export interface PolyphonicSlotGroup {
   beat: number;
   slots: Array<{ index: number; midi: number }>;
@@ -785,6 +861,7 @@ export function findCompletePolyphonicGroup(
   return polyphonicSlotGroupsForPlan(plan)
     .filter((candidate) =>
       candidate.slots.every(({ midi }) => heard.has(midi)) &&
+      [...heard].every((midi) => candidate.slots.some((slot) => slot.midi === midi)) &&
       candidate.slots.some(({ index }) => !occupied.has(index)) &&
       Math.abs(candidate.beat - onsetBeat) <= 0.75,
     )
@@ -796,8 +873,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
-    workletUrl = '/audio/pitch-processor.js?v=proof-recovery-v17-2026-08-23',
-    chordWorkletUrl = '/audio/chord-processor.js?v=polyphonic-v4-2026-08-25',
+    workletUrl = '/audio/pitch-processor.js?v=physical-event-v18-2026-08-26',
+    chordWorkletUrl = '/audio/chord-processor.js?v=guard-tones-v5-2026-08-26',
   } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
@@ -836,6 +913,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
    * notes, never replaces or overrides the tuned monophonic path.
    */
   const generalChordTargetsRef = useRef<number[]>([]);
+  const generalChordMonitorRef = useRef<number[]>([]);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const clickGainRef = useRef<GainNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -1488,6 +1566,12 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             else diagnosticsRef.current.pitchRejected += 1;
             return;
           }
+          if (!hasCredibleAcousticAttack(data, isCandidate ? 'candidate' : 'strict')) {
+            logProofVeto('no-credible-physical-attack');
+            if (isCandidate) diagnosticsRef.current.candidatesIgnored += 1;
+            else diagnosticsRef.current.pitchRejected += 1;
+            return;
+          }
           // Defense in depth: current worklets include their adaptive RMS
           // gate with every onset. The soft recovery lane may sit below that
           // gate, but it can never enter grading without an exact score match.
@@ -1992,7 +2076,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               strength: 1.3,
               sustain: 1,
               expectedSlot,
-              detectorLane: 'strict',
+              detectorLane: 'polyphonic',
               scoreContextAccepted: true,
             };
             onsetsRef.current.push(note);
@@ -2021,6 +2105,18 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         );
         const baseTime = Number.isFinite(data.time) ? Number(data.time) : ctx.currentTime;
         const previousFound = new Set(active.foundMidi);
+        const unexpected = [...heard].filter((midi) => !active.targetMidi.includes(midi));
+        const newlyUnexpected = unexpected.filter((midi) => !active.polyphonicWrongMidi.has(midi));
+        active.polyphonicWrongMidi = new Set(unexpected);
+        if (unexpected.length > 0) {
+          active.lastWrongAt = baseTime;
+          if (active.rootFoundAt === null) active.wrongRootGuesses += newlyUnexpected.length;
+          else active.wrongShapeGuesses += newlyUnexpected.length;
+          safeSet(
+            setSpatialWrongGuesses,
+            active.wrongRootGuesses + active.wrongShapeGuesses,
+          );
+        }
         const result = updateSpatialChordPresence(active, heard, baseTime);
         const newlyPresent = [...active.foundMidi].filter((midi) => !previousFound.has(midi));
         newlyPresent.forEach((midi, index) => {
@@ -2031,7 +2127,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             clarity: 1,
             strength: 2,
             sustain: 1,
-            detectorLane: 'strict',
+            detectorLane: 'polyphonic',
             scoreContextAccepted: true,
           });
           diagnosticsRef.current.strictAccepted += 1;
@@ -2051,6 +2147,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               if (current !== active || finishedRef.current) return;
               const targets = current.spec.buildOrder.map((index) => current.targetMidi[index]);
               if (!targets.every((midi) => current.foundMidi.has(midi))) return;
+              if (current.polyphonicWrongMidi.size > 0) return;
               if (current.wrongHeldDetectorIds.size > 0) {
                 spatialChordHoldTimerRef.current = window.setTimeout(confirmCleanHold, 120);
                 return;
@@ -2084,7 +2181,35 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
       // Analysis only — never routed to the speakers, so no feedback path.
       source.connect(worklet);
-      source.connect(chordWorklet);
+      // The polyphonic lane benefits from the same compact front end used by
+      // strong commercial note trainers: remove rumble/mains hum, gently lift
+      // the piano body, then normalize only the analysis signal. This does
+      // not alter the recording or audible output.
+      const chordHighpass = ctx.createBiquadFilter();
+      chordHighpass.type = 'highpass';
+      chordHighpass.frequency.value = 70;
+      chordHighpass.Q.value = 0.7;
+      const chordHumNotch = ctx.createBiquadFilter();
+      chordHumNotch.type = 'notch';
+      chordHumNotch.frequency.value = 60;
+      chordHumNotch.Q.value = 10;
+      const chordPresence = ctx.createBiquadFilter();
+      chordPresence.type = 'peaking';
+      chordPresence.frequency.value = 500;
+      chordPresence.Q.value = 0.5;
+      chordPresence.gain.value = 3;
+      const chordLowpass = ctx.createBiquadFilter();
+      chordLowpass.type = 'lowpass';
+      chordLowpass.frequency.value = 4200;
+      chordLowpass.Q.value = 0.7;
+      const chordAnalysisGain = ctx.createGain();
+      chordAnalysisGain.gain.value = 1.35;
+      source.connect(chordHighpass);
+      chordHighpass.connect(chordHumNotch);
+      chordHumNotch.connect(chordPresence);
+      chordPresence.connect(chordLowpass);
+      chordLowpass.connect(chordAnalysisGain);
+      chordAnalysisGain.connect(chordWorklet);
       sourceRef.current = source;
       workletRef.current = worklet;
       chordWorkletRef.current = chordWorklet;
@@ -2247,6 +2372,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     workletRef.current?.port.postMessage({ type: 'idle' });
     chordWorkletRef.current?.port.postMessage({ type: 'idle' });
     generalChordTargetsRef.current = [];
+    generalChordMonitorRef.current = [];
     safeSet(setPhase, 'idle' as DrillPhase);
     safeSet(setBeatLabel, '');
     safeSet(setIsDownbeat, false);
@@ -2295,6 +2421,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       replaceRecordingUrl(null);
       chordWorkletRef.current?.port.postMessage({ type: 'idle' });
       generalChordTargetsRef.current = [];
+      generalChordMonitorRef.current = [];
       onsetsRef.current = [];
       onsetByDetectorIdRef.current.clear();
       occupiedExpectedSlotsRef.current.clear();
@@ -2376,6 +2503,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       replaceRecordingUrl(null);
       worklet.port.postMessage({ type: 'idle' });
       generalChordTargetsRef.current = [];
+      generalChordMonitorRef.current = [];
       detectorArmedRef.current = false;
       listeningRef.current = false;
       finishedRef.current = false;
@@ -2404,7 +2532,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const prepared = new Promise<void>((resolve) => {
         chordReadyResolveRef.current = resolve;
       });
-      chordWorklet.port.postMessage({ type: 'prepare-chord', targetMidi });
+      const monitorMidi = chordMonitorMidi(targetMidi as number[]);
+      chordWorklet.port.postMessage({ type: 'prepare-chord', targetMidi, monitorMidi });
       await Promise.race([
         prepared,
         new Promise<void>((resolve) => window.setTimeout(resolve, 700)),
@@ -2435,12 +2564,18 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         totalGuesses: 0,
         lastWrongAt: null,
         wrongHeldDetectorIds: new Set<number>(),
+        polyphonicWrongMidi: new Set<number>(),
       };
       spatialRef.current = active;
       const chordReady = new Promise<void>((resolve) => {
         chordReadyResolveRef.current = resolve;
       });
-      chordWorklet.port.postMessage({ type: 'listen-chord', targetMidi, reuseBaseline: true });
+      chordWorklet.port.postMessage({
+        type: 'listen-chord',
+        targetMidi,
+        monitorMidi,
+        reuseBaseline: true,
+      });
       await Promise.race([
         chordReady,
         new Promise<void>((resolve) => window.setTimeout(resolve, 700)),
@@ -2549,6 +2684,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
       planRef.current = plan;
       generalChordTargetsRef.current = polyphonicTargetsForPlan(plan);
+      generalChordMonitorRef.current = polyphonicMonitorTargetsForPlan(plan);
       proofRef.current = null;
       proofHoldByMidiRef.current.clear();
       proofMidiByDetectorRef.current.clear();
@@ -2653,6 +2789,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             chordWorkletRef.current?.port.postMessage({
               type: 'listen-chord',
               targetMidi: generalChordTargetsRef.current,
+              monitorMidi: generalChordMonitorRef.current,
             });
           }
         }
@@ -2699,6 +2836,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             chordWorkletRef.current?.port.postMessage({
               type: 'listen-chord',
               targetMidi: generalChordTargetsRef.current,
+              monitorMidi: generalChordMonitorRef.current,
             });
           }
         }
