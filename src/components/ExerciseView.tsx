@@ -281,6 +281,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       inputLevel = 0,
       detectedNotes = [],
       proofProgress = 0,
+      proofHoldFailure = null,
       spatialProgress = 0,
       spatialWrongGuesses = 0,
       spatialAudioIssue = false,
@@ -557,11 +558,15 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
         finger: proofFingers[index] ?? note.finger,
       }));
       const proofHandLabel = requiredHands === 'left' ? 'Left Hand' : 'Right Hand';
+      const releasedProofNotes = (proofHoldFailure?.releasedNoteIndices ?? [])
+        .map((index) => proofNotes[index])
+        .filter(Boolean);
+      const releasedDescription = releasedProofNotes
+        .map((note) => `${proofPitchName(note.pitch)} with Finger ${note.finger}`)
+        .join(releasedProofNotes.length > 2 ? ', ' : ' and ');
 
-      // Simplified Prove It: play the three notes in order, one at a time.
-      // No held hand-shape and no "let go" step — each note just needs to be
-      // heard once, so `proofHoldFailure` never fires here any more (it is
-      // wired up only for the (currently unused) `requireHeld: true` path).
+      // Every earlier key remains part of the growing hand shape. A verified
+      // release gets a precise retry message instead of silently resetting.
       return (
         <section className={`et-proof et-proof--${status}`} aria-live="polite">
           <div className="et-proof__halo" aria-hidden="true"><span /><span /><span /></div>
@@ -570,7 +575,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <LessonPanel
                 keyName={proofPositionTitle(positionProof?.positionName)}
                 hands={requiredHands === 'both' ? ['left', 'right'] : [requiredHands]}
-                subtitle={`Play the three ${proofHandLabel.toLowerCase()} notes, one after another.`}
+                subtitle={`Press the three ${proofHandLabel.toLowerCase()} notes in order. Keep each one held as you add the next.`}
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
               />
@@ -597,8 +602,21 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <div className="et-proof__headline">
                   {status === 'proof-success'
                     ? 'Nice work! 🎉'
+                    : releasedProofNotes.length > 0
+                      ? 'Try again — keep holding'
                     : `Play Finger ${proofNotes[Math.min(proofProgress, proofNotes.length - 1)].finger}`}
                 </div>
+                {releasedProofNotes.length > 0 ? (
+                  <p className="et-proof__hold-error" role="alert">
+                    You released {releasedDescription}. Start again and keep {releasedProofNotes.length === 1 ? 'that key' : 'those keys'} down.
+                  </p>
+                ) : (
+                  <p className="et-proof__hold-guide">
+                    {proofProgress === 0
+                      ? 'Start with the highlighted key.'
+                      : `Keep ${proofProgress === 1 ? 'the first key' : 'both earlier keys'} down while you add the next finger.`}
+                  </p>
+                )}
                 <ul className="et-proof__keys">
                   {proofNotes.map((note, index) => {
                     const keyState = index < proofProgress || status === 'proof-success'
@@ -636,6 +654,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     const memoryWaiting = isBlindMemory && status === 'prompt';
     const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
     const shiftWaitSeconds = anchorShift?.timedShift?.waitSeconds;
+    const isChordReading = exerciseMode === 'standard' && /stacked chord/i.test(instruction);
     const memoryDigit = Math.max(0, Math.ceil(memorySecondsRemaining));
     const showPieceProgress = status === 'listening';
     const visibleInstruction = isBlindMemory
@@ -663,7 +682,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             ? 'Remember it'
             : exerciseMode === 'anchor-shift'
               ? 'Move your hand'
-              : 'Play the phrase'}
+              : isChordReading
+                ? 'Read melody + chords'
+                : 'Play the phrase'}
         </span>
         {isBlindMemory ? (
           <div className="et-kid-steps" aria-label="Remember it steps">

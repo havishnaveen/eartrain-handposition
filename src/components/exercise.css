@@ -2127,7 +2127,26 @@
   font-size: 26px;
   font-weight: 860;
   line-height: 1.25;
-  margin: 0 0 24px;
+  margin: 0 0 8px;
+}
+
+.et-proof__hold-guide,
+.et-proof__hold-error {
+  min-height: 38px;
+  margin: 0 0 18px;
+  font-size: 13px;
+  font-weight: 720;
+  line-height: 1.4;
+}
+
+.et-proof__hold-guide { color: var(--et-ink-soft); }
+
+.et-proof__hold-error {
+  padding: 9px 12px;
+  border: 1px solid rgba(180, 35, 24, .2);
+  border-radius: 12px;
+  color: #9f2f21;
+  background: #fff1ed;
 }
 
 .et-hand-requirement {

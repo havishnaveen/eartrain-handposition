@@ -3,7 +3,7 @@
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 126px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 104px minmax(0, 1fr);
   align-items: stretch;
   gap: 14px;
 }
@@ -210,9 +210,9 @@
     left: 8px;
   }
 
-  .et-anchor-cue__label small { font-size: 6.5px; }
-  .et-anchor-cue__label strong { font-size: 9px; }
-  .et-anchor-cue__step { flex-basis: 23px; width: 23px; height: 23px; font-size: 10px; }
+  .et-anchor-cue__label small { font-size: 8px; }
+  .et-anchor-cue__label strong { font-size: 11px; }
+  .et-anchor-cue__step { flex-basis: 26px; width: 26px; height: 26px; font-size: 11px; }
 
   .et-anchor-cue__bridge {
     flex-direction: row;

@@ -27,6 +27,8 @@ export interface StaffCueProps {
   shiftMarker?: AnchorShiftSpec;
   /** Keeps paired notation panels on one shared visual scale. */
   minimumTimelineBeats?: number;
+  /** Uses tighter horizontal engraving for narrow split-card layouts. */
+  compact?: boolean;
 }
 
 export interface StaffCueHandle {
@@ -118,9 +120,11 @@ interface SystemLayout {
   bottom: number;
 }
 
-function headWidth(cue: CueSpec): number {
+function headWidth(cue: CueSpec, compact: boolean): number {
   const accidentals = cue.keySignature ? (KEY_ACCIDENTALS[cue.keySignature] ?? 0) : 0;
-  return CLEF_WIDTH + accidentals * ACCIDENTAL_WIDTH + (cue.timeSignature ? TIME_SIG_WIDTH : 0);
+  const scale = compact ? 0.8 : 1;
+  return CLEF_WIDTH * scale + accidentals * ACCIDENTAL_WIDTH * scale +
+    (cue.timeSignature ? TIME_SIG_WIDTH * scale : 0);
 }
 
 function beatsPerBarOf(cue: CueSpec): number {
@@ -225,6 +229,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     successColor = '#2f9868',
     shiftMarker,
     minimumTimelineBeats = 0,
+    compact = false,
   },
   ref,
 ) {
@@ -305,8 +310,14 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     trailRef.current = null;
 
     const beatsPerBar = beatsPerBarOf(cue);
+    const perBeat = compact ? 44 : PER_BEAT;
+    const minPerNote = compact ? 38 : MIN_PER_NOTE;
+    const perBarline = compact ? 22 : PER_BARLINE;
+    const minStaveWidth = compact ? 218 : MIN_STAVE_W;
+    const noteRightGutter = compact ? 30 : NOTE_RIGHT_GUTTER;
+    const boundsPadX = compact ? 24 : BOUNDS_PAD_X;
     const maxTimelineWidth = Math.max(
-      Math.max(0, minimumTimelineBeats) * PER_BEAT,
+      Math.max(0, minimumTimelineBeats) * perBeat,
       cue.staves.reduce((largest, staff) => {
         const durations = staff.notes.map((note) => beatsForDuration(note.duration));
         const total = durations.reduce((sum, beats) => sum + beats, 0);
@@ -321,9 +332,9 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           ? 30
           : shortestStep <= 0.5
             ? 38
-            : MIN_PER_NOTE;
+            : minPerNote;
         const collisionSafe = (total / shortestStep) * perStep;
-        return Math.max(largest, total * PER_BEAT, collisionSafe);
+        return Math.max(largest, total * perBeat, collisionSafe);
       }, 1),
     );
     const barCount = cue.staves.reduce(
@@ -334,8 +345,8 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // scale a wider staff down, while VexFlow retains the real engraving
     // space needed by every note and modifier.
     const staveWidth = Math.max(
-      MIN_STAVE_W,
-      headWidth(cue) + maxTimelineWidth + barCount * PER_BARLINE + NOTE_RIGHT_GUTTER,
+      minStaveWidth,
+      headWidth(cue, compact) + maxTimelineWidth + barCount * perBarline + noteRightGutter,
     );
     const canvasWidth = staveWidth + STAVE_X * 2;
 
@@ -473,7 +484,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
 
         const noteStart = stave.getNoteStartX();
         const noteEnd = stave.getX() + stave.getWidth();
-        const timelineEnd = noteEnd - NOTE_RIGHT_GUTTER;
+        const timelineEnd = noteEnd - noteRightGutter;
         const formatWidth = Math.max(110, timelineEnd - noteStart);
 
         new Formatter().joinVoices([voice]).format([voice], formatWidth);
@@ -694,11 +705,11 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // also covers stroke width and sub-pixel rounding at the right edge.
     const boundsLeft = Math.min(0, box.x);
     const boundsRight = Math.max(canvasWidth, box.x + box.width);
-    const viewBoxWidth = boundsRight - boundsLeft + BOUNDS_PAD_X * 2;
+    const viewBoxWidth = boundsRight - boundsLeft + boundsPadX * 2;
     const viewBoxHeight = box.height + BOUNDS_PAD_Y * 2;
     svg.setAttribute(
       'viewBox',
-      `${boundsLeft - BOUNDS_PAD_X} ${box.y - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
+      `${boundsLeft - boundsPadX} ${box.y - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
     );
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     // Give the SVG an intrinsic size equal to its own viewBox (1 SVG unit =
@@ -722,7 +733,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       lineRef.current = null;
       trailRef.current = null;
     };
-  }, [cue, accentColor, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats]);
+  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats]);
 
   return <div className="et-staff" ref={hostRef} />;
 });

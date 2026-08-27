@@ -130,7 +130,7 @@ function orientationNoticesFor(question: Question): OrientationNotice[] {
     notices.push({
       kind: 'both-hands',
       title: 'Stop — use both hands',
-      message: 'This exercise needs your LEFT HAND and RIGHT HAND together. Place both hands before continuing.',
+      message: 'This exercise uses your LEFT HAND and RIGHT HAND. Place both hands before continuing; follow the score to see whether they alternate or play together.',
       buttonLabel: 'Both hands are ready',
     });
   }
@@ -275,7 +275,7 @@ export function createInitialPathwayState({
     repeatQuestion: false,
     proofCompleted: initialProofCompleted,
     ordinal: 0,
-    difficulty: 0,
+    difficulty: current.difficulty,
     current,
     signal: INITIAL_SIGNAL,
     listeningStartedAt: 0,
@@ -395,7 +395,7 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
         problemTags: concept.problemTags,
         questionId: state.current.id,
         questionNumber: state.question,
-        difficulty: state.difficulty,
+        difficulty: state.current.difficulty,
         mode: state.current.mode,
         exerciseMode: state.current.exerciseMode,
         curriculumVersion: CURRICULUM_VERSION,
@@ -446,7 +446,7 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
           ? state.signal
           : updateSignal(state.signal, {
               passed,
-              difficulty: state.difficulty,
+              difficulty: state.current.difficulty,
               attempts: state.attempt,
               timeMs: timeToAnswerMs,
               tempoWindowSec: state.current.tempoWindowSec,
@@ -494,11 +494,18 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
       if (state.question < grownLoop) {
         const question = state.question + 1;
         const ordinal = state.ordinal + 1;
-        const difficulty = clampDifficulty(
+        const adaptiveDifficulty = clampDifficulty(
           nextDifficulty(state.difficulty, state.signal, concept.baseQuestionCount) +
             action.difficultyNudge,
         );
-        const current = generateFor(state.lesson, question, ordinal, difficulty, state.signal, state.seed);
+        const current = generateFor(
+          state.lesson,
+          question,
+          ordinal,
+          adaptiveDifficulty,
+          state.signal,
+          state.seed,
+        );
         return {
           ...base,
           status: initialStatusFor(current),
@@ -507,7 +514,7 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
           question,
           ordinal,
           attempt: 1,
-          difficulty,
+          difficulty: current.difficulty,
           current,
           proofCompleted: false,
         };
@@ -515,8 +522,8 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
 
       const lesson = state.lesson + 1;
       const ordinal = state.ordinal + 1;
-      const difficulty = openingDifficulty(state.signal);
-      const current = generateFor(lesson, 1, ordinal, difficulty, state.signal, state.seed);
+      const adaptiveDifficulty = openingDifficulty(state.signal);
+      const current = generateFor(lesson, 1, ordinal, adaptiveDifficulty, state.signal, state.seed);
       return {
         ...base,
         status: initialStatusFor(current),
@@ -527,7 +534,7 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
         loopSize: getConcept(lesson).baseQuestionCount,
         attempt: 1,
         ordinal,
-        difficulty,
+        difficulty: current.difficulty,
         current,
         proofCompleted: false,
       };

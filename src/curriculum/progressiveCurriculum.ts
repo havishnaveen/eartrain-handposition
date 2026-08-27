@@ -14,6 +14,7 @@ import type {
 } from './types';
 import {
   buildPosition,
+  makeRandom,
   positionById,
 } from './positions';
 import type { Position, PositionTemplate } from './positions';
@@ -47,8 +48,8 @@ import type { Contour } from './melody';
  * tone without searching randomly.
  */
 
-const BASE_QUESTIONS = 3;
-const MAX_QUESTIONS = 9;
+const BASE_QUESTIONS = 4;
+const MAX_QUESTIONS = 10;
 const SHORT_MEMORY_PREVIEW_SECONDS = 10;
 const LONG_MEMORY_PREVIEW_SECONDS = 15;
 
@@ -96,12 +97,22 @@ interface LessonRecipe {
   showKeySignature: boolean;
   tempoEasy: number;
   tempoHard: number;
+  /** Fixed teaching order. Performance may add repeats, never reshuffle it. */
+  drills: readonly CurriculumDrillKind[];
+  /** Explicit lesson rung; each of the four drills rises slightly from here. */
+  difficultyBase: number;
   shiftPairs?: readonly (readonly [PositionTemplate, PositionTemplate])[];
-  /** Local reps that stay as notated reading and include block chords. */
-  standardChordReps?: readonly (1 | 2 | 3)[];
   /** Optional ear-training reps interleaved with this lesson's tactile work. */
   spatialChord?: SpatialChordRecipe;
 }
+
+export type CurriculumDrillKind =
+  | 'prove-it'
+  | 'standard'
+  | 'blind-memory'
+  | 'anchor-shift'
+  | 'chord-reading'
+  | 'spatial-chord';
 
 interface SpatialChordRecipe {
   /** One-based reps in the clean three-question loop. */
@@ -134,6 +145,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: RH, positions: [C], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: false,
     tempoEasy: 15, tempoHard: 14,
+    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.04,
   },
   {
     id: 'c02-rh-musical-phrases', index: 2, phase: 0, phaseLabel: 'Right hand foundations',
@@ -143,6 +155,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: RH, positions: [C, G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED], meters: [4, 3],
     showKeySignature: false, tempoEasy: 14.5, tempoHard: 13,
+    drills: ['standard', 'prove-it', 'blind-memory', 'standard'], difficultyBase: 0.08,
     spatialChord: {
       questionNumbers: [3], roots: [C], qualities: ['major'], rootSupport: 'shown', layers: [],
       progressionLength: 1, targetRepeats: 2, rootSearchSeconds: 8,
@@ -157,6 +170,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: LH, positions: [C], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: false,
     tempoEasy: 15, tempoHard: 13.8,
+    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.07,
   },
   {
     id: 'c04-two-hand-white-keys', index: 4, phase: 0, phaseLabel: 'Two-hand foundations',
@@ -166,6 +180,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [C, G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: false, tempoEasy: 14, tempoHard: 12.5,
+    drills: ['standard', 'prove-it', 'blind-memory', 'standard'], difficultyBase: 0.12,
     spatialChord: {
       questionNumbers: [3], roots: [C, G], qualities: ['major'], rootSupport: 'shown', layers: ['pad'],
       progressionLength: 1, targetRepeats: 2, rootSearchSeconds: 8,
@@ -180,6 +195,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
     tempoEasy: 14.5, tempoHard: 13,
+    drills: ['prove-it', 'standard', 'blind-memory', 'standard'], difficultyBase: 0.17,
   },
   {
     id: 'c06-g-major-phrases', index: 6, phase: 1, phaseLabel: 'One sharp',
@@ -189,6 +205,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 14, tempoHard: 12.4,
+    drills: ['standard', 'blind-memory', 'standard', 'spatial-chord'], difficultyBase: 0.22,
     spatialChord: {
       questionNumbers: [3], roots: [G], qualities: ['major'], rootSupport: 'shown', layers: ['pad'],
       progressionLength: 2, targetRepeats: 2, rootSearchSeconds: 7.5,
@@ -203,6 +220,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
     tempoEasy: 14, tempoHard: 12.8,
+    drills: ['prove-it', 'standard', 'blind-memory', 'standard'], difficultyBase: 0.27,
   },
   {
     id: 'c08-d-major-phrases', index: 8, phase: 1, phaseLabel: 'Two sharps',
@@ -212,6 +230,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
+    drills: ['standard', 'blind-memory', 'standard', 'spatial-chord'], difficultyBase: 0.32,
     spatialChord: {
       questionNumbers: [3], roots: [G, D], qualities: ['major'], rootSupport: 'shown', layers: ['pad', 'bass'],
       progressionLength: 2, targetRepeats: 2, rootSearchSeconds: 7.2,
@@ -226,6 +245,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
     showKeySignature: true, tempoEasy: 13.8, tempoHard: 12.4,
+    drills: ['prove-it', 'standard', 'blind-memory', 'standard'], difficultyBase: 0.37,
   },
   {
     id: 'c10-a-major-phrases', index: 10, phase: 2, phaseLabel: 'Three sharps',
@@ -235,6 +255,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13.2, tempoHard: 11.8,
+    drills: ['standard', 'blind-memory', 'standard', 'spatial-chord'], difficultyBase: 0.42,
     spatialChord: {
       questionNumbers: [3], roots: [D, A], qualities: ['major'], rootSupport: 'shown', layers: ['pad', 'bass'],
       progressionLength: 2, targetRepeats: 2, rootSearchSeconds: 7,
@@ -249,6 +270,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
     showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
+    drills: ['prove-it', 'standard', 'blind-memory', 'standard'], difficultyBase: 0.47,
   },
   {
     id: 'c12-e-major-phrases', index: 12, phase: 2, phaseLabel: 'Four sharps',
@@ -258,6 +280,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13, tempoHard: 11.5,
+    drills: ['standard', 'blind-memory', 'standard', 'spatial-chord'], difficultyBase: 0.52,
     spatialChord: {
       questionNumbers: [3], roots: [A, E], qualities: ['major'], rootSupport: 'matched', layers: ['pad', 'bass', 'pulse'],
       progressionLength: 3, targetRepeats: 2, rootSearchSeconds: 6.8,
@@ -271,6 +294,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [C, G],
     rightOctaves: TREBLE, leftOctaves: [3], contours: MUSICAL_GENTLE_SKIPS,
     meters: [4], showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
+    drills: ['anchor-shift', 'standard', 'anchor-shift', 'blind-memory'], difficultyBase: 0.40,
     shiftPairs: [[C, G]],
   },
   {
@@ -280,6 +304,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [G, D],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: MUSICAL_GENTLE_SKIPS,
     meters: [4], showKeySignature: true, tempoEasy: 13, tempoHard: 11.5,
+    drills: ['anchor-shift', 'standard', 'blind-memory', 'spatial-chord'], difficultyBase: 0.47,
     shiftPairs: [[G, D]],
     spatialChord: {
       questionNumbers: [3], roots: [G, D], qualities: ['major'], rootSupport: 'matched', layers: ['pad', 'bass', 'pulse'],
@@ -294,6 +319,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [D, A],
     rightOctaves: TREBLE, leftOctaves: [3], contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.2,
+    drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.54,
     shiftPairs: [[D, A]],
   },
   {
@@ -303,8 +329,8 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [A, E],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.3, tempoHard: 10.7,
+    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'spatial-chord'], difficultyBase: 0.60,
     shiftPairs: [[A, E]],
-    standardChordReps: [2],
     spatialChord: {
       questionNumbers: [3], roots: [A, E], qualities: ['major'], rootSupport: 'matched', layers: ['pad', 'bass', 'pulse'],
       progressionLength: 3, targetRepeats: 2, rootSearchSeconds: 6.8,
@@ -316,11 +342,11 @@ const LESSONS: readonly LessonRecipe[] = [
     title: 'Map B and F-sharp', focus: 'Place both new hand maps before asking the hand to jump between them.',
     instruction: 'Set the hand shape. Then play the short pattern.',
     exerciseMode: 'prove-it', hands: BOTH_HANDS,
-    // Deliberate B, B, F# order: each hand meets B before F# is introduced.
-    positions: [B, B, FS], rightOctaves: [4], leftOctaves: [3],
+    // Both hands establish B before both hands meet F-sharp.
+    positions: [B, B, FS, FS], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4],
     showKeySignature: true, tempoEasy: 15, tempoHard: 14,
-    standardChordReps: [2],
+    drills: ['prove-it', 'prove-it', 'prove-it', 'chord-reading'], difficultyBase: 0.50,
   },
   {
     id: 'c18-shift-b-to-fsharp', index: 18, phase: 5, phaseLabel: 'Five and six sharps',
@@ -329,8 +355,8 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [B, FS],
     rightOctaves: [4], leftOctaves: [3], contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.2,
+    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'spatial-chord'], difficultyBase: 0.62,
     shiftPairs: [[B, FS]],
-    standardChordReps: [2],
     spatialChord: {
       questionNumbers: [3], roots: [B, FS], qualities: ['major'], rootSupport: 'matched',
       layers: ['pad', 'bass', 'pulse'], progressionLength: 3, targetRepeats: 2,
@@ -344,7 +370,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D],
     rightOctaves: [4], leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 14, tempoHard: 13,
-    standardChordReps: [2],
+    drills: ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'], difficultyBase: 0.58,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D], qualities: ['major'], rootSupport: 'shown',
       layers: [], progressionLength: 1, targetRepeats: 2, rootSearchSeconds: 9,
@@ -358,6 +384,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A],
     rightOctaves: [4], leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 13.5, tempoHard: 12.5,
+    drills: ['chord-reading', 'spatial-chord', 'blind-memory', 'spatial-chord'], difficultyBase: 0.64,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A], qualities: ['major'], rootSupport: 'shown',
       layers: ['pad'], progressionLength: 2, targetRepeats: 2, rootSearchSeconds: 8.5,
@@ -371,6 +398,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A],
     rightOctaves: TREBLE, leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 13, tempoHard: 12,
+    drills: ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'], difficultyBase: 0.70,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A], qualities: ['major', 'minor'], rootSupport: 'shown',
       layers: ['pad', 'bass'], progressionLength: 2, targetRepeats: 2,
@@ -384,6 +412,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [D, A, E, B],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.8,
+    drills: ['chord-reading', 'spatial-chord', 'blind-memory', 'spatial-chord'], difficultyBase: 0.76,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [D, A, E, B], qualities: ['major', 'minor'], rootSupport: 'matched',
       layers: ['pad', 'bass', 'pulse'], progressionLength: 3, targetRepeats: 2,
@@ -397,6 +426,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A, E],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12.4, tempoHard: 11.2,
+    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.84,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A, E], qualities: ['major', 'minor'], rootSupport: 'matched',
       layers: ['pad', 'bass', 'pulse', 'strings'], progressionLength: 3, targetRepeats: 2,
@@ -410,6 +440,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [D, A, E, B, FS],
     rightOctaves: [4, 5], leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12, tempoHard: 10.8,
+    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.90,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [D, A, E, B, FS], qualities: ['major', 'minor'], rootSupport: 'matched',
       layers: ['pad', 'bass', 'pulse', 'strings'], progressionLength: 4, targetRepeats: 1,
@@ -417,6 +448,13 @@ const LESSONS: readonly LessonRecipe[] = [
     },
   },
 ];
+
+/** Public, testable curriculum contract used by the pathway and audits. */
+export const CURRICULUM_BLUEPRINT = LESSONS.map((lesson) => ({
+  lesson: lesson.index,
+  difficultyBase: lesson.difficultyBase,
+  drills: [...lesson.drills],
+}));
 
 interface LessonRemediation {
   primaryProblem: RemediationProblem;
@@ -743,14 +781,16 @@ function twoHandStandardQuestion(
   contour: Contour,
   beatsPerBar: number,
   ordinal: number,
+  materialIndex: number,
   difficulty: number,
   mode: GenerationMode,
+  rand: () => number,
   modeDifficulty: number,
   /** Wraps the notation onto a second stacked grand-staff system once the
    * (already-lengthened) contour runs past `measuresPerSystem` measures. */
   measuresPerSystem?: number,
 ): Question {
-  const leftOctave = cyclePick(lesson.leftOctaves, ordinal + 1);
+  const leftOctave = cyclePick(lesson.leftOctaves, materialIndex + 1);
   const leftPosition = buildPosition(rightPosition.template, leftOctave);
   // A rest still needs a staff line to sit on — VexFlow's Accidental.
   // applyAccidentals explicitly skips rests (t.isRest() short-circuits it),
@@ -784,6 +824,32 @@ function twoHandStandardQuestion(
         ? { keys: [leftRestKey], duration: 'qr' }
         : { keys: [leftPosition.vf[degree]], duration: 'q', finger: fingerFor(degree, 'left') },
     );
+  });
+
+  // Generate one shared rhythm lane, then mirror every duration onto the
+  // sounding note and the other hand's rest. This preserves real eighth/
+  // sixteenth development without letting the grand staves drift apart.
+  const handoffIndices = Array.from(
+    { length: Math.max(0, Math.ceil(contour.length / groupSize) - 1) },
+    (_, index) => (index + 1) * groupSize,
+  ).flatMap((index) => [index - 1, index]);
+  const rhythmicSlots = applyRhythm(
+    contour.map((degree) => ({ keys: [rightPosition.vf[degree]], duration: 'q' })),
+    beatsPerBar,
+    rand,
+    lesson.index,
+    handoffIndices,
+  );
+  rhythmicSlots.forEach((slot, index) => {
+    const duration = slot.duration.replace(/r$/, '');
+    rightNotes[index] = {
+      ...rightNotes[index],
+      duration: rightNotes[index].duration.endsWith('r') ? `${duration}r` : duration,
+    };
+    leftNotes[index] = {
+      ...leftNotes[index],
+      duration: leftNotes[index].duration.endsWith('r') ? `${duration}r` : duration,
+    };
   });
 
   return {
@@ -841,13 +907,18 @@ function chordalStandardQuestion(
       [[0], [1], [0, 2, 4], [2], [3], [4], [0, 4], [0, 2, 4]],
       [[4], [3], [0, 2, 4], [1], [2], [1], [0, 4], [0, 2, 4]],
     ];
-  const events = cyclePick(phraseBanks, ordinal + lesson.index);
+  const events = cyclePick(phraseBanks, questionNumber - 1);
   const notes: CueNote[] = events.map((degrees, index) => ({
     keys: degrees.map((degree) => position.vf[degree]),
     duration: 'q',
     ...(degrees.length === 1 ? { finger: fingerFor(degrees[0], hand) } : {}),
     anchor: index === 0,
   }));
+  const restKey = hand === 'right' ? 'b/4' : 'd/3';
+  const paddingBeats = positiveModulo(-events.length, 4);
+  for (let index = 0; index < paddingBeats; index += 1) {
+    notes.push({ keys: [restKey], duration: 'qr' });
+  }
 
   return {
     id: `${lesson.id}#${ordinal}`,
@@ -890,7 +961,7 @@ function spatialChordQuestion(
   // Dedicated chord lessons should not all restart on C. Preserve the
   // within-lesson progression while rotating each lesson's starting root.
   const lessonRootOffset = lesson.exerciseMode === 'spatial-chord'
-    ? Math.max(0, lesson.index - 19)
+    ? Math.max(0, (lesson.index - 19) * 2)
     : 0;
   const rootTemplate = cyclePick(recipe.roots, localRep + lessonRootOffset);
   const quality = cyclePick(recipe.qualities, localRep);
@@ -917,7 +988,7 @@ function spatialChordQuestion(
     pitches,
     quality,
     recipe.progressionLength,
-    ordinal + lesson.index,
+    localRep + lesson.index * 3,
   );
   const spatialChord: SpatialChordSpec = {
     chordName,
@@ -968,33 +1039,30 @@ function spatialChordQuestion(
 function questionFor(
   lesson: LessonRecipe,
   ordinal: number,
-  rand: () => number,
-  difficulty: number,
+  _rand: () => number,
+  _difficulty: number,
   mode: GenerationMode,
   questionNumber = 1,
 ): Question {
-  const localRep = positiveModulo(questionNumber - 1, BASE_QUESTIONS);
-  const repRamp = [0, 0.32, 0.58][localRep];
-  const blendedDifficulty = clamp01(difficulty * 0.72 + repRamp * 0.28);
-  const modeDifficulty =
-    mode === 'reinforce'
-      ? blendedDifficulty * 0.72
-      : mode === 'stretch'
-        ? blendedDifficulty + (1 - blendedDifficulty) * 0.16
-        : blendedDifficulty;
+  const localRep = positiveModulo(questionNumber - 1, lesson.drills.length);
+  const drillKind = cyclePick(lesson.drills, localRep);
+  const fixedDifficulty = clamp01(lesson.difficultyBase + localRep * 0.035);
+  const modeDifficulty = fixedDifficulty;
+  const materialIndex = lesson.index * BASE_QUESTIONS + localRep;
+  const rand = makeRandom(20260826 + lesson.index * 4099 + localRep * 131);
 
-  // Local question number, not global ordinal, guarantees a clean R/L/R
-  // three-rep loop even after an earlier lesson grew adaptive extra reps.
+  // Local question number, not global ordinal, guarantees a fixed hand order
+  // even after an earlier lesson grows remedial repeats.
   const hand = lesson.hands[localRep % lesson.hands.length];
   const clef = hand === 'right' ? 'treble' : 'bass';
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
 
-  if (lesson.standardChordReps?.includes((localRep + 1) as 1 | 2 | 3)) {
+  if (drillKind === 'chord-reading') {
     return chordalStandardQuestion(
       lesson,
       ordinal,
-      questionNumber,
-      difficulty,
+      localRep + 1,
+      fixedDifficulty,
       mode,
       modeDifficulty,
       hand,
@@ -1002,23 +1070,24 @@ function questionFor(
   }
 
   if (
+    drillKind === 'spatial-chord' &&
     lesson.spatialChord &&
-    (lesson.exerciseMode === 'spatial-chord' || lesson.spatialChord.questionNumbers.includes(questionNumber))
+    (lesson.exerciseMode === 'spatial-chord' || lesson.spatialChord.questionNumbers.length > 0)
   ) {
     return spatialChordQuestion(
       lesson,
       lesson.spatialChord,
       ordinal,
       questionNumber,
-      modeDifficulty,
+      fixedDifficulty,
       mode,
       hand,
     );
   }
 
-  if (lesson.exerciseMode === 'anchor-shift' && lesson.shiftPairs?.length) {
-    const pair = cyclePick(lesson.shiftPairs, ordinal);
-    const octave = cyclePick(octavePool, Math.floor(ordinal / lesson.shiftPairs.length));
+  if (drillKind === 'anchor-shift' && lesson.shiftPairs?.length) {
+    const pair = cyclePick(lesson.shiftPairs, localRep);
+    const octave = cyclePick(octavePool, Math.floor(localRep / lesson.shiftPairs.length));
     const [from, to] = buildAscendingFifthPair(pair, octave);
     const openingPool: readonly Contour[] = [
       [0, 1, 2],
@@ -1043,8 +1112,8 @@ function questionFor(
     // gradually, never jumping straight to a dense six-note landing.
     const landingLength = lesson.index <= 13 ? 3 : lesson.index <= 15 ? 4 : 5;
     const landingPool = fullLandingPool.map((contour) => contour.slice(0, landingLength));
-    const opening = variedPick(openingPool, modeDifficulty, ordinal + lesson.index);
-    const landing = variedPick(landingPool, modeDifficulty, ordinal * 2 + lesson.index);
+    const opening = variedPick(openingPool, modeDifficulty, materialIndex + lesson.index);
+    const landing = variedPick(landingPool, modeDifficulty, materialIndex * 2 + lesson.index);
     const splitIndex = opening.length;
     const degrees = [...opening, ...landing];
     const notes: CueNote[] = degrees.map((degree, index) => {
@@ -1104,7 +1173,7 @@ function questionFor(
       expectedSequence,
       tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),
       positionLabel: `${from.label} → ${to.label}`,
-      difficulty,
+      difficulty: fixedDifficulty,
       mode,
       anchorShift: {
         fromPositionName: fromName,
@@ -1119,48 +1188,30 @@ function questionFor(
   }
 
   // Position introductions must not depend on how many adaptive drills were
-  // added in an earlier lesson. This is especially important in Lesson 17:
-  // its deliberate B, B, F-sharp order establishes both hands in B before
-  // F-sharp appears. Extended reps cycle the same safe sequence.
-  const positionTemplate = cyclePick(lesson.positions, questionNumber - 1);
+  // added earlier. Lesson 17 deliberately uses B, B, F-sharp, F-sharp so both
+  // hands establish each map before the following B-to-F-sharp lesson.
+  const positionTemplate = cyclePick(lesson.positions, localRep);
   const octave = cyclePick(
     octavePool,
-    Math.floor((questionNumber - 1) / lesson.positions.length),
+    Math.floor(localRep / lesson.positions.length),
   );
   const position = buildPosition(positionTemplate, octave);
-  // Memory is one complementary drill inside each applicable lesson, not the
-  // entire lesson. Orientation lessons lead with memory; phrase lessons place
-  // it second, with their third drill reserved for chord work where present.
-  const memoryRep = lesson.index % 2 === 1 ? 0 : 1;
-  const exerciseMode: ExerciseMode =
-    lesson.exerciseMode === 'blind-memory' && localRep !== memoryRep
-      ? 'standard'
-      : lesson.exerciseMode;
-
-  // Future late lessons that directly choose `standard` inherit the same
-  // rule: after Lesson 15, normal reading always includes block chords.
-  if (exerciseMode === 'standard' && lesson.index > 15) {
-    return chordalStandardQuestion(
-      lesson,
-      ordinal,
-      questionNumber,
-      difficulty,
-      mode,
-      modeDifficulty,
-      hand,
-    );
-  }
+  const exerciseMode: ExerciseMode = drillKind === 'blind-memory'
+    ? 'blind-memory'
+    : drillKind === 'prove-it'
+      ? 'prove-it'
+      : 'standard';
 
   const memoryPool = lesson.index >= 9 ? MEMORY_LONG_PATTERNS : MEMORY_SHORT_PATTERNS;
   const contour = variedPick(
     exerciseMode === 'blind-memory' ? memoryPool : lesson.contours,
     modeDifficulty,
-    ordinal + lesson.index,
+    materialIndex + lesson.index,
   );
   const memoryPreviewSeconds = contour.length >= 10
     ? LONG_MEMORY_PREVIEW_SECONDS
     : SHORT_MEMORY_PREVIEW_SECONDS;
-  const beatsPerBar = cyclePick(lesson.meters, ordinal);
+  const beatsPerBar = cyclePick(lesson.meters, localRep);
 
   // Genuine two-hand grand-staff questions: standard reps from Lessons 6-15.
   // Later standard reps use chordalStandardQuestion above. Scoped to
@@ -1176,7 +1227,7 @@ function questionFor(
     // Longer phrases for the tail of the standard-exercise arc: 60% of
     // reps get roughly 1.5-2x the usual length, wrapped onto a second
     // stacked grand-staff system instead of one ever-widening line.
-    const extendLength = lesson.index >= 11 && rand() < 0.6;
+    const extendLength = lesson.index >= 11 && localRep >= 2;
     // Capped to exactly two systems' worth of notes (StaffCue.tsx wraps at
     // `measuresPerSystem` measures = `measuresPerSystem * beatsPerBar`
     // quarter notes) — "1.5 to 2 lines", never a stray third line, even
@@ -1189,7 +1240,7 @@ function questionFor(
     // opens closest to the first phrase's last note keeps the seam a
     // plausible melodic step instead of a coin-flip jump.
     const continuationCandidates = [7, 11, 17].map((salt) =>
-      variedPick(lesson.contours, modeDifficulty, ordinal + lesson.index + salt),
+      variedPick(lesson.contours, modeDifficulty, materialIndex + lesson.index + salt),
     );
     const lastDegree = contour[contour.length - 1];
     const continuation = continuationCandidates.reduce((best, candidate) =>
@@ -1199,7 +1250,8 @@ function questionFor(
       ? [...contour, ...continuation].slice(0, notesPerSystem * 2)
       : contour;
     return twoHandStandardQuestion(
-      lesson, position, standardContour, beatsPerBar, ordinal, difficulty, mode, modeDifficulty,
+      lesson, position, standardContour, beatsPerBar, ordinal, materialIndex,
+      fixedDifficulty, mode, rand, modeDifficulty,
       extendLength ? 2 : undefined,
     );
   }
@@ -1218,9 +1270,7 @@ function questionFor(
     handScope: hand,
     instruction: exerciseMode === 'blind-memory'
       ? `Look for ${memoryPreviewSeconds} seconds. Find the pattern, then play it from memory.`
-      : lesson.exerciseMode === 'blind-memory'
-        ? 'Read the phrase and play it after the count-in.'
-        : lesson.instruction,
+      : 'Read the phrase and play it after the count-in.',
     cue: {
       keySignature: lesson.showKeySignature ? position.template.keySignature : 'C',
       timeSignature: `${beatsPerBar}/4`,
@@ -1229,9 +1279,9 @@ function questionFor(
     expectedSequence: contour.map((degree) => position.sci[degree]),
     tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),
     positionLabel: position.label,
-    difficulty,
+    difficulty: fixedDifficulty,
     mode,
-    ...(lesson.exerciseMode === 'prove-it'
+    ...(exerciseMode === 'prove-it'
       ? {
           positionProof: {
             positionName: `${position.template.id === 'F#' ? 'F-sharp' : position.template.id} Position`,
@@ -1250,15 +1300,10 @@ function questionFor(
                   { pitch: position.sci[2], finger: 3 as const },
                   { pitch: position.sci[4], finger: 1 as const },
                 ],
-            // Each note just needs to sound, in order — the child does not
-            // have to keep earlier fingers pressed down while adding the
-            // next one. Holding a 3-key hand shape while a mic tries to
-            // confirm every finger is still down was fragile in practice
-            // (acoustic release detection is inherently noisy) and made
-            // Prove It feel needlessly strict. See useDrillAudio.ts's
-            // acceptProofNote / the final-verification block for the other
-            // half of this simplification.
-            requireHeld: false,
+            // Prove It establishes a physical hand shape, not three unrelated
+            // taps. The hardened release lane verifies that earlier fingers
+            // remain down and names whichever key was released too soon.
+            requireHeld: true,
             acceptWindowMs: 5500,
           },
         }

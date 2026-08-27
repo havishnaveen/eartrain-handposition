@@ -137,13 +137,21 @@ try {
 
   const dedicatedChordRoots = PROGRESSIVE_CONCEPTS
     .filter(({ index }) => index >= 19 && index <= 24)
-    .map((lesson) => lesson.generate(
-      lesson.index * 100 + 1,
-      makeRandom(303000 + lesson.index),
-      0.5,
-      'normal',
-      1,
-    ).spatialChord.rootPitch.replace(/-?\d+$/, ''));
+    .map((lesson) => {
+      const spatialQuestion = Array.from(
+        { length: lesson.baseQuestionCount },
+        (_, index) => index + 1,
+      ).map((questionNumber) => lesson.generate(
+        lesson.index * 100 + questionNumber,
+        makeRandom(303000 + lesson.index + questionNumber),
+        0.5,
+        'normal',
+        questionNumber,
+      )).find((question) => question.exerciseMode === 'spatial-chord');
+      assert.ok(spatialQuestion?.spatialChord,
+        `Lesson ${lesson.index} needs a chord-by-ear drill in its base loop.`);
+      return spatialQuestion.spatialChord.rootPitch.replace(/-?\d+$/, '');
+    });
   assert.ok(new Set(dedicatedChordRoots).size >= 4,
     `Dedicated chord lessons must rotate starting roots, received ${dedicatedChordRoots.join(', ')}.`);
 

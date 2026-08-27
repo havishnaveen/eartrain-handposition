@@ -131,7 +131,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
             <b className="et-anchor-cue__step">1</b>
             <span><small>Play here first</small><strong>{shift.fromPositionName}</strong></span>
           </header>
-          <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} />
+          <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} compact />
         </section>
 
         <div className="et-anchor-cue__bridge" aria-label={waitSeconds > 0 ? `${waitSeconds}-second phrase-preview countdown` : 'Move your hand'}>
@@ -154,7 +154,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
             <b className="et-anchor-cue__step">3</b>
             <span><small>Land here</small><strong>{shift.toPositionName}</strong></span>
           </header>
-          <StaffCue ref={secondRef} cue={secondCue} accentColor={accentColor} inkColor={inkColor} />
+          <StaffCue ref={secondRef} cue={secondCue} accentColor={accentColor} inkColor={inkColor} compact />
         </section>
       </div>
     );

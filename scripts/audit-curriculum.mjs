@@ -14,7 +14,7 @@ const server = await createServer({
 });
 
 try {
-  const { PROGRESSIVE_CONCEPTS } = await server.ssrLoadModule(
+  const { CURRICULUM_BLUEPRINT, PROGRESSIVE_CONCEPTS } = await server.ssrLoadModule(
     '/src/curriculum/progressiveCurriculum.ts',
   );
   const { makeRandom, toScientific, LOWEST_MIDI, HIGHEST_MIDI } =
@@ -99,16 +99,47 @@ try {
   assert.ok(timingLeniencyForLesson(1, totalLessons).onBeatWindow >
     timingLeniencyForLesson(totalLessons, totalLessons).onBeatWindow,
   'Timing tolerance must tighten smoothly across the pathway.');
+  assert.deepEqual(
+    CURRICULUM_BLUEPRINT.map(({ drills }) => drills),
+    [
+      ['prove-it', 'standard', 'standard', 'prove-it'],
+      ['standard', 'prove-it', 'blind-memory', 'standard'],
+      ['prove-it', 'standard', 'standard', 'prove-it'],
+      ['standard', 'prove-it', 'blind-memory', 'standard'],
+      ['prove-it', 'standard', 'blind-memory', 'standard'],
+      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
+      ['prove-it', 'standard', 'blind-memory', 'standard'],
+      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
+      ['prove-it', 'standard', 'blind-memory', 'standard'],
+      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
+      ['prove-it', 'standard', 'blind-memory', 'standard'],
+      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
+      ['anchor-shift', 'standard', 'anchor-shift', 'blind-memory'],
+      ['anchor-shift', 'standard', 'blind-memory', 'spatial-chord'],
+      ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
+      ['anchor-shift', 'chord-reading', 'blind-memory', 'spatial-chord'],
+      ['prove-it', 'prove-it', 'prove-it', 'chord-reading'],
+      ['anchor-shift', 'chord-reading', 'blind-memory', 'spatial-chord'],
+      ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'blind-memory', 'spatial-chord'],
+      ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'blind-memory', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
+    ],
+    'Every lesson must keep its reviewed four-drill teaching order.',
+  );
 
   let globalOrdinal = 0;
+  const shiftPhaseRhythms = { eighth: 0, sixteenth: 0, plain: 0 };
   for (const concept of PROGRESSIVE_CONCEPTS) {
     assert.equal(concept.index, summary.length + 1, 'Lesson indices must be contiguous.');
-    assert.equal(concept.baseQuestionCount, 3, `Lesson ${concept.index} must have three base drills.`);
+    assert.equal(concept.baseQuestionCount, 4, `Lesson ${concept.index} must have four base drills.`);
     assert.ok(concept.maxQuestionCount >= concept.baseQuestionCount);
 
     const rhythms = { eighth: 0, sixteenth: 0, plain: 0 };
     const generatedModes = new Set();
-    const cleanSignatures = [];
+    const cleanSignatures = new Map();
 
     for (let questionNumber = 1; questionNumber <= concept.maxQuestionCount; questionNumber += 1) {
       for (const mode of modes) {
@@ -128,8 +159,16 @@ try {
             generatedModes.add(question.exerciseMode);
 
             assert.ok(staff, `Lesson ${concept.index}, drill ${questionNumber} needs a staff.`);
-            assert.equal(question.handScope, staff.hand,
-              `Lesson ${concept.index}, drill ${questionNumber} hand label must match its staff.`);
+            if (question.handScope === 'both') {
+              assert.deepEqual(
+                new Set(question.cue.staves.map((candidate) => candidate.hand)),
+                new Set(['right', 'left']),
+                `Lesson ${concept.index}, drill ${questionNumber} says both hands without both staves.`,
+              );
+            } else {
+              assert.equal(question.handScope, staff.hand,
+                `Lesson ${concept.index}, drill ${questionNumber} hand label must match its staff.`);
+            }
             assert.ok(question.expectedSequence.length > 0);
             assert.equal(plan.countInLabels.length, plan.beatsPerBar * 2,
               `Lesson ${concept.index}, drill ${questionNumber} needs a two-bar count-in.`);
@@ -139,12 +178,14 @@ try {
                 String((index % plan.beatsPerBar) + 1)),
             );
 
-            const totalBeats = staff.notes.reduce(
+            const staffBeatTotals = question.cue.staves.map((cueStaff) => cueStaff.notes.reduce(
               (sum, note) => sum + beatsForDuration(note.duration),
               0,
-            );
-            assert.ok(Math.abs(totalBeats / plan.beatsPerBar - Math.round(totalBeats / plan.beatsPerBar)) < 1e-8,
-              `Lesson ${concept.index}, drill ${questionNumber} must fill complete measures.`);
+            ));
+            const totalBeats = Math.max(...staffBeatTotals);
+            assert.ok(staffBeatTotals.every((beats) => (
+              Math.abs(beats / plan.beatsPerBar - Math.round(beats / plan.beatsPerBar)) < 1e-8
+            )), `Lesson ${concept.index}, drill ${questionNumber} must fill complete measures.`);
             const timedWaitBeats = (question.anchorShift?.timedShift?.waitSeconds ?? 0) /
               plan.secondsPerBeat;
             assert.ok(Math.abs(plan.totalBeats - totalBeats - timedWaitBeats) < 1e-8,
@@ -184,9 +225,17 @@ try {
               }
             }
 
-            const writtenPitches = staff.notes
-              .filter((note) => !note.duration.endsWith('r'))
-              .flatMap((note) => note.keys.map(toScientific));
+            const writtenPitches = question.cue.staves.length === 1
+              ? staff.notes
+                .filter((note) => !note.duration.endsWith('r'))
+                .flatMap((note) => note.keys.map(toScientific))
+              : Array.from(
+                { length: Math.max(...question.cue.staves.map((cueStaff) => cueStaff.notes.length)) },
+                (_, noteIndex) => question.cue.staves.flatMap((cueStaff) => {
+                  const note = cueStaff.notes[noteIndex];
+                  return note && !note.duration.endsWith('r') ? note.keys.map(toScientific) : [];
+                }),
+              ).flat();
             assert.deepEqual(writtenPitches, question.expectedSequence,
               `Lesson ${concept.index}, drill ${questionNumber} notation and grading pitches diverged.`);
 
@@ -195,6 +244,24 @@ try {
               `Lesson ${concept.index}, drill ${questionNumber} exceeds the detector-safe register.`);
 
             const durations = staff.notes.map((note) => note.duration);
+            const materialSignature = JSON.stringify({
+              position: question.positionLabel,
+              mode: question.exerciseMode,
+              pitches: question.expectedSequence,
+              durations,
+              progression: question.spatialChord?.context.progression ?? null,
+            });
+            const existingSignature = cleanSignatures.get(questionNumber);
+            if (existingSignature === undefined) cleanSignatures.set(questionNumber, materialSignature);
+            else assert.equal(materialSignature, existingSignature,
+              `Lesson ${concept.index}, drill ${questionNumber} changed with seed, mode, or adaptive difficulty.`);
+            const blueprint = CURRICULUM_BLUEPRINT[concept.index - 1];
+            const localRep = (questionNumber - 1) % concept.baseQuestionCount;
+            assert.equal(
+              question.difficulty,
+              Math.min(1, blueprint.difficultyBase + localRep * 0.035),
+              `Lesson ${concept.index}, drill ${questionNumber} left its fixed difficulty rung.`,
+            );
             if (durations.some((duration) => duration.startsWith('16'))) rhythms.sixteenth += 1;
             else if (durations.some((duration) => duration.startsWith('8'))) rhythms.eighth += 1;
             else rhythms.plain += 1;
@@ -260,15 +327,6 @@ try {
                 assert.ok(voicing.every((midi, voice) => Math.abs(midi - previous[voice]) <= 5),
                   'Each chord voice must move smoothly into the next harmony.');
               });
-            }
-
-            if (mode === 'normal' && difficulty === 0.5 && seed === seeds[0]) {
-              cleanSignatures.push(JSON.stringify({
-                position: question.positionLabel,
-                mode: question.exerciseMode,
-                pitches: question.expectedSequence,
-                durations,
-              }));
             }
 
             if (question.exerciseMode !== 'spatial-chord') {
@@ -515,26 +573,28 @@ try {
       }
     }
 
-    // Extra adaptive drills may reuse a position but must not repeat the exact
-    // position, pitch, rhythm, and mode tuple consecutively.
-    for (let index = 1; index < cleanSignatures.length; index += 1) {
-      assert.notEqual(cleanSignatures[index], cleanSignatures[index - 1],
-        `Lesson ${concept.index} repeats identical adjacent drills.`);
-    }
-    if (concept.index >= 5 && concept.index <= 18) {
-      assert.ok(new Set(cleanSignatures).size >= 6,
-        `Later Lesson ${concept.index} does not provide enough distinct exercise material.`);
+    const baseModes = [1, 2, 3, 4].map((questionNumber) => concept.generate(
+      globalOrdinal + questionNumber - 1,
+      makeRandom(5000 + concept.index * 10 + questionNumber),
+      0.5,
+      'normal',
+      questionNumber,
+    ).exerciseMode);
+    const expectedModes = CURRICULUM_BLUEPRINT[concept.index - 1].drills.map((kind) =>
+      kind === 'chord-reading' ? 'standard' : kind,
+    );
+    assert.deepEqual(baseModes, expectedModes,
+      `Lesson ${concept.index} did not follow its fixed drill blueprint.`);
+    assert.ok(new Set(baseModes).size >= 2,
+      `Lesson ${concept.index} needs at least two complementary exercise formats.`);
+    for (let questionNumber = 5; questionNumber <= concept.maxQuestionCount; questionNumber += 1) {
+      const repeatedFrom = ((questionNumber - 1) % concept.baseQuestionCount) + 1;
+      assert.equal(cleanSignatures.get(questionNumber), cleanSignatures.get(repeatedFrom),
+        `Lesson ${concept.index}'s remedial drill ${questionNumber} must repeat its named blueprint slot.`);
     }
     if (concept.index >= 5 && concept.index <= 12) {
       assert.ok(generatedModes.has('blind-memory') && generatedModes.has('standard'),
         `Lesson ${concept.index} must mix memory with complementary reading work.`);
-      const baseModes = [1, 2, 3].map((questionNumber) => concept.generate(
-        globalOrdinal + questionNumber - 1,
-        makeRandom(5000 + concept.index * 10 + questionNumber),
-        0.5,
-        'normal',
-        questionNumber,
-      ).exerciseMode);
       assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, 1,
         `Lesson ${concept.index} should contain exactly one memory drill in its base loop.`);
     }
@@ -542,7 +602,11 @@ try {
     if (concept.index >= 6 && concept.index <= 12) assert.equal(rhythms.sixteenth, 0);
     if (concept.index >= 6 && concept.index <= 12) assert.ok(rhythms.eighth > 0);
     if (concept.index >= 13 && concept.index <= 18) {
-      assert.ok(rhythms.sixteenth > 0 && rhythms.eighth > 0 && rhythms.plain > 0);
+      assert.ok(rhythms.plain > 0 && rhythms.eighth + rhythms.sixteenth > 0,
+        `Lesson ${concept.index} must mix a simple-pulse drill with a subdivision drill.`);
+      shiftPhaseRhythms.eighth += rhythms.eighth;
+      shiftPhaseRhythms.sixteenth += rhythms.sixteenth;
+      shiftPhaseRhythms.plain += rhythms.plain;
     }
 
     summary.push({
@@ -553,12 +617,18 @@ try {
     });
     globalOrdinal += concept.baseQuestionCount;
   }
+  assert.ok(
+    shiftPhaseRhythms.eighth > 0 &&
+    shiftPhaseRhythms.sixteenth > 0 &&
+    shiftPhaseRhythms.plain > 0,
+    'The shift phase must deliberately retain quarters while introducing eighths and sixteenths.',
+  );
 
   // Earlier retries must never rotate the teaching order of a later lesson.
-  // Lesson 17 is intentionally B (RH), B (LH), then F-sharp (RH); Lesson 24
-  // begins D, A, E even if the learner accumulated many adaptive drills.
+  // Lesson 17 is intentionally B (RH/LH), then F-sharp (RH/LH), regardless
+  // of earlier repeats or the session seed.
   for (const ordinalOffset of [0, 1, 17, 93, 240]) {
-    const lesson17 = [1, 2, 3].map((questionNumber) =>
+    const lesson17 = [1, 2, 3, 4].map((questionNumber) =>
       PROGRESSIVE_CONCEPTS[16].generate(
         ordinalOffset + questionNumber,
         makeRandom(ordinalOffset + questionNumber),
@@ -568,26 +638,12 @@ try {
       ));
     assert.deepEqual(
       lesson17.map((question) => question.positionLabel.replace(/ position.*$/, '')),
-      ['B', 'B', 'F#'],
-      'Lesson 17 must establish B in both hands before introducing F-sharp.',
+      ['B', 'B', 'F#', 'F#'],
+      'Lesson 17 must establish B in both hands before F-sharp in both hands.',
     );
     assert.deepEqual(
       lesson17.map((question) => question.handScope),
-      ['right', 'left', 'right'],
-    );
-
-    const lesson24 = [1, 2, 3].map((questionNumber) =>
-      PROGRESSIVE_CONCEPTS[23].generate(
-        ordinalOffset + questionNumber,
-        makeRandom(ordinalOffset + 100 + questionNumber),
-        0.5,
-        'normal',
-        questionNumber,
-      ));
-    assert.deepEqual(
-      lesson24.map((question) => question.spatialChord.rootPitch.replace(/-?\d+$/, '')),
-      ['D', 'A', 'E'],
-      'The final base lesson must retain its D-A-E difficulty order.',
+      ['right', 'left', 'right', 'left'],
     );
   }
 
@@ -788,12 +844,12 @@ try {
   route = pathwayReducer(route, { type: 'CONTINUE', difficultyNudge: 0 });
   assert.equal(route.question, 2);
   assert.notEqual(route.current.id, firstId);
-  assert.equal(route.status, 'position-prompt');
+  assert.equal(route.status, 'prompt');
 
   // Blind Memory has one guarded path: prompt -> preview -> count-in -> play.
   // Repeated/stale actions must not skip the preview or restart it underneath
   // an active take.
-  const memoryQuestion = generateFor(5, 1, 12, 0.25, route.signal, 20260802);
+  const memoryQuestion = generateFor(5, 3, 12, 0.25, route.signal, 20260802);
   const laterMemoryQuestion = generateFor(12, 2, 44, 0.5, route.signal, 20260812);
   assert.equal(laterMemoryQuestion.exerciseMode, 'blind-memory');
   assert.equal(laterMemoryQuestion.blindMemory?.previewSeconds, 15);
@@ -846,10 +902,14 @@ try {
     { ...sharedMemoryGradeOptions, exerciseMode: 'blind-memory' },
   );
   assert.equal(missedMemoryGrade.missed, 1);
-  assert.equal(missedMemoryGrade.scores.pitch, 5,
-    'One omitted memory note should still count as recognizing the chunk.');
-  assert.equal(missedMemoryGrade.scores.overall, 5,
-    'A cleanly recognized memory chunk with one omission should receive mastery credit.');
+  assert.ok(
+    missedMemoryGrade.scores.pitch >= 4.5 && missedMemoryGrade.scores.pitch < 5,
+    'One omitted memory note should recognize the chunk without being reported as perfect pitch.',
+  );
+  assert.ok(
+    missedMemoryGrade.scores.overall >= 4.5 && missedMemoryGrade.scores.overall < 5,
+    'A recognized memory chunk with one omission should pass strongly, but not receive 5.0.',
+  );
   const wrongMemoryTake = perfectMemoryTake.map((note, index) => (
     index === Math.floor(perfectMemoryTake.length / 2)
       ? { ...note, midi: note.midi + 1 }
@@ -865,8 +925,8 @@ try {
   let memoryRoute = {
     ...route,
     lesson: 5,
-    question: 1,
-    loopSize: 3,
+    question: 3,
+    loopSize: 4,
     current: memoryQuestion,
     status: 'prompt',
     proofCompleted: false,
@@ -966,8 +1026,8 @@ try {
     );
     fullRoute = pathwayReducer(fullRoute, { type: 'CONTINUE', difficultyNudge: 0 });
   }
-  assert.equal(routeGuard, totalLessons * 3,
-    'A perfect pathway must contain exactly three drills per lesson.');
+  assert.equal(routeGuard, totalLessons * 4,
+    'A perfect pathway must contain exactly four drills per lesson.');
   assert.equal(fullRoute.finished, true, 'The complete pathway must terminate.');
   assert.equal(fullRoute.endedOnCap, false, 'Natural completion must not masquerade as a cap stop.');
   assert.equal(fullRoute.lesson, totalLessons, 'The reducer must reach the final lesson.');
@@ -1002,7 +1062,7 @@ try {
     ...route,
     lesson: 19,
     question: 1,
-    loopSize: 3,
+    loopSize: 4,
     current: chordQuestion,
     status: 'prompt',
     proofCompleted: false,

@@ -23,9 +23,11 @@ const DURATION_BEATS: Record<string, number> = {
 };
 
 export function beatsForDuration(duration: string): number {
-  const base = duration.replace(/r$/, '').replace(/d$/, '');
+  const withoutRest = duration.replace(/r$/, '');
+  const dotted = withoutRest.endsWith('d');
+  const base = withoutRest.replace(/d$/, '');
   const beats = DURATION_BEATS[base] ?? 1;
-  return duration.endsWith('d') ? beats * 1.5 : beats;
+  return dotted ? beats * 1.5 : beats;
 }
 
 export interface PlannedNote {
@@ -1268,6 +1270,11 @@ export function gradeSequence(
 
   const totalMissed = missedExpectedIndices.length;
   const significantExtraCount = hard + hesitations * 0.35 + playedRepeatExtras;
+  // A quickly corrected neighboring key is a cleanliness/fluency issue. It
+  // must not also lower Pitch after every written pitch was subsequently
+  // played in order. Sustained wrong keys and genuine repeated attacks still
+  // reduce pitch precision, including the severe note-flood case.
+  const pitchErrorCount = hard + playedRepeatExtras;
 
   const playedNames = detected.map((d) => midiToName(d.midi));
   const rhythm = buildRhythm(matches, options);
@@ -1293,7 +1300,7 @@ export function gradeSequence(
   const pitchCoverage = expectedCount === 0 ? 0 : pitchEvidence / expectedCount;
   const pitchPrecision = pitchEvidence <= 0
     ? 0
-    : pitchEvidence / (pitchEvidence + significantExtraCount);
+    : pitchEvidence / (pitchEvidence + pitchErrorCount);
   const exactPitchScore = clamp5(5 * pitchCoverage * pitchPrecision);
   // Memory assesses whether the learner retained the musical chunk. One
   // omitted note in an otherwise exact, ordered pattern still demonstrates
@@ -1309,9 +1316,12 @@ export function gradeSequence(
   );
   // Recognising a memory pattern with one omission should pass comfortably,
   // but "accepted" is not "perfect." Reserve 5.0 for every written pitch.
-  const pitchScore = memoryPatternRecognized
+  const earnedPitchScore = memoryPatternRecognized
     ? Math.max(4.5, exactPitchScore)
     : exactPitchScore;
+  const pitchScore = offlineRecoveryPenalty > 0
+    ? Math.min(4.9, earnedPitchScore)
+    : earnedPitchScore;
 
   // Timing: a curved, lesson-aware falloff. Early readers get space to find
   // the beat; later readers are asked for more precision, without the old
@@ -1424,12 +1434,19 @@ export function gradeSequence(
   const wPitch = isMemory ? 0.7 : 0.5;
   const wTiming = isMemory ? 0.1 : 0.2;
   const wClean = isMemory ? 0.2 : 0.3;
-  const overall = calculateOverallScore(
+  const weightedOverall = calculateOverallScore(
     pitchScore,
     timingScore,
     cleanScore,
     { pitch: wPitch, timing: wTiming, cleanliness: wClean },
   );
+  // A note recovered only after the live take ended is valuable evidence,
+  // but the student-facing detector demonstrably missed it. Rounding the
+  // weighted 4.95 back to 5.0 hid that fact. Full mastery requires every
+  // written note to have cleared the responsive lane as well as the PCM pass.
+  const overall = offlineRecoveryPenalty > 0
+    ? Math.min(4.9, weightedOverall)
+    : weightedOverall;
 
   const scores: ScoreBreakdown = {
     pitch: pitchScore,

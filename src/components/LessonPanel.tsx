@@ -46,7 +46,10 @@ export function LessonPanel({
       : 'Right Hand';
 
   return (
-    <section className="lp" aria-label={`${keyName}, ${handLabel}, start on ${anchorNote}`}>
+    <section
+      className="lp"
+      aria-label={`${keyName}, ${handLabel}${anchorNote ? `, start on ${anchorNote}` : ''}`}
+    >
       <header className="lp__head">
         <span className="lp__eyebrow">Key</span>
         <h1 className="lp__title">{keyName}</h1>
