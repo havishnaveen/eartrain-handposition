@@ -61,23 +61,50 @@ export type HandScope = 'right' | 'left' | 'both';
  * These are deliberately skill problems rather than lesson titles so an
  * external system can request remediation without knowing curriculum order.
  */
-export type RemediationProblem =
-  | 'right-hand-position'
-  | 'left-hand-position'
-  | 'treble-clef-recognition'
-  | 'bass-clef-recognition'
-  | 'register-placement'
-  | 'hand-coordination'
-  | 'key-signature-orientation'
-  | 'position-memory'
-  | 'rhythm-pulse'
-  | 'rapid-subdivision'
-  | 'hand-shift'
-  | 'chord-anchor'
-  | 'chord-shell'
-  | 'chord-quality-spacing'
-  | 'background-piano-separation'
-  | 'chord-shape-transfer';
+export const REMEDIATION_PROBLEMS = [
+  'right-hand-position',
+  'left-hand-position',
+  'finger-number-mapping',
+  'treble-clef-recognition',
+  'bass-clef-recognition',
+  'clef-differentiation',
+  'register-placement',
+  'hand-coordination',
+  'stepwise-note-reading',
+  'skip-and-turn-reading',
+  'key-signature-orientation',
+  'c-position',
+  'g-major-position',
+  'd-major-position',
+  'a-major-position',
+  'e-major-position',
+  'b-major-position',
+  'f-sharp-major-position',
+  'position-memory',
+  'rhythm-pulse',
+  'rapid-subdivision',
+  'hand-shift',
+  'right-hand-shift',
+  'left-hand-shift',
+  'dominant-hand-shift',
+  'non-dominant-hand-shift',
+  'c-to-g-shift',
+  'g-to-d-shift',
+  'd-to-a-shift',
+  'a-to-e-shift',
+  'b-to-f-sharp-shift',
+  'chord-anchor',
+  'chord-shell',
+  'chord-reading',
+  'chord-simultaneity',
+  'chord-by-ear',
+  'chord-quality-spacing',
+  'major-minor-hearing',
+  'background-piano-separation',
+  'chord-shape-transfer',
+] as const;
+
+export type RemediationProblem = typeof REMEDIATION_PROBLEMS[number];
 
 export type ChordQuality = 'major' | 'minor';
 export type SpatialInstrumentLayer = 'pad' | 'bass' | 'pulse' | 'strings';
@@ -231,5 +258,11 @@ export interface Concept {
 export interface LessonDefinition extends Concept {
   exerciseMode: ExerciseMode;
   primaryProblem: RemediationProblem;
+  /** Problems this four-drill intervention is specifically designed to fix. */
+  coreProblems: readonly RemediationProblem[];
   problemTags: readonly RemediationProblem[];
+  /** Observable result expected after completing this lesson by itself. */
+  learningOutcome: string;
+  /** Why each immutable drill slot exists, in displayed order. */
+  drillPurposes: readonly [string, string, string, string];
 }

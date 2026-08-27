@@ -1,4 +1,5 @@
 import { openingLessonForProblem } from '../curriculum/progressiveCurriculum';
+import { REMEDIATION_PROBLEMS } from '../curriculum/types';
 import type { RemediationProblem } from '../curriculum/types';
 import { learningProfileStore } from '../profiles/learningProfileStore';
 import { flushLearningSync } from '../profiles/sync';
@@ -12,24 +13,7 @@ const HANDOFF_PARAM = 'handoff';
 const DEFAULT_EXCHANGE_PATH = '/api/integration/oclef/exchange';
 const DEFAULT_INGEST_PATH = '/api/integration/oclef/events';
 
-const REMEDIATION_PROBLEMS = new Set<RemediationProblem>([
-  'right-hand-position',
-  'left-hand-position',
-  'treble-clef-recognition',
-  'bass-clef-recognition',
-  'register-placement',
-  'hand-coordination',
-  'key-signature-orientation',
-  'position-memory',
-  'rhythm-pulse',
-  'rapid-subdivision',
-  'hand-shift',
-  'chord-anchor',
-  'chord-shell',
-  'chord-quality-spacing',
-  'background-piano-separation',
-  'chord-shape-transfer',
-]);
+const REMEDIATION_PROBLEM_SET = new Set<RemediationProblem>(REMEDIATION_PROBLEMS);
 
 export interface OclefIntegrationSession {
   launch: ResolvedStudentLaunch;
@@ -58,7 +42,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isRemediationProblem(value: unknown): value is RemediationProblem {
-  return typeof value === 'string' && REMEDIATION_PROBLEMS.has(value as RemediationProblem);
+  return typeof value === 'string' && REMEDIATION_PROBLEM_SET.has(value as RemediationProblem);
 }
 
 function sanitizeReturnUrl(value: unknown): string | undefined {

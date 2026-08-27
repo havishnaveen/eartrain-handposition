@@ -14,9 +14,15 @@ const server = await createServer({
 });
 
 try {
-  const { CURRICULUM_BLUEPRINT, PROGRESSIVE_CONCEPTS } = await server.ssrLoadModule(
+  const {
+    CURRICULUM_BLUEPRINT,
+    PROGRESSIVE_CONCEPTS,
+    lessonsForProblem,
+    openingLessonForProblem,
+  } = await server.ssrLoadModule(
     '/src/curriculum/progressiveCurriculum.ts',
   );
+  const { REMEDIATION_PROBLEMS } = await server.ssrLoadModule('/src/curriculum/types.ts');
   const { makeRandom, toScientific, LOWEST_MIDI, HIGHEST_MIDI } =
     await server.ssrLoadModule('/src/curriculum/positions.ts');
   const {
@@ -106,29 +112,95 @@ try {
       ['standard', 'prove-it', 'blind-memory', 'standard'],
       ['prove-it', 'standard', 'standard', 'prove-it'],
       ['standard', 'prove-it', 'blind-memory', 'standard'],
-      ['prove-it', 'standard', 'blind-memory', 'standard'],
-      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
-      ['prove-it', 'standard', 'blind-memory', 'standard'],
-      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
-      ['prove-it', 'standard', 'blind-memory', 'standard'],
-      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
-      ['prove-it', 'standard', 'blind-memory', 'standard'],
-      ['standard', 'blind-memory', 'standard', 'spatial-chord'],
-      ['anchor-shift', 'standard', 'anchor-shift', 'blind-memory'],
-      ['anchor-shift', 'standard', 'blind-memory', 'spatial-chord'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'prove-it'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'prove-it'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'prove-it'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'prove-it'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
-      ['anchor-shift', 'chord-reading', 'blind-memory', 'spatial-chord'],
+      ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
+      ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
+      ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
       ['prove-it', 'prove-it', 'prove-it', 'chord-reading'],
-      ['anchor-shift', 'chord-reading', 'blind-memory', 'spatial-chord'],
-      ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'],
-      ['chord-reading', 'spatial-chord', 'blind-memory', 'spatial-chord'],
-      ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'],
-      ['chord-reading', 'spatial-chord', 'blind-memory', 'spatial-chord'],
+      ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
+      ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'],
+      ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
+      ['spatial-chord', 'chord-reading', 'chord-reading', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
       ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
       ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
     ],
     'Every lesson must keep its reviewed four-drill teaching order.',
   );
+
+  for (const lesson of PROGRESSIVE_CONCEPTS) {
+    const blueprint = CURRICULUM_BLUEPRINT[lesson.index - 1];
+    assert.equal(lesson.learningOutcome, blueprint.learningOutcome);
+    assert.deepEqual(lesson.coreProblems, blueprint.coreProblems);
+    assert.deepEqual(lesson.problemTags, blueprint.problemTags);
+    assert.deepEqual(lesson.drillPurposes, blueprint.drillPurposes);
+    assert.equal(lesson.primaryProblem, lesson.coreProblems[0]);
+    assert.equal(lesson.drillPurposes.length, 4,
+      `Lesson ${lesson.index} must explain all four fixed drill slots.`);
+    assert.ok(lesson.drillPurposes.every((purpose) => purpose.trim().length >= 12),
+      `Lesson ${lesson.index} has an empty or vague drill purpose.`);
+    assert.equal(new Set(lesson.problemTags).size, lesson.problemTags.length,
+      `Lesson ${lesson.index} contains duplicate remediation tags.`);
+  }
+
+  for (const problem of REMEDIATION_PROBLEMS) {
+    const candidates = lessonsForProblem(problem);
+    assert.ok(candidates.length > 0, `${problem} has no targeted lesson.`);
+    assert.ok(candidates[0].coreProblems.includes(problem),
+      `${problem} routes to incidental reinforcement instead of a core intervention.`);
+    assert.equal(openingLessonForProblem(problem), candidates[0].index,
+      `${problem} opening route disagrees with its best-fit intervention.`);
+  }
+
+  const baseQuestionsFor = (lessonIndex) => Array.from({ length: 4 }, (_, index) =>
+    PROGRESSIVE_CONCEPTS[lessonIndex - 1].generate(
+      lessonIndex * 100 + index,
+      makeRandom(20260827 + lessonIndex * 17 + index),
+      0.5,
+      'normal',
+      index + 1,
+    ));
+  const clefLesson = baseQuestionsFor(4);
+  for (const question of [clefLesson[0], clefLesson[3]]) {
+    assert.equal(question.exerciseMode, 'standard');
+    assert.equal(question.handScope, 'both');
+    assert.deepEqual(new Set(question.cue.staves.map(({ clef }) => clef)), new Set(['treble', 'bass']),
+      'The clef-differentiation intervention must show a real grand staff.');
+  }
+  for (let lessonIndex = 5; lessonIndex <= 12; lessonIndex += 1) {
+    assert.ok(baseQuestionsFor(lessonIndex).every(({ exerciseMode }) => exerciseMode !== 'spatial-chord'),
+      `Lesson ${lessonIndex} must not interrupt key/phrase remediation with unrelated chord-by-ear work.`);
+  }
+  for (let lessonIndex = 13; lessonIndex <= 18; lessonIndex += 1) {
+    if (lessonIndex === 17) continue;
+    const questions = baseQuestionsFor(lessonIndex);
+    assert.equal(questions[0].exerciseMode, 'anchor-shift');
+    assert.equal(questions[0].handScope, 'right');
+    assert.equal(questions[3].exerciseMode, 'anchor-shift');
+    assert.equal(questions[3].handScope, 'left');
+  }
+  for (let lessonIndex = 19; lessonIndex <= 24; lessonIndex += 1) {
+    const questions = baseQuestionsFor(lessonIndex);
+    assert.ok(questions.every(({ exerciseMode }) =>
+      exerciseMode === 'standard' || exerciseMode === 'spatial-chord'),
+    `Lesson ${lessonIndex} must spend all four slots on chord reading or chord-by-ear.`);
+    assert.equal(questions.filter(({ exerciseMode }) => exerciseMode === 'spatial-chord').length, 2,
+      `Lesson ${lessonIndex} needs exactly two ear-chord applications.`);
+  }
+  for (const lessonIndex of [21, 22, 23, 24]) {
+    const qualities = baseQuestionsFor(lessonIndex)
+      .flatMap(({ spatialChord }) => spatialChord ? [spatialChord.quality] : []);
+    assert.deepEqual(qualities, ['major', 'minor'],
+      `Lesson ${lessonIndex} must contrast major and minor in its two ear drills.`);
+  }
 
   let globalOrdinal = 0;
   const shiftPhaseRhythms = { eighth: 0, sixteenth: 0, plain: 0 };
