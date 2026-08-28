@@ -1,5 +1,24 @@
 # EarTrain maintainer rules
 
+## Responsive notation fixes are regression-protected
+
+Before editing `StaffCue.tsx`, `exercise.css`, or `anchor-shift-cue.css`, preserve
+all of the following. These are fixes for previously reproduced bugs, not
+optional styling preferences:
+
+- After VexFlow renders, remove its stale inline SVG `width` and `height`
+  styles. Restoring them letterboxes the score and makes notes tiny.
+- Keep phone score wrapping beat-aware (`splitNotesIntoSystems`); never split
+  mixed rhythms by raw note count.
+- Keep full scores readable at 320px and hand-shift cards stacked through
+  1100px. Do not reduce the mobile cue heights or label sizes without visual
+  checks at 320px, 768/1024px, and 1440px.
+- Do not allow score content, instructions, orientation text, or grading
+  animation notes to clip or create horizontal page overflow.
+- Run `npm run build`, `npm run audit:curriculum`, and the relevant audio/score
+  audits after touching shared exercise rendering. A change that breaks these
+  protections must not be committed.
+
 ## Curriculum order is a product contract
 
 Before editing curriculum generation, read `src/curriculum/CURRICULUM.md` and the
