@@ -427,8 +427,15 @@ const DETECTOR_PREROLL_SEC = 0.22;
 const PITCH_FLUSH_MS = 380;
 /** Quiet frames needed before the first Prove It attack can be judged. */
 const PROOF_DETECTOR_WARMUP_MS = 260;
-/** All chord tones must remain concurrently present this long to complete. */
-const SPATIAL_CHORD_HOLD_MS = 520;
+/**
+ * Brief confirmation after all three target tones overlap.
+ *
+ * The worklet already requires two stable expected-tone frames. Its slower
+ * nearby-wrong-key guard needs about 116 ms at 44.1 kHz (10 × 512 samples),
+ * so 180 ms leaves scheduling margin without turning recognition into a
+ * half-second sustain test. This is a false-extra guard, not a musical hold.
+ */
+const SPATIAL_CHORD_CONFIRM_MS = 180;
 
 /**
  * Read-only diagnostic switch for the Prove It note pipeline. Off by default
@@ -946,7 +953,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const proofMidiByDetectorRef = useRef(new Map<number, number>());
   const spatialRef = useRef<ActiveSpatialChord | null>(null);
   const spatialTimeoutRef = useRef(0);
-  const spatialChordHoldTimerRef = useRef(0);
+  const spatialChordConfirmationTimerRef = useRef(0);
   const spatialSourcesRef = useRef(new Set<AudioScheduledSourceNode>());
   const finishSpatialRef = useRef<((timedOut: boolean) => void) | null>(null);
   const armSpatialDeadlineRef = useRef<((milliseconds: number) => void) | null>(null);
@@ -1151,9 +1158,9 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       window.clearTimeout(spatialTimeoutRef.current);
       spatialTimeoutRef.current = 0;
     }
-    if (spatialChordHoldTimerRef.current) {
-      window.clearTimeout(spatialChordHoldTimerRef.current);
-      spatialChordHoldTimerRef.current = 0;
+    if (spatialChordConfirmationTimerRef.current) {
+      window.clearTimeout(spatialChordConfirmationTimerRef.current);
+      spatialChordConfirmationTimerRef.current = 0;
     }
     spatialSourcesRef.current.forEach((source) => {
       try {
@@ -2140,25 +2147,25 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         }
 
         if (result.progress === active.targetMidi.length) {
-          if (!spatialChordHoldTimerRef.current) {
-            const confirmCleanHold = () => {
-              spatialChordHoldTimerRef.current = 0;
+          if (!spatialChordConfirmationTimerRef.current) {
+            const confirmChord = () => {
+              spatialChordConfirmationTimerRef.current = 0;
               const current = spatialRef.current;
               if (current !== active || finishedRef.current) return;
               const targets = current.spec.buildOrder.map((index) => current.targetMidi[index]);
               if (!targets.every((midi) => current.foundMidi.has(midi))) return;
               if (current.polyphonicWrongMidi.size > 0) return;
               if (current.wrongHeldDetectorIds.size > 0) {
-                spatialChordHoldTimerRef.current = window.setTimeout(confirmCleanHold, 120);
+                spatialChordConfirmationTimerRef.current = window.setTimeout(confirmChord, 120);
                 return;
               }
               const cleanForMs = current.lastWrongAt === null
                 ? Number.POSITIVE_INFINITY
                 : (ctx.currentTime - current.lastWrongAt) * 1000;
-              if (cleanForMs < SPATIAL_CHORD_HOLD_MS) {
-                spatialChordHoldTimerRef.current = window.setTimeout(
-                  confirmCleanHold,
-                  SPATIAL_CHORD_HOLD_MS - cleanForMs,
+              if (cleanForMs < SPATIAL_CHORD_CONFIRM_MS) {
+                spatialChordConfirmationTimerRef.current = window.setTimeout(
+                  confirmChord,
+                  SPATIAL_CHORD_CONFIRM_MS - cleanForMs,
                 );
                 return;
               }
@@ -2166,11 +2173,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               playProofSuccessChime(ctx);
               finishSpatialRef.current?.(false);
             };
-            spatialChordHoldTimerRef.current = window.setTimeout(confirmCleanHold, SPATIAL_CHORD_HOLD_MS);
+            spatialChordConfirmationTimerRef.current = window.setTimeout(
+              confirmChord,
+              SPATIAL_CHORD_CONFIRM_MS,
+            );
           }
-        } else if (spatialChordHoldTimerRef.current) {
-          window.clearTimeout(spatialChordHoldTimerRef.current);
-          spatialChordHoldTimerRef.current = 0;
+        } else if (spatialChordConfirmationTimerRef.current) {
+          window.clearTimeout(spatialChordConfirmationTimerRef.current);
+          spatialChordConfirmationTimerRef.current = 0;
         }
 
         if (newlyPresent.length > 0) {
@@ -2603,9 +2613,9 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         armSpatialDeadlineRef.current = null;
         if (spatialTimeoutRef.current) window.clearTimeout(spatialTimeoutRef.current);
         spatialTimeoutRef.current = 0;
-        if (spatialChordHoldTimerRef.current) {
-          window.clearTimeout(spatialChordHoldTimerRef.current);
-          spatialChordHoldTimerRef.current = 0;
+        if (spatialChordConfirmationTimerRef.current) {
+          window.clearTimeout(spatialChordConfirmationTimerRef.current);
+          spatialChordConfirmationTimerRef.current = 0;
         }
         cbRef.current.onAnalysisStart?.();
         const recordingDone = stopMicRecording();

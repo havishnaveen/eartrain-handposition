@@ -373,7 +373,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           ? spatialWrongGuesses >= 3
             ? 'Compare nearby keys to the broken-chord replay'
             : 'Listen to the distance above the anchor'
-          : 'Hold all three keys together until the chord confirms';
+          : 'Sound all three together—the brief check confirms the chord';
       const retryMessage = activeStep === 0
         ? `That was not the given ${rootName}. Return to the anchor.`
         : activeStep === 1
