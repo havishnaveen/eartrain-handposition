@@ -54,8 +54,29 @@ try {
   const { adaptiveProfile, positionKeyOf } = await server.ssrLoadModule(
     '/src/curriculum/telemetry.ts',
   );
-  const { timelineXForBeat, scrubberBoundsFromOnsets, shiftRegionFromOnsets } = await server.ssrLoadModule(
+  const {
+    timelineXForBeat,
+    scrubberBoundsFromOnsets,
+    shiftRegionFromOnsets,
+    splitNotesIntoSystems,
+  } = await server.ssrLoadModule(
     '/src/components/StaffCue.tsx',
+  );
+
+  const mixedRhythmSystems = splitNotesIntoSystems(
+    [
+      { keys: ['c/4'], duration: 'q' },
+      { keys: ['d/4'], duration: '8' },
+      { keys: ['e/4'], duration: '8' },
+      { keys: ['f/4'], duration: 'h' },
+      { keys: ['g/4'], duration: 'q' },
+    ],
+    4,
+  );
+  assert.deepEqual(
+    mixedRhythmSystems.map((system) => system.map(({ duration }) => duration)),
+    [['q', '8', '8', 'h'], ['q']],
+    'Responsive score wrapping must follow measured beats, not raw note count.',
   );
 
   const modes = ['reinforce', 'normal', 'stretch'];

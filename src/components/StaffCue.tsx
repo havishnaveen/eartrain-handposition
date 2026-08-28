@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import * as Vex from 'vexflow';
 const {
   Accidental,
@@ -145,6 +145,32 @@ function barlineBefore(notes: { duration: string }[], beatsPerBar: number): Set<
   return marks;
 }
 
+/** Split only between notes, on measured beat boundaries whenever possible. */
+export function splitNotesIntoSystems(notes: readonly CueNote[], maxBeats: number): CueNote[][] {
+  if (!Number.isFinite(maxBeats) || maxBeats <= 0) return [notes.slice()];
+  const chunks: CueNote[][] = [];
+  let chunk: CueNote[] = [];
+  let beats = 0;
+
+  notes.forEach((note) => {
+    const noteBeats = Math.max(0, beatsForDuration(note.duration));
+    if (chunk.length > 0 && beats + noteBeats > maxBeats + 1e-6) {
+      chunks.push(chunk);
+      chunk = [];
+      beats = 0;
+    }
+    chunk.push(note);
+    beats += noteBeats;
+    if (beats >= maxBeats - 1e-6) {
+      chunks.push(chunk);
+      chunk = [];
+      beats = 0;
+    }
+  });
+  if (chunk.length > 0) chunks.push(chunk);
+  return chunks.length > 0 ? chunks : [[]];
+}
+
 /** One beat always occupies one equal fraction of the timeline. */
 export function timelineXForBeat(
   startX: number,
@@ -237,7 +263,25 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
   const layoutRef = useRef<SystemLayout[] | null>(null);
   const lineRef = useRef<SVGLineElement | null>(null);
   const trailRef = useRef<SVGRectElement | null>(null);
+  const [hostWidth, setHostWidth] = useState(0);
   const successPitchKey = [...successPitches].sort().join('|');
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const updateWidth = () => {
+      const next = Math.round(host.getBoundingClientRect().width);
+      setHostWidth((current) => current === next ? current : next);
+    };
+    updateWidth();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateWidth);
+      return () => window.removeEventListener('resize', updateWidth);
+    }
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
 
   useImperativeHandle(
     ref,
@@ -310,16 +354,49 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     trailRef.current = null;
 
     const beatsPerBar = beatsPerBarOf(cue);
-    const perBeat = compact ? 44 : PER_BEAT;
-    const minPerNote = compact ? 38 : MIN_PER_NOTE;
-    const perBarline = compact ? 22 : PER_BARLINE;
-    const minStaveWidth = compact ? 218 : MIN_STAVE_W;
-    const noteRightGutter = compact ? 30 : NOTE_RIGHT_GUTTER;
-    const boundsPadX = compact ? 24 : BOUNDS_PAD_X;
+    const measuredHostWidth = hostWidth || host.getBoundingClientRect().width;
+    const narrowFullScore = !compact && measuredHostWidth <= 520;
+    const perBeat = compact ? 44 : narrowFullScore ? 54 : PER_BEAT;
+    const minPerNote = compact ? 38 : narrowFullScore ? 44 : MIN_PER_NOTE;
+    const perBarline = compact ? 22 : narrowFullScore ? 24 : PER_BARLINE;
+    const minStaveWidth = compact ? 218 : narrowFullScore ? 236 : MIN_STAVE_W;
+    const noteRightGutter = compact ? 30 : narrowFullScore ? 32 : NOTE_RIGHT_GUTTER;
+    const boundsPadX = compact ? 24 : narrowFullScore ? 22 : BOUNDS_PAD_X;
+    const longestStaffBeats = cue.staves.reduce(
+      (largest, staff) => Math.max(
+        largest,
+        staff.notes.reduce((sum, note) => sum + beatsForDuration(note.duration), 0),
+      ),
+      0,
+    );
+    // On phones, one wide two-measure SVG makes otherwise normal notation
+    // unreadably small. Reflow full-size scores to one measured bar per line;
+    // compact split-card scores keep their purpose-built layout.
+    const responsiveMeasuresPerSystem = narrowFullScore &&
+      beatsPerBar > 0 && longestStaffBeats > beatsPerBar
+      ? 1
+      : undefined;
+    const measuresPerSystem = cue.measuresPerSystem ?? responsiveMeasuresPerSystem;
+    const beatsPerSystem = measuresPerSystem
+      ? measuresPerSystem * Math.max(1, beatsPerBar)
+      : Infinity;
+    const systemsByStaff = cue.staves.map((staff) =>
+      splitNotesIntoSystems(staff.notes, beatsPerSystem));
+    const systemCount = Math.max(1, ...systemsByStaff.map((chunks) => chunks.length));
+    const systemStartBeats: number[] = [];
+    let runningSystemBeat = 0;
+    (systemsByStaff[0] ?? [[]]).forEach((notes) => {
+      systemStartBeats.push(runningSystemBeat);
+      runningSystemBeat += notes.reduce(
+        (sum, note) => sum + beatsForDuration(note.duration),
+        0,
+      );
+    });
+    const staffSegments = systemsByStaff.flat();
     const maxTimelineWidth = Math.max(
       Math.max(0, minimumTimelineBeats) * perBeat,
-      cue.staves.reduce((largest, staff) => {
-        const durations = staff.notes.map((note) => beatsForDuration(note.duration));
+      staffSegments.reduce((largest, notes) => {
+        const durations = notes.map((note) => beatsForDuration(note.duration));
         const total = durations.reduce((sum, beats) => sum + beats, 0);
         // Only intervals before another note need collision spacing; the last
         // duration owns visual tail room but has no following notehead.
@@ -337,8 +414,8 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         return Math.max(largest, total * perBeat, collisionSafe);
       }, 1),
     );
-    const barCount = cue.staves.reduce(
-      (n, s) => Math.max(n, barlineBefore(s.notes, beatsPerBar).size),
+    const barCount = staffSegments.reduce(
+      (n, notes) => Math.max(n, barlineBefore(notes, beatsPerBar).size),
       0,
     );
     // Do not cap dense music to an arbitrary width. The responsive SVG will
@@ -350,26 +427,6 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     );
     const canvasWidth = staveWidth + STAVE_X * 2;
 
-    // A piece longer than `measuresPerSystem` measures wraps onto additional
-    // stacked systems instead of staying on one ever-widening line. Splitting
-    // is by note COUNT, not measured beats: every current producer of
-    // `measuresPerSystem` (twoHandStandardQuestion's extended phrases) writes
-    // only quarter notes, so one note is exactly one beat and a plain count
-    // split lands precisely on measure boundaries. A future duration-mixed
-    // producer of this field would need a beat-aware split instead.
-    const notesPerSystem = cue.measuresPerSystem
-      ? cue.measuresPerSystem * Math.max(1, beatsPerBar)
-      : Infinity;
-    const sliceIntoSystems = (notes: readonly CueNote[]): CueNote[][] => {
-      if (!Number.isFinite(notesPerSystem) || notesPerSystem <= 0) return [notes.slice()];
-      const chunks: CueNote[][] = [];
-      for (let i = 0; i < notes.length; i += notesPerSystem) {
-        chunks.push(notes.slice(i, i + notesPerSystem));
-      }
-      return chunks.length > 0 ? chunks : [[]];
-    };
-    const systemsByStaff = cue.staves.map((staff) => sliceIntoSystems(staff.notes));
-    const systemCount = Math.max(1, ...systemsByStaff.map((chunks) => chunks.length));
     const staffCountPerSystem = Math.max(1, cue.staves.length);
     // Extra clearance below one system's last staff before the next
     // system's first staff — bigger than STAVE_GAP (which only separates
@@ -393,10 +450,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     for (let systemIndex = 0; systemIndex < systemCount; systemIndex += 1) {
       const drawnStavesInSystem: any[] = [];
       const systemBarlines: { x: number; top: number; bottom: number }[] = [];
-      // Exact because every system but a possibly-shorter last one holds
-      // precisely `notesPerSystem` notes, and one note is one beat here —
-      // see the comment on `notesPerSystem` above.
-      const systemStartBeat = systemIndex * (Number.isFinite(notesPerSystem) ? notesPerSystem : 0);
+      const systemStartBeat = systemStartBeats[systemIndex] ?? 0;
 
       cue.staves.forEach((staffSpec: StaffSpec, staffIndex: number) => {
         const notesForSystem = systemsByStaff[staffIndex][systemIndex] ?? [];
@@ -724,6 +778,13 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // than the card can hold at all — never as a function of note count.
     svg.setAttribute('width', String(viewBoxWidth));
     svg.setAttribute('height', String(viewBoxHeight));
+    // Renderer.resize() writes the original full-canvas dimensions as inline
+    // styles. Attributes alone do not override those styles, so the cropped
+    // score was being letterboxed inside a hidden 560px-tall SVG and looked
+    // tiny on phones and split shift cards. Removing those stale declarations
+    // lets the measured width/height attributes preserve the viewBox ratio.
+    svg.style.removeProperty('width');
+    svg.style.removeProperty('height');
     svg.setAttribute('role', 'img');
     svg.setAttribute('focusable', 'false');
 
@@ -733,7 +794,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       lineRef.current = null;
       trailRef.current = null;
     };
-  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats]);
+  }, [cue, accentColor, compact, hostWidth, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats]);
 
   return <div className="et-staff" ref={hostRef} />;
 });

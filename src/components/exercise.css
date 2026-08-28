@@ -553,7 +553,7 @@
 .et-analysis__note--five { left: 57%; top: 56px; color: #665ac6; animation-delay: .4s; }
 .et-analysis__note--six { left: 69%; top: 31px; animation-delay: .5s; }
 .et-analysis__note--seven { left: 81%; top: 48px; color: #665ac6; animation-delay: .6s; }
-.et-analysis__note--eight { left: 90%; top: 27px; animation-delay: .7s; }
+.et-analysis__note--eight { right: 5%; top: 27px; animation-delay: .7s; }
 .et-analysis__scan {
   position: absolute;
   z-index: 3;
@@ -1046,8 +1046,8 @@
 
 @media (max-width: 760px) {
   :root {
-    --et-cue-h: 280px;
-    --et-well-h: 160px;
+    --et-cue-h: 360px;
+    --et-well-h: 180px;
   }
 
   .et-stage { padding: 26px 20px 44px; }
@@ -2742,6 +2742,10 @@
   .et-proof__keys { width: 100%; margin-inline: auto; }
 }
 
+@media (max-width: 1100px) {
+  .et-exercise--mode-anchor-shift .et-cue { height: 460px; }
+}
+
 @media (max-width: 620px) {
   .et-spatial { min-height: 680px; gap: 16px; padding: 25px 13px; border-radius: 28px 28px 28px 9px; }
   .et-spatial__header h2 { font-size: 33px; }
@@ -2807,6 +2811,19 @@
   .et-shift-map__position strong { font-size: 10px; }
   .et-shift-map__move b { font-size: 7px; }
   .et-shift-map__move span { font-size: 20px; }
+}
+
+@media (max-width: 420px) {
+  .et-orientation-gate { padding: 16px; }
+  .et-orientation-tip {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 18px;
+    text-align: center;
+  }
+  .et-orientation-tip__stop { margin-inline: auto; }
+  .et-orientation-tip strong { font-size: 20px; }
+  .et-orientation-tip p { font-size: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
