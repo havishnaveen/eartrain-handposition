@@ -220,6 +220,7 @@
 .et-sidebar__journey {
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -307,6 +308,7 @@
 }
 
 .et-sidebar__set {
+  flex: 0 0 auto;
   margin-top: auto;
   padding: 15px 15px 14px;
   border: 1px solid var(--et-line);
