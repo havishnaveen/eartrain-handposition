@@ -433,7 +433,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place the right hand in middle-C position and connect fingers 1-5 to the written notes.',
     coreProblems: ['right-hand-position', 'finger-number-mapping', 'c-position', 'register-placement'],
     supportingProblems: ['treble-clef-recognition'],
-    drillPurposes: ['Build and hold the 1-3-5 frame', 'Read the five-finger map', 'Apply the map to a new contour', 'Verify the held frame again'],
+    drillPurposes: ['Map the 1-3-5 frame in order', 'Read the five-finger map', 'Apply the map to a new contour', 'Verify the three anchor notes again'],
   },
   'c02-rh-musical-phrases': {
     learningOutcome: 'Read a short treble-clef phrase as steps, turns, repeats, and gentle skips without moving the hand.',
@@ -445,7 +445,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place the left hand in bass-clef C position and use the correct mirrored finger numbers.',
     coreProblems: ['left-hand-position', 'finger-number-mapping', 'bass-clef-recognition', 'c-position', 'register-placement'],
     supportingProblems: [],
-    drillPurposes: ['Build and hold the 5-3-1 frame', 'Read the bass five-finger map', 'Apply the map to a new contour', 'Verify the held frame again'],
+    drillPurposes: ['Map the 5-3-1 frame in order', 'Read the bass five-finger map', 'Apply the map to a new contour', 'Verify the three anchor notes again'],
   },
   'c04-two-hand-white-keys': {
     learningOutcome: 'Differentiate treble from bass and play a coordinated white-key grand-staff phrase.',
@@ -1331,10 +1331,10 @@ function questionFor(
                   { pitch: position.sci[2], finger: 3 as const },
                   { pitch: position.sci[4], finger: 1 as const },
                 ],
-            // Prove It establishes a physical hand shape, not three unrelated
-            // taps. The hardened release lane verifies that earlier fingers
-            // remain down and names whichever key was released too soon.
-            requireHeld: true,
+            // Prove It confirms the three anchor notes in order. Acoustic
+            // release tracking is too room-dependent to require the child to
+            // sustain earlier keys while adding the next finger.
+            requireHeld: false,
             acceptWindowMs: 5500,
           },
         }

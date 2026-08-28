@@ -1597,7 +1597,9 @@
   flex-direction: column;
   justify-content: center;
   gap: 22px;
-  overflow: hidden;
+  /* `hidden` creates a programmatically scrollable box. On mobile, focus or
+     a state transition could retain a non-zero scrollTop and hide the title. */
+  overflow: clip;
   padding: clamp(28px, 4vw, 48px);
   border: 1px solid rgba(64, 58, 112, 0.13);
   border-radius: 38px 38px 38px 14px;

@@ -163,7 +163,7 @@ export interface PositionProofSpec {
   hand: Hand;
   /** Three exact notes, played in order to establish the full hand shape. */
   proofNotes: [PositionProofNote, PositionProofNote, PositionProofNote];
-  /** Each earlier key stays down while the child adds the next finger. */
+  /** When true, each earlier key must stay down while the next is added. */
   requireHeld: boolean;
   /** Time allowed from the first requested note to the final one. */
   acceptWindowMs: number;

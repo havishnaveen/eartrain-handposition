@@ -4,7 +4,7 @@ import type { RemediationProblem } from '../curriculum/types';
 /** Versioned separately from the curriculum and database schema. */
 export const LEARNING_DATA_SCHEMA_VERSION = 1 as const;
 export const CURRICULUM_ID = 'eartrain-position-pathway';
-export const CURRICULUM_VERSION = '2026-08-v6-targeted-interventions';
+export const CURRICULUM_VERSION = '2026-08-v7-sequential-prove-it';
 
 export type LearnerStatus = 'active' | 'paused' | 'archived';
 export type IdentityProvider = 'eartrain' | 'reading.oclef.com';

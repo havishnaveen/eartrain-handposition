@@ -560,7 +560,7 @@ export function ExerciseReport({
           {isStaying ? (
             <span className="et-report-auto__parked">Timer off</span>
           ) : (
-            <button type="button" className="et-report-auto__stay" onClick={stayHere} autoFocus>
+            <button type="button" className="et-report-auto__stay" onClick={stayHere}>
               Stay Here
             </button>
           )}

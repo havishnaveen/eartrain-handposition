@@ -10,6 +10,10 @@ The source of truth is `LESSONS` plus `LESSON_INTERVENTIONS` in
 `progressiveCurriculum.ts`. `CURRICULUM_BLUEPRINT` is the public, audited view.
 Do not change order or classification in only one place.
 
+Prove It confirms the position's three anchor notes in order. It does not ask
+the student to keep earlier notes held, because acoustic release detection is
+too room-dependent for a reliable entry exercise.
+
 | Lessons | Standalone intervention | Typical direct-referral problems |
 | --- | --- | --- |
 | 1-4 | C-position foundations, finger mapping, clef reading, then grand-staff coordination | right/left-hand placement, treble or bass recognition, clef differentiation, hand coordination |

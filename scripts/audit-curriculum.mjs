@@ -343,8 +343,8 @@ try {
               const expectedFingers = staff.hand === 'right' ? [1, 3, 5] : [5, 3, 1];
               assert.deepEqual(question.positionProof.proofNotes.map((note) => note.finger), expectedFingers,
                 `Lesson ${concept.index}, drill ${questionNumber} has invalid ${staff.hand}-hand proof fingers.`);
-              assert.equal(question.positionProof.requireHeld, true,
-                `Lesson ${concept.index}, drill ${questionNumber} must build the position cumulatively.`);
+              assert.equal(question.positionProof.requireHeld, false,
+                `Lesson ${concept.index}, drill ${questionNumber} must use sequential anchor notes.`);
               assert.equal(question.positionProof.acceptWindowMs, 5500,
                 `Lesson ${concept.index}, drill ${questionNumber} must use the gently widened proof window.`);
             }
