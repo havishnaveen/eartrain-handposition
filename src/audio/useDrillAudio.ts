@@ -103,6 +103,80 @@ const PROOF_FINAL_HOLD_VERIFY_MS = 520;
 const PROOF_RELEASE_MIN_CONFIDENCE = 0.66;
 const OUTPUT_GAIN_MULTIPLIER = 2.025;
 
+interface PianoAnalysisProfile {
+  presenceHz: number;
+  presenceDb: number;
+  lowpassHz: number;
+  gain: number;
+}
+
+/**
+ * Analysis-only piano front end. It does not change playback or the student's
+ * saved recording: it downmixes unreliable multi-channel mic input, removes
+ * rumble and both common mains frequencies, preserves the hammer/string band,
+ * and raises quiet notes behind a soft compressor before the worklets grade
+ * them. Frequency discrimination still happens independently in the worklets;
+ * gain alone is never treated as proof that a note exists.
+ */
+function connectPianoAnalysisFrontEnd(
+  ctx: AudioContext,
+  source: MediaStreamAudioSourceNode,
+  destination: AudioNode,
+  profile: PianoAnalysisProfile,
+): void {
+  const mono = ctx.createGain();
+  mono.channelCount = 1;
+  mono.channelCountMode = 'explicit';
+  mono.channelInterpretation = 'speakers';
+
+  const highpass = ctx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 70;
+  highpass.Q.value = 0.7;
+
+  const hum50 = ctx.createBiquadFilter();
+  hum50.type = 'notch';
+  hum50.frequency.value = 50;
+  hum50.Q.value = 24;
+
+  const hum60 = ctx.createBiquadFilter();
+  hum60.type = 'notch';
+  hum60.frequency.value = 60;
+  hum60.Q.value = 24;
+
+  const presence = ctx.createBiquadFilter();
+  presence.type = 'peaking';
+  presence.frequency.value = profile.presenceHz;
+  presence.Q.value = 0.55;
+  presence.gain.value = profile.presenceDb;
+
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = profile.lowpassHz;
+  lowpass.Q.value = 0.7;
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -42;
+  compressor.knee.value = 18;
+  compressor.ratio.value = 2.4;
+  // Preserve the hammer edge used for onset timing, then control the body.
+  compressor.attack.value = 0.018;
+  compressor.release.value = 0.16;
+
+  const gain = ctx.createGain();
+  gain.gain.value = profile.gain;
+
+  source.connect(mono);
+  mono.connect(highpass);
+  highpass.connect(hum50);
+  hum50.connect(hum60);
+  hum60.connect(presence);
+  presence.connect(lowpass);
+  lowpass.connect(compressor);
+  compressor.connect(gain);
+  gain.connect(destination);
+}
+
 /** Present simultaneous detections as one chord instead of random-looking notes. */
 export function formatDetectedNoteGroups(notes: readonly DetectedNote[]): string[] {
   const groups: DetectedNote[][] = [];
@@ -1260,13 +1334,29 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     try {
       // Speech processing is tuned for voice and mangles musical harmonics.
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: { ideal: 1 },
+        },
       });
       if (!mountedRef.current) {
         stream.getTracks().forEach((t) => t.stop());
         return null;
       }
       streamRef.current = stream;
+      // Browsers may otherwise optimize microphone tracks for speech and
+      // damage piano attacks/harmonics even when individual constraints are
+      // unsupported or ignored. `music` is a standards-defined content hint.
+      const inputTrack = stream.getAudioTracks()[0];
+      if (inputTrack && 'contentHint' in inputTrack) {
+        try {
+          inputTrack.contentHint = 'music';
+        } catch {
+          // Some older engines expose the property but reject assignment.
+        }
+      }
 
       const ctx = new AudioContext();
       ctxRef.current = ctx;
@@ -2190,36 +2280,20 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       };
 
       // Analysis only — never routed to the speakers, so no feedback path.
-      source.connect(worklet);
-      // The polyphonic lane benefits from the same compact front end used by
-      // strong commercial note trainers: remove rumble/mains hum, gently lift
-      // the piano body, then normalize only the analysis signal. This does
-      // not alter the recording or audible output.
-      const chordHighpass = ctx.createBiquadFilter();
-      chordHighpass.type = 'highpass';
-      chordHighpass.frequency.value = 70;
-      chordHighpass.Q.value = 0.7;
-      const chordHumNotch = ctx.createBiquadFilter();
-      chordHumNotch.type = 'notch';
-      chordHumNotch.frequency.value = 60;
-      chordHumNotch.Q.value = 10;
-      const chordPresence = ctx.createBiquadFilter();
-      chordPresence.type = 'peaking';
-      chordPresence.frequency.value = 500;
-      chordPresence.Q.value = 0.5;
-      chordPresence.gain.value = 3;
-      const chordLowpass = ctx.createBiquadFilter();
-      chordLowpass.type = 'lowpass';
-      chordLowpass.frequency.value = 4200;
-      chordLowpass.Q.value = 0.7;
-      const chordAnalysisGain = ctx.createGain();
-      chordAnalysisGain.gain.value = 1.35;
-      source.connect(chordHighpass);
-      chordHighpass.connect(chordHumNotch);
-      chordHumNotch.connect(chordPresence);
-      chordPresence.connect(chordLowpass);
-      chordLowpass.connect(chordAnalysisGain);
-      chordAnalysisGain.connect(chordWorklet);
+      // The mono and chord lanes receive different piano-band emphasis but
+      // share the same controlled noise rejection and quiet-note lift.
+      connectPianoAnalysisFrontEnd(ctx, source, worklet, {
+        presenceHz: 1100,
+        presenceDb: 2.5,
+        lowpassHz: 7600,
+        gain: 1.65,
+      });
+      connectPianoAnalysisFrontEnd(ctx, source, chordWorklet, {
+        presenceHz: 500,
+        presenceDb: 3,
+        lowpassHz: 5000,
+        gain: 1.45,
+      });
       sourceRef.current = source;
       workletRef.current = worklet;
       chordWorkletRef.current = chordWorklet;

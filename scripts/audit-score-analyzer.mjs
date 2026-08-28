@@ -160,6 +160,34 @@ assert.deepEqual(
   'Lossless score-aware analysis must recover quiet C-D-E under metronome bleed.',
 );
 
+const pianoUnderSpeech = synthesize({
+  seconds: 3.2,
+  room: 0.00024,
+  strikes: [60, 62, 64].map((midi, index) => ({
+    midi,
+    time: 1 + index * 0.5,
+    duration: 0.4,
+    amplitude: 0.006,
+  })),
+  speech: [{
+    time: 0.94,
+    duration: 1.55,
+    midi: 54,
+    glide: 1.7,
+    amplitude: 0.0035,
+  }],
+  seed: 22,
+});
+const pianoUnderSpeechResult = runWorker({
+  samples: pianoUnderSpeech,
+  expected: expectedCde,
+});
+assert.deepEqual(
+  Array.from(pianoUnderSpeechResult.notes, (note) => note.midi),
+  [60, 62, 64],
+  'Independent harmonic tracks must recover piano notes without promoting overlapping speech.',
+);
+
 const upperBMajor = synthesize({
   seconds: 3.2,
   room: 0.0002,

@@ -1466,10 +1466,10 @@ class PitchProcessor extends AudioWorkletProcessor {
     const channel = inputs[0] && inputs[0][0];
     if (!channel) return true;
 
-    // Capture before any filtering or gating. The final analyzer must see
-    // every quiet key, click, voice, and decay so it can decide with the
-    // entire written score in context instead of inheriting live-detector
-    // omissions.
+    // Capture before this worklet's pitch filtering or gating. The upstream
+    // analysis-only browser front end removes rumble/hum and controls level,
+    // but keeps every quiet key, click, voice, and decay so final scoring does
+    // not inherit live-detector omissions.
     this._captureChannel(channel);
 
     for (let i = 0; i < channel.length; i++) {

@@ -44,3 +44,14 @@ Before editing curriculum generation, read `src/curriculum/CURRICULUM.md` and th
 
 These rules protect instructor links and saved checkpoints as well as the UI;
 a seemingly harmless reorder can send a referred student to the wrong skill.
+
+## Piano recognition is evidence-based
+
+- Preserve the `music` microphone hint, disabled browser speech processing,
+  mono analysis downmix, and analysis-only piano front end in
+  `useDrillAudio.ts`. Never route microphone analysis to the speakers.
+- Do not treat gain, score context, one chord tone, or a lingering harmonic as
+  proof of a played note. Pitch credit requires independent acoustic onset and
+  harmonic evidence; written chords require all tones simultaneously.
+- Do not tune detector thresholds from one anecdote. Add the failure as an
+  audio regression, then run `npm run audit:audio` and `npm run audit:score`.
