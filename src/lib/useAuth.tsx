@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .single()
     
     if (data) {
-      let p = data as Profile;
+      const p = data as Profile;
       
       const decoded = decodeAvatarAndTitle(p.avatar_url);
       p.avatar_url = decoded.avatar_url;
@@ -192,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const mockUser = { id, email, app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: new Date().toISOString() } as User;
     setUser(mockUser);
     
-    let profileStr = localStorage.getItem(`mock_profile_${id}`);
+    const profileStr = localStorage.getItem(`mock_profile_${id}`);
     if (!profileStr) {
       const newProfile: Profile = { id, display_name: filter.clean(explicitUsername || email.split('@')[0]), current_streak: 0, longest_streak: 0, last_practice_date: null, total_practice_time_minutes: 0, xp: 0, level: 1, gems: 0, streak_freezes: 0 };
       localStorage.setItem(`mock_profile_${id}`, JSON.stringify(newProfile));
@@ -227,7 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (updates.display_name) {
       updates.display_name = filter.clean(updates.display_name);
     }
-    let newProfile = { ...profile, ...updates };
+    const newProfile = { ...profile, ...updates };
     if (newProfile.xp !== undefined) {
       const calcLevel = calculateLevel(newProfile.xp);
       newProfile.level = calcLevel;
@@ -252,21 +252,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // One-time admin action: give Aarush 600 gems (owner request)
-    if (!IS_MOCK && !localStorage.getItem('admin_aarush_add_600')) {
-      supabase.from('profiles').select('*').ilike('display_name', '%Aarush%').then(({ data }) => {
-        if (data && data.length > 0) {
-          const aarush = data[0];
-          const newGems = (aarush.gems || 0) + 600;
-          supabase.from('profiles').update({ gems: newGems }).eq('id', aarush.id).then(() => {
-             localStorage.setItem('admin_aarush_add_600', 'true');
-          });
-        } else {
-          localStorage.setItem('admin_aarush_add_600', 'true');
-        }
-      });
-    }
-
     if (IS_MOCK) {
       const activeMockUser = localStorage.getItem('mock_active_user');
       if (activeMockUser) {

@@ -10,7 +10,8 @@
     "audit:late-chords": "node scripts/audit-late-standard-chords.mjs",
     "audit:audio": "node scripts/audit-pitch-processor.mjs && node scripts/audit-chord-processor.mjs",
     "audit:score": "node scripts/audit-score-analyzer.mjs && node scripts/audit-pcm-capture.mjs && node scripts/audit-live-regressions.mjs",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "audit:production": "node scripts/audit-production.mjs",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -30,13 +31,13 @@
     "framer-motion": "^11.0.3",
     "jpeg-js": "^0.4.4",
     "lucide-react": "^0.323.0",
-    "nodemailer": "^8.0.10",
+    "nodemailer": "^9.0.6",
     "opensheetmusicdisplay": "^2.1.0",
     "puppeteer": "^25.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-easy-crop": "^5.5.7",
-    "react-router-dom": "^6.22.0",
+    "react-router-dom": "^7.18.3",
     "recharts": "^2.11.0",
     "sonner": "^1.4.0",
     "tailwind-merge": "^2.2.1",
@@ -45,16 +46,21 @@
     "vexflow": "^4.2.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bad-words": "^3.0.3",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/vexflow": "^3.0.1",
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.4.17",
+    "eslint": "^10.9.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^16.5.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8"
+    "typescript-eslint": "^8.68.0",
+    "vite": "^8.2.2"
   }
 }

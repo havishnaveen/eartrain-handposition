@@ -55,3 +55,12 @@ a seemingly harmless reorder can send a referred student to the wrong skill.
   harmonic evidence; written chords require all tones simultaneously.
 - Do not tune detector thresholds from one anecdote. Add the failure as an
   audio regression, then run `npm run audit:audio` and `npm run audit:score`.
+
+## Development controls never ship
+
+- `App.tsx` must gate `DevLessonJumper` behind `import.meta.env.DEV`. The
+  protected jumper is deliberately always available to local testers; rendering
+  it in production exposes lesson jumping and Prove It bypasses to students.
+- After changing app bootstrap or build configuration, run `npm run build` and
+  confirm the production bundle contains none of `DEV — Lesson`,
+  `Jump to next lesson`, or `Prove It skipped`.

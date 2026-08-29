@@ -71,7 +71,7 @@ export const stopActiveSourcesOnly = () => {
     try {
       source.stop();
       source.disconnect();
-    } catch (e) {
+    } catch {
       // ignore
     }
   });
@@ -356,16 +356,16 @@ export const playSequenceWithUI = async (
 // Utilities
 export const getRandomNote = (minOct: number, maxOct: number, excludeSharp: boolean = false) => {
   const oct = Math.floor(Math.random() * (maxOct - minOct + 1)) + minOct;
-  let pool = excludeSharp ? ["C", "D", "E", "F", "G", "A", "B"] : NOTE_NAMES;
+  const pool = excludeSharp ? ["C", "D", "E", "F", "G", "A", "B"] : NOTE_NAMES;
   const note = pool[Math.floor(Math.random() * pool.length)];
   return { note, octave: oct };
 };
 
 export const getNoteAtInterval = (base: {note: string, octave: number}, semitones: number) => {
-  let idx = NOTE_NAMES.indexOf(base.note);
-  let total = idx + semitones;
-  let oct = base.octave + Math.floor(total / 12);
-  let newIdx = ((total % 12) + 12) % 12;
+  const idx = NOTE_NAMES.indexOf(base.note);
+  const total = idx + semitones;
+  const oct = base.octave + Math.floor(total / 12);
+  const newIdx = ((total % 12) + 12) % 12;
   return { note: NOTE_NAMES[newIdx], octave: Math.max(1, Math.min(7, oct)) };
 };
 

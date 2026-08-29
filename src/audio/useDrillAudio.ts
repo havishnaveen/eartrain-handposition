@@ -858,7 +858,7 @@ function splitPianoPitch(pitch: string): { note: string; octave: number } | null
   return { note: match[1], octave: Number(match[2]) };
 }
 
-function playProofSuccessChime(_ctx?: AudioContext): void {
+function playProofSuccessChime(): void {
   // Musical feedback is sampled acoustic piano too. A sine-wave "success"
   // arpeggio was one of the remaining synth sounds in the progressive path.
   void (async () => {
@@ -1494,7 +1494,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             worklet.port.postMessage({ type: 'idle' });
             safeSet(setPhase, 'idle' as DrillPhase);
             safeSet(setInputLevel, 0);
-            playProofSuccessChime(ctx);
+            playProofSuccessChime();
             cbRef.current.onProofSuccess?.();
             return false;
           }
@@ -1528,7 +1528,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             worklet.port.postMessage({ type: 'idle' });
             safeSet(setPhase, 'idle' as DrillPhase);
             safeSet(setInputLevel, 0);
-            playProofSuccessChime(ctx);
+            playProofSuccessChime();
             cbRef.current.onProofSuccess?.();
           }, PROOF_FINAL_HOLD_VERIFY_MS);
           return false;
@@ -2260,7 +2260,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                 return;
               }
               current.completedAt = ctx.currentTime;
-              playProofSuccessChime(ctx);
+              playProofSuccessChime();
               finishSpatialRef.current?.(false);
             };
             spatialChordConfirmationTimerRef.current = window.setTimeout(
