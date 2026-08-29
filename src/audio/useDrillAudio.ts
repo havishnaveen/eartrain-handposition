@@ -425,7 +425,7 @@ export interface PositionProofTarget {
     { pitch: string; finger: number },
   ];
   /** Product invariant: Prove It is sequential; simultaneous holds belong to chord drills. */
-  requireHeld?: false;
+  requireHeld?: boolean;
   acceptWindowMs?: number;
 }
 
