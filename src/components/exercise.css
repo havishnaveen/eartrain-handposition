@@ -1113,11 +1113,11 @@
 @media (prefers-reduced-motion: reduce) {
   .et-listen__halo { animation: none; opacity: 0.35; transform: none; }
   .et-analysis__header i,
-  .et-analysis__note,
-  .et-analysis__scan,
-  .et-analysis__progress i { animation: none; }
-  .et-analysis__scan { left: 44%; opacity: .42; }
-  .et-analysis__progress i { transform: translateX(70%); }
+  .et-analysis__note { animation: none; }
+  /* Keep only the functional analysis indicators moving. A frozen scan line
+     looked like the grader had crashed on systems with Reduce Motion on. */
+  .et-analysis__scan { animation: et-analysis-scan 3.2s linear infinite; }
+  .et-analysis__progress i { animation: et-analysis-progress 2.8s linear infinite; }
   .et-count__arc,
   .et-panel,
   .et-lesson-progress__tick,

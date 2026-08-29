@@ -53,8 +53,8 @@ import { learningProfileStore } from '../profiles/learningProfileStore';
 
 const MAX_ATTEMPTS = 2;
 const REPS_ADDED_PER_MISS = 2;
-/** Product pacing: Antigravity's extended constellation window. */
-const MIN_ANALYSIS_VISIBLE_MS = 3500;
+/** Briefly acknowledge analysis without delaying an already-complete grade. */
+const MIN_ANALYSIS_VISIBLE_MS = 900;
 const ORIENTATION_STORAGE_KEY = 'eartrain.orientation-cues.v1';
 /**
  * A standalone run must be able to reach every lesson. Integrations may pass a

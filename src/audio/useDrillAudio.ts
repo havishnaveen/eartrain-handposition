@@ -2242,12 +2242,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       clickGainRef.current = clickGain;
 
       safeSet(setMicStatus, 'ready' as MicStatus);
-      // Lazy-load Spotify's whole-take transcription model after microphone
-      // setup. It remains off the audio/render threads, but warming it here
-      // prevents the first grading screen from paying the model-load cost.
-      void import('./basicPitchAnalysis')
-        .then(({ warmBasicPitch }) => warmBasicPitch())
-        .catch(() => undefined);
       return ctx;
     } catch (err) {
       const denied =
@@ -2926,10 +2920,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               // fallback prevents a broken browser recorder from blocking
               // grading forever.
               const recordingFallback = new Promise<void>((resolve) => {
-                window.setTimeout(resolve, 1200);
+                window.setTimeout(resolve, 700);
               });
               const captureFallback = new Promise<null>((resolve) => {
-                window.setTimeout(() => resolve(null), 1600);
+                window.setTimeout(() => resolve(null), 900);
               });
               void Promise.all([
                 Promise.race([recordingDone, recordingFallback]),

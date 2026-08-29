@@ -1187,6 +1187,17 @@ export function gradeSequence(
   let hard = 0;
   let playedRepeatExtras = 0;
 
+  const hasIndependentPlayedAttack = (note: DetectedNote) => Boolean(
+    note.detectorLane === 'strict' &&
+    note.voiceVeto !== true &&
+    note.voiceBurst !== true &&
+    (
+      (note.pianoAttackConfidence ?? 0) >= 0.5 ||
+      (note.frameAttackRatio ?? 0) >= 1.08 ||
+      (note.novelty ?? 0) >= 0.4
+    )
+  );
+
   // Most recent matched occurrence of the note currently ringing. Do not
   // advance this anchor for echoes: otherwise an unlimited stream of false
   // re-detections can chain forever and still look perfectly clean.
@@ -1201,6 +1212,9 @@ export function gradeSequence(
   };
 
   const isResonance = (note: DetectedNote) => {
+    // A separately verified hammer attack is a played note, even when its
+    // interval resembles a harmonic of an earlier string.
+    if (hasIndependentPlayedAttack(note)) return false;
     for (let i = accepted.length - 1; i >= 0; i--) {
       const prior = accepted[i];
       if (note.time - prior.time > RESONANCE_WINDOW_SEC) break;
@@ -1214,8 +1228,10 @@ export function gradeSequence(
   };
 
   const isFaint = (note: DetectedNote) =>
-    (medianStrength > 0 && note.strength < medianStrength * FAINT_RATIO) ||
-    (Number.isFinite(note.clarity) && note.clarity > 0 && note.clarity < HARD_EXTRA_MIN_CLARITY);
+    !hasIndependentPlayedAttack(note) && (
+      (medianStrength > 0 && note.strength < medianStrength * FAINT_RATIO) ||
+      (Number.isFinite(note.clarity) && note.clarity > 0 && note.clarity < HARD_EXTRA_MIN_CLARITY)
+    );
 
   for (let i = 0; i < detected.length; i++) {
     const note = detected[i];
@@ -1241,14 +1257,7 @@ export function gradeSequence(
         // A strict event with its own hammer evidence is a played repeat,
         // even inside the echo window. Weak/offline repeats remain acoustic
         // debris so detector chatter cannot crush an otherwise strong take.
-        const hasIndependentAttack = Boolean(
-          note.detectorLane === 'strict' && (
-            (note.pianoAttackConfidence ?? 0) >= 0.5 ||
-            (note.frameAttackRatio ?? 0) >= 1.08 ||
-            (note.novelty ?? 0) >= 0.4
-          )
-        );
-        if (hasIndependentAttack) playedRepeatExtras += 1;
+        if (hasIndependentPlayedAttack(note)) playedRepeatExtras += 1;
       } else if (kind === 'resonance' && SUBOCTAVE_ARTIFACTS.includes(note.midi - (accepted[accepted.length - 1]?.midi ?? 0))) {
         echoExtras += 1;
       }
@@ -1269,12 +1278,12 @@ export function gradeSequence(
   }
 
   const totalMissed = missedExpectedIndices.length;
-  const significantExtraCount = hard + hesitations * 0.35 + playedRepeatExtras;
+  const significantExtraCount = hard + hesitations * 0.75 + playedRepeatExtras;
   // A quickly corrected neighboring key is a cleanliness/fluency issue. It
   // must not also lower Pitch after every written pitch was subsequently
   // played in order. Sustained wrong keys and genuine repeated attacks still
   // reduce pitch precision, including the severe note-flood case.
-  const pitchErrorCount = hard + playedRepeatExtras;
+  const pitchErrorCount = hard + hesitations * 0.35 + playedRepeatExtras;
 
   const playedNames = detected.map((d) => midiToName(d.midi));
   const rhythm = buildRhythm(matches, options);
@@ -1327,12 +1336,15 @@ export function gradeSequence(
   // the beat; later readers are asked for more precision, without the old
   // cliff where a modest error abruptly became zero.
   const timingProfile = timingProfileForOptions(options);
+  const rhythmAttackError = rhythm === null
+    ? null
+    : rhythm.evaluated < 2
+      ? rhythm.meanOnsetErrorBeats
+      : rhythm.meanOnsetErrorBeats * 0.42 + rhythm.meanIntervalErrorBeats * 0.58;
   const baseTimingScore = rhythm === null
     ? null
     : (() => {
-        const attackTimingError = rhythm.evaluated < 2
-          ? rhythm.meanOnsetErrorBeats
-          : rhythm.meanOnsetErrorBeats * 0.42 + rhythm.meanIntervalErrorBeats * 0.58;
+        const attackTimingError = rhythmAttackError ?? 0;
         const onsetScoringRange = Math.max(
           0.01,
           timingProfile.zeroScoreWindow - timingProfile.fullCreditOnsetWindow,
@@ -1390,33 +1402,30 @@ export function gradeSequence(
     Math.max(2, Math.ceil(expectedCount * 0.6)),
   );
   const hasTimingEvidence = matches.length >= minimumTimingMatches;
-
-  // Five means there is no useful timing correction to give—not that every
-  // FFT timestamp landed inside an artificially tiny mathematical plateau.
-  // Judge the whole musical result: every attack remains inside the lesson's
-  // on-beat window, relative spacing is stable, and repeated high-confidence
-  // releases do not prove materially wrong note lengths. Pitch/cleanliness
-  // mistakes remain on their own axes and cannot lower Timing a second time.
-  const transitionSupportsFullCredit =
-    !transition || (transition.measured && transition.score === 5);
-  const fullCreditTiming = Boolean(
-    (completePitch || memoryPatternRecognized) &&
+  // Full credit is a narrow evidence-based mastery region, not a broad
+  // override. Both aligned attacks and relative gaps must collectively fit
+  // the lesson's normal human/device tolerance. The old interval-only 1.8x
+  // gate could hide conspicuously poor rhythm.
+  const timingMastery = Boolean(
+    hasTimingEvidence &&
     rhythm &&
+    rhythmAttackError !== null &&
     rhythm.accuracy === 1 &&
-    rhythm.meanIntervalErrorBeats <= timingProfile.fullCreditOnsetWindow * 1.8 &&
+    rhythmAttackError <= timingProfile.fullCreditOnsetWindow * 1.2 &&
     (
       rhythm.durationAccuracy === null ||
       rhythm.durationEvaluated < 2 ||
       rhythm.durationAccuracy >= 0.7
     ) &&
-    transitionSupportsFullCredit,
+    (!transition || (transition.measured && transition.score === 5))
   );
+
   const timingScore =
     !hasPerformanceEvidence
       ? 0
       : !hasTimingEvidence
         ? null
-      : fullCreditTiming
+      : timingMastery
         ? 5
         : baseTimingScore === null
           ? transition?.score ?? null
@@ -1438,7 +1447,7 @@ export function gradeSequence(
         // Only confident, uncorrected wrong-key strikes should materially
         // affect Cleanliness. Echoes, resonances, faint detections and quick
         // self-corrections must not make a correct take look dirty.
-        : clamp5(5 - 0.8 * significantExtraCount);
+        : clamp5(5 - 1.3 * significantExtraCount);
 
   // Pitch carries the most weight: this app exists to verify hand position.
   const wPitch = isMemory ? 0.7 : 0.43;
@@ -1454,9 +1463,21 @@ export function gradeSequence(
   // but the student-facing detector demonstrably missed it. Rounding the
   // weighted 4.95 back to 5.0 hid that fact. Full mastery requires every
   // written note to have cleared the responsive lane as well as the PCM pass.
-  const overall = offlineRecoveryPenalty > 0
-    ? Math.min(4.9, weightedOverall)
-    : weightedOverall;
+  const visibleCategoryFloor = timingScore === null
+    ? Math.min(pitchScore, cleanScore)
+    : Math.min(pitchScore, timingScore, cleanScore);
+  // On ordinary performance drills a seriously weak visible category cannot
+  // be averaged away by two high ones. Memory keeps its separate pitch-led
+  // rubric, where rhythm is intentionally secondary.
+  const weaknessAwareOverall = isMemory
+    ? weightedOverall
+    : Math.min(weightedOverall, visibleCategoryFloor + 0.9);
+  const extraNoteCap = significantExtraCount >= 0.7 ? 4.1 : 5;
+  const overall = Math.min(
+    offlineRecoveryPenalty > 0 ? 4.9 : 5,
+    extraNoteCap,
+    weaknessAwareOverall,
+  );
 
   const scores: ScoreBreakdown = {
     pitch: pitchScore,

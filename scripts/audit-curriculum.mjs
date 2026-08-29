@@ -126,23 +126,23 @@ try {
   assert.deepEqual(
     CURRICULUM_BLUEPRINT.map(({ drills }) => drills),
     [
-      ['standard', 'standard', 'prove-it', 'prove-it'],
+      ['prove-it', 'standard', 'standard', 'prove-it'],
       ['standard', 'prove-it', 'blind-memory', 'standard'],
-      ['standard', 'standard', 'prove-it', 'prove-it'],
+      ['prove-it', 'standard', 'standard', 'prove-it'],
       ['standard', 'prove-it', 'blind-memory', 'standard'],
-      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
-      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
-      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
-      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
+      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
-      ['standard', 'prove-it', 'standard', 'prove-it'],
+      ['prove-it', 'prove-it', 'prove-it', 'chord-reading'],
       ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
       ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'],
       ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
@@ -480,7 +480,11 @@ try {
               assert.equal(
                 humanPerfectGrade.scores.timing,
                 5,
-                `Normal human/device jitter lost full timing credit in Lesson ${concept.index}.`,
+                `Normal human/device jitter lost full timing credit in Lesson ${concept.index}: ${JSON.stringify({
+                  scores: humanPerfectGrade.scores,
+                  rhythm: humanPerfectGrade.rhythm,
+                  mode: question.exerciseMode,
+                })}`,
               );
               const latencyShifted = humanPerfect.map((note) => ({
                 ...note,
@@ -574,8 +578,8 @@ try {
               }
 
               if (perfect.length >= 3) {
-                // The axes must stay independent: a corrected wrong key costs
-                // Cleanliness, but cannot also demote exact matched-note timing.
+                // The axes must stay honest: a corrected wrong key is still a
+                // pitch and cleanliness error, but cannot demote exact rhythm.
                 const correctedWrongKey = [
                   perfect[0],
                   {
@@ -591,12 +595,16 @@ try {
                   correctedWrongKey,
                   gradeOptions,
                 );
-                assert.equal(correctedWrongGrade.scores.pitch, 5,
-                  `A corrected extra corrupted Pitch in Lesson ${concept.index}.`);
+                assert.ok(correctedWrongGrade.scores.pitch < 5,
+                  `A corrected wrong key did not affect Pitch in Lesson ${concept.index}.`);
                 assert.equal(correctedWrongGrade.scores.timing, 5,
                   `A corrected extra was penalised again in Timing in Lesson ${concept.index}.`);
                 assert.ok(correctedWrongGrade.scores.cleanliness < 5,
-                  `A corrected extra was not isolated to Cleanliness in Lesson ${concept.index}.`);
+                  `A corrected extra did not affect Cleanliness in Lesson ${concept.index}.`);
+                if (question.exerciseMode !== 'blind-memory') {
+                  assert.ok(correctedWrongGrade.scores.overall <= 4.1,
+                    `A corrected extra scored too highly in Lesson ${concept.index}.`);
+                }
 
                 const offBeat = perfect.map((note, index) => {
                   const offset = (index % 2 === 0 ? -0.65 : 0.65) * plan.secondsPerBeat;
@@ -847,17 +855,8 @@ try {
   // Reducer-level route audit: stale events are ignored and a completed proof
   // unlocks exactly once before the ordinary drill begins.
   let route = createInitialPathwayState({ seed: 20260802, cap: 1000 });
-  assert.equal(route.status, 'prompt',
-    'The pathway must open on the supported standard drill, not an assessment gate.');
-  const proofQuestion = generateFor(1, 3, 2, route.difficulty, route.signal, route.seed);
-  route = {
-    ...route,
-    question: 3,
-    ordinal: 2,
-    current: proofQuestion,
-    status: 'position-prompt',
-    proofCompleted: false,
-  };
+  assert.equal(route.status, 'position-prompt',
+    'The pathway must open on the restored Prove It placement diagnostic.');
   const firstId = route.current.id;
   assert.equal(pathwayReducer(route, { type: 'PROOF_SUCCESS', questionId: firstId }).status,
     'position-prompt');
@@ -898,9 +897,9 @@ try {
   });
   assert.equal(route.status, 'report');
   route = pathwayReducer(route, { type: 'CONTINUE', difficultyNudge: 0 });
-  assert.equal(route.question, 4);
+  assert.equal(route.question, 2);
   assert.notEqual(route.current.id, firstId);
-  assert.equal(route.status, 'position-prompt');
+  assert.equal(route.status, 'prompt');
 
   // Blind Memory has one guarded path: prompt -> preview -> count-in -> play.
   // Repeated/stale actions must not skip the preview or restart it underneath

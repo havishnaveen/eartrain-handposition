@@ -27,9 +27,6 @@ try {
   const { credibleRealtimeFallback } = await server.ssrLoadModule(
     '/src/audio/scoreAnalysis.ts',
   );
-  const { mergeSpotifyRecoveries } = await server.ssrLoadModule(
-    '/src/audio/basicPitchAnalysis.ts',
-  );
 
   assert.equal(hasCredibleAcousticAttack({
     peakRms: 0.00026,
@@ -222,20 +219,6 @@ try {
     countInSeconds: 4,
     guideNote: false,
   };
-  const spotifyRecovery = mergeSpotifyRecoveries(
-    perfect.filter((_, index) => index !== 2),
-    [
-      { midi: 64, startTimeSeconds: 1, durationSeconds: 0.45, amplitude: 0.82 },
-      { midi: 59, startTimeSeconds: 1.5, durationSeconds: 0.45, amplitude: 0.95 },
-    ],
-    timedPlan,
-    10,
-    10,
-  );
-  assert.equal(spotifyRecovery.recovered, 1,
-    'Spotify Basic Pitch should recover one strong expected note in its written slot.');
-  assert.deepEqual(spotifyRecovery.notes.map(({ midi }) => midi), [60, 62, 64, 65],
-    'Independent transcription must never snap an unrelated note into the expected score.');
   const badlyDistortedRhythm = perfect.map((note, index) => ({
     ...note,
     time: [10, 10.9, 11, 11.9][index],
@@ -252,6 +235,37 @@ try {
     'Alternating rushed and late notes must receive a clearly poor Timing result.');
   assert.ok(badRhythmGrade.scores.overall <= 4,
     'Severely poor rhythm must materially lower Overall, not round to a high 4.x.');
+
+  const playedExtra = {
+    midi: 59,
+    time: 10.42,
+    clarity: 0.25,
+    strength: 0.42,
+    detectorLane: 'strict',
+    pianoAttackConfidence: 0.84,
+    frameAttackRatio: 1.3,
+    novelty: 0.7,
+  };
+  const messyTakeGrade = gradeSequence(
+    expected,
+    [...badlyDistortedRhythm, playedExtra].sort((a, b) => a.time - b.time),
+    {
+      plan: timedPlan,
+      playStartTime: 10,
+      lessonLevel: 1,
+      totalLessons: 24,
+    },
+  );
+  assert.ok((messyTakeGrade.scores.timing ?? 5) <= 2.5,
+    'A played extra note must not conceal severely distorted rhythm.');
+  assert.ok(messyTakeGrade.scores.cleanliness <= 4,
+    'One independently verified extra key must materially lower Cleanliness.');
+  assert.ok(messyTakeGrade.scores.pitch < 5,
+    'A played wrong key followed by a correction must remain visible in Pitch precision.');
+  assert.ok(messyTakeGrade.scores.overall <= 3.5,
+    `Bad rhythm plus a played extra must not average into a high score: ${JSON.stringify(messyTakeGrade.scores)}`);
+  assert.ok(messyTakeGrade.extras.some((extra) => extra.midi === 59 && extra.kind !== 'faint'),
+    'A low-clarity event with independent hammer evidence must not be dismissed as room noise.');
 
   const moderatelyUnevenRhythm = perfect.map((note, index) => ({
     ...note,

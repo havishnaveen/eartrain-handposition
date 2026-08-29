@@ -6,10 +6,11 @@ instructor identified a specific problem. Therefore each lesson is a complete
 four-drill mini-intervention: orient the skill, practise it with support, recall
 or transfer it, then apply or verify it.
 
-Difficulty is one continuous 96-drill staircase: each displayed slot is harder
-than the slot before it, including across lesson boundaries. New hand maps begin
-with visible, supported reading before Prove It removes that support; do not put
-an unsupported verification ahead of its introduction.
+Difficulty is one continuous 96-drill staircase: the declared challenge rises
+across slots and lesson boundaries. Position-orientation lessons deliberately
+open with Prove It as a quick placement diagnostic, then provide supported
+reading and finish with a second check. That opening check identifies the help
+the learner needs; it is not a claim that the position was already taught.
 
 Difficulty uses a challenge budget, not simultaneous escalation on every axis.
 Lessons 1-5 establish quarter-note pulse; Lessons 6-12 add eighth-note

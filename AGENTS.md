@@ -61,6 +61,9 @@ a seemingly harmless reorder can send a referred student to the wrong skill.
   harmonic evidence; written chords require all tones simultaneously.
 - Do not tune detector thresholds from one anecdote. Add the failure as an
   audio regression, then run `npm run audit:audio` and `npm run audit:score`.
+- Keep whole-take analysis inside its worker and keep its failure timeout at or
+  below two seconds. Do not add neural/model inference to the browser UI thread;
+  it previously froze the grading animation and delayed every result.
 - Keep Pitch, Timing, and Cleanliness independent. Correct pitches played with
   poor rhythm must keep Pitch credit and lose Timing; fewer than 60% matched
   notes cannot manufacture a Timing 5; one missed written note cannot earn an
@@ -70,11 +73,10 @@ a seemingly harmless reorder can send a referred student to the wrong skill.
   unrelated lead-in chords, or a progression. The curriculum audit enforces
   this because those sounds previously confused the answer.
 
-## Development controls never ship
+## Lesson navigation is a protected product control
 
-- `App.tsx` must gate `DevLessonJumper` behind `import.meta.env.DEV`. The
-  protected jumper is deliberately always available to local testers; rendering
-  it in production exposes lesson jumping and Prove It bypasses to students.
-- After changing app bootstrap or build configuration, run `npm run build` and
-  confirm the production bundle contains none of `DEV — Lesson`,
-  `Jump to next lesson`, or `Prove It skipped`.
+- `App.tsx` must render `DevLessonJumper` in production as well as development.
+  Despite its legacy filename, this is the requested lesson navigation used for
+  presentations and direct lesson testing. Never hide, gate, replace, or remove it.
+- Never modify `src/dev/DevLessonJumper.tsx`. Preserve its exact controls and
+  verify the production bundle contains `DEV — Lesson` and `Jump to next lesson`.

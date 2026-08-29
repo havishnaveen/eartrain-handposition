@@ -41,12 +41,20 @@ try {
       questionNumber,
     ));
     const standard = questions.filter(({ exerciseMode }) => exerciseMode === 'standard');
-    assert.ok(standard.length > 0, `Lesson ${lesson.index} needs a normal exercise.`);
-    assert.ok(
-      questions.slice(0, lesson.baseQuestionCount)
-        .some(({ exerciseMode }) => exerciseMode === 'standard'),
-      `Lesson ${lesson.index} needs a normal exercise in its base lesson loop.`,
-    );
+    if (lesson.index !== 17) {
+      assert.ok(standard.length > 0, `Lesson ${lesson.index} needs a normal exercise.`);
+      assert.ok(
+        questions.slice(0, lesson.baseQuestionCount)
+          .some(({ exerciseMode }) => exerciseMode === 'standard'),
+        `Lesson ${lesson.index} needs a normal exercise in its base lesson loop.`,
+      );
+    } else {
+      assert.deepEqual(
+        questions.slice(0, lesson.baseQuestionCount).map(({ exerciseMode }) => exerciseMode),
+        ['prove-it', 'prove-it', 'prove-it', 'standard'],
+        'Lesson 17 must restore its three position proofs before the chord phrase.',
+      );
+    }
 
     standard.forEach((question) => {
       const chordNotes = question.cue.staves

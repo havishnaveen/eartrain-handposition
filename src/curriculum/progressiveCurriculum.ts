@@ -149,7 +149,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: RH, positions: [C], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: false,
     tempoEasy: 15, tempoHard: 14,
-    drills: ['standard', 'standard', 'prove-it', 'prove-it'], difficultyBase: 0.02,
+    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.02,
   },
   {
     id: 'c02-rh-musical-phrases', index: 2, phase: 0, phaseLabel: 'Right hand foundations',
@@ -169,7 +169,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: LH, positions: [C], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: false,
     tempoEasy: 15, tempoHard: 13.8,
-    drills: ['standard', 'standard', 'prove-it', 'prove-it'], difficultyBase: 0.10,
+    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.10,
   },
   {
     id: 'c04-two-hand-white-keys', index: 4, phase: 0, phaseLabel: 'Two-hand foundations',
@@ -189,7 +189,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
     tempoEasy: 14.5, tempoHard: 13,
-    drills: ['standard', 'prove-it', 'blind-memory', 'prove-it'], difficultyBase: 0.18,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.18,
   },
   {
     id: 'c06-g-major-phrases', index: 6, phase: 1, phaseLabel: 'One sharp',
@@ -209,7 +209,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
     tempoEasy: 14, tempoHard: 12.8,
-    drills: ['standard', 'prove-it', 'blind-memory', 'prove-it'], difficultyBase: 0.26,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.26,
   },
   {
     id: 'c08-d-major-phrases', index: 8, phase: 1, phaseLabel: 'Two sharps',
@@ -229,7 +229,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
     showKeySignature: true, tempoEasy: 13.8, tempoHard: 12.4,
-    drills: ['standard', 'prove-it', 'blind-memory', 'prove-it'], difficultyBase: 0.34,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.34,
   },
   {
     id: 'c10-a-major-phrases', index: 10, phase: 2, phaseLabel: 'Three sharps',
@@ -249,7 +249,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
     showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
-    drills: ['standard', 'prove-it', 'blind-memory', 'prove-it'], difficultyBase: 0.42,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.42,
   },
   {
     id: 'c12-e-major-phrases', index: 12, phase: 2, phaseLabel: 'Four sharps',
@@ -310,7 +310,7 @@ const LESSONS: readonly LessonRecipe[] = [
     positions: [B, B, FS, FS], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4],
     showKeySignature: true, tempoEasy: 15, tempoHard: 14,
-    drills: ['standard', 'prove-it', 'standard', 'prove-it'], difficultyBase: 0.66,
+    drills: ['prove-it', 'prove-it', 'prove-it', 'chord-reading'], difficultyBase: 0.66,
   },
   {
     id: 'c18-shift-b-to-fsharp', index: 18, phase: 5, phaseLabel: 'Five and six sharps',
@@ -424,7 +424,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place the right hand in middle-C position and connect fingers 1-5 to the written notes.',
     coreProblems: ['right-hand-position', 'finger-number-mapping', 'c-position', 'register-placement'],
     supportingProblems: ['treble-clef-recognition'],
-    drillPurposes: ['Read a supported five-finger map', 'Apply the map to a new contour', 'Verify the 1-3-5 frame', 'Repeat the anchor check independently'],
+    drillPurposes: ['Map the 1-3-5 frame in order', 'Read the five-finger map', 'Apply the map to a new contour', 'Verify the three anchor notes again'],
   },
   'c02-rh-musical-phrases': {
     learningOutcome: 'Read a short treble-clef phrase as steps, turns, repeats, and gentle skips without moving the hand.',
@@ -436,7 +436,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place the left hand in bass-clef C position and use the correct mirrored finger numbers.',
     coreProblems: ['left-hand-position', 'finger-number-mapping', 'bass-clef-recognition', 'c-position', 'register-placement'],
     supportingProblems: [],
-    drillPurposes: ['Read a supported bass map', 'Apply it to a new contour', 'Verify the 5-3-1 frame', 'Repeat the anchor check independently'],
+    drillPurposes: ['Map the 5-3-1 frame in order', 'Read the bass five-finger map', 'Apply the map to a new contour', 'Verify the three anchor notes again'],
   },
   'c04-two-hand-white-keys': {
     learningOutcome: 'Differentiate treble from bass and play a coordinated white-key grand-staff phrase.',
@@ -448,7 +448,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place both hands on G-A-B-C-D while recognizing the one-sharp G-major signature.',
     coreProblems: ['g-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'position-memory', 'register-placement'],
-    drillPurposes: ['Read the right-hand G map', 'Verify the left-hand G frame', 'Recall the right-hand pattern', 'Verify the left-hand G frame independently'],
+    drillPurposes: ['Build the right-hand G frame', 'Read the left-hand G map', 'Recall the right-hand pattern', 'Verify the left-hand G frame'],
   },
   'c06-g-major-phrases': {
     learningOutcome: 'Keep the G-major hand map stable through reading, memory, and two-hand phrase work.',
@@ -460,7 +460,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place both hands on D-E-F-sharp-G-A while recognizing the two-sharp signature.',
     coreProblems: ['d-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'position-memory', 'register-placement'],
-    drillPurposes: ['Read the right-hand D map', 'Verify the left-hand D frame', 'Recall the right-hand pattern', 'Verify the left-hand D frame independently'],
+    drillPurposes: ['Build the right-hand D frame', 'Read the left-hand D map', 'Recall the right-hand pattern', 'Verify the left-hand D frame'],
   },
   'c08-d-major-phrases': {
     learningOutcome: 'Keep the D-major map stable through turns, repeats, skips, and two-hand reading.',
@@ -472,7 +472,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place both hands on A-B-C-sharp-D-E while recognizing the three-sharp signature.',
     coreProblems: ['a-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'position-memory', 'register-placement'],
-    drillPurposes: ['Read the right-hand A map', 'Verify the left-hand A frame', 'Recall the right-hand pattern', 'Verify the left-hand A frame independently'],
+    drillPurposes: ['Build the right-hand A frame', 'Read the left-hand A map', 'Recall the right-hand pattern', 'Verify the left-hand A frame'],
   },
   'c10-a-major-phrases': {
     learningOutcome: 'Maintain A-major orientation through longer phrases and controlled subdivisions.',
@@ -484,7 +484,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place both hands on E-F-sharp-G-sharp-A-B while recognizing the four-sharp signature.',
     coreProblems: ['e-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'position-memory', 'register-placement'],
-    drillPurposes: ['Read the right-hand E map', 'Verify the left-hand E frame', 'Recall the right-hand pattern', 'Verify the left-hand E frame independently'],
+    drillPurposes: ['Build the right-hand E frame', 'Read the left-hand E map', 'Recall the right-hand pattern', 'Verify the left-hand E frame'],
   },
   'c12-e-major-phrases': {
     learningOutcome: 'Maintain E-major orientation through longer phrases, skips, and controlled subdivisions.',
@@ -520,7 +520,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place both hands in B and F-sharp positions before any jump between them is required.',
     coreProblems: ['b-major-position', 'f-sharp-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'register-placement', 'chord-reading', 'chord-simultaneity'],
-    drillPurposes: ['Read a short right-hand B map with one closing chord', 'Verify the left-hand B frame', 'Read a short right-hand F-sharp map with one closing chord', 'Verify the left-hand F-sharp frame'],
+    drillPurposes: ['Build the right-hand B frame', 'Build the left-hand B frame', 'Build the right-hand F-sharp frame', 'Read a short left-hand F-sharp chord phrase'],
   },
   'c18-shift-b-to-fsharp': {
     learningOutcome: 'Move either hand from B to F-sharp after a two-second destination preview.',
@@ -994,13 +994,7 @@ function questionFor(
   const clef = hand === 'right' ? 'treble' : 'bass';
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
 
-  // Lesson 17 is the guarded bridge into the two deepest key signatures.
-  // Its two `standard` slots intentionally use the compact one-hand chord
-  // phrase instead of the later two-hand standard generator: the learner
-  // sees each new map before being asked to verify it, and the final blocked
-  // triad preserves the post-Lesson-15 chord-reading contract without adding
-  // a simultaneous grand-staff demand.
-  if (drillKind === 'chord-reading' || (drillKind === 'standard' && lesson.index === 17)) {
+  if (drillKind === 'chord-reading') {
     return chordalStandardQuestion(
       lesson,
       ordinal,

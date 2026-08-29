@@ -96,13 +96,13 @@ for lesson in range(16, 25):
             raise AssertionError(f"Lesson {lesson} standard reading lost its chord event.")
 
 # B/F-sharp are an orientation bridge, not a surprise Grade-8-style reading
-# jump: one hand, five sounded events, one closing triad, then a 3-note proof.
+# jump: three short anchor proofs followed by one compact written chord phrase.
 for row in by_lesson[17]:
-    if row["mode"] == "standard":
-        if row["handScope"] == "both" or row["soundedEvents"] != 5 or row["chordEvents"] != 1:
-            raise AssertionError("Lesson 17 written bridge is no longer compact and one-handed.")
-    elif row["proofNotes"] != 3:
+    if row["mode"] == "prove-it" and row["proofNotes"] != 3:
         raise AssertionError("Lesson 17 proof must stay a three-anchor check.")
+    if row["mode"] == "chord-reading":
+        if row["handScope"] == "both" or row["soundedEvents"] != 5 or row["chordEvents"] != 1:
+            raise AssertionError("Lesson 17 chord bridge is no longer compact and one-handed.")
 
 shift_previews = [
     row["shiftPreviewSeconds"]
