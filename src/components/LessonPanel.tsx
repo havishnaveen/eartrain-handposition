@@ -44,11 +44,11 @@ export function HandIcon({
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {activeFinger === 1 ? <path d="M 6.8 15.2 L 3.2 11.6 a 2 2 0 0 1 2.8 -2.8 L 9.6 12.4 Z" fill="#ef6a47" stroke="none" /> : null}
-      {activeFinger === 2 ? <rect x="6" y="4" width="4" height="12" rx="2" fill="#ef6a47" stroke="none" /> : null}
-      {activeFinger === 3 ? <rect x="10" y="2" width="4" height="15" rx="2" fill="#ef6a47" stroke="none" /> : null}
-      {activeFinger === 4 ? <rect x="14" y="4" width="4" height="13" rx="2" fill="#ef6a47" stroke="none" /> : null}
-      {activeFinger === 5 ? <rect x="18" y="6" width="4" height="10" rx="2" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 1 ? <path d="M 6.01 19.66 l -3.6 -3.6 a 2 2 0 0 1 2.83 -2.82 L 7 15 Z" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 2 ? <rect x="6" y="4" width="4" height="10.5" rx="2" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 3 ? <rect x="10" y="2" width="4" height="8.5" rx="2" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 4 ? <rect x="14" y="4" width="4" height="7.5" rx="2" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 5 ? <rect x="18" y="6" width="4" height="8" rx="2" fill="#ef6a47" stroke="none" /> : null}
 
       <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0" />
       <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
