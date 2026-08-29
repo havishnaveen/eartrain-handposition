@@ -34,33 +34,26 @@ export function HandIcon({
 }) {
   return (
     <svg
-      viewBox="0 0 120 120"
+      viewBox="0 0 24 24"
       className={className}
-      style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
+      style={mirrored ? undefined : { transform: 'scaleX(-1)' }}
       fill="none"
-      stroke="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
-      {activeFinger === 1 ? <path d="M 52,65 L 35,48 a 6,6 0 0,0 -8.5,8.5 L 44,73 Z" fill="#ef6a47" /> : null}
-      {activeFinger === 2 ? <path d="M 52,55 v -25 a 6,6 0 0,1 12,0 v 25 Z" fill="#ef6a47" /> : null}
-      {activeFinger === 3 ? <path d="M 64,55 v -35 a 6,6 0 0,1 12,0 v 35 Z" fill="#ef6a47" /> : null}
-      {activeFinger === 4 ? <path d="M 76,55 v -25 a 6,6 0 0,1 12,0 v 25 Z" fill="#ef6a47" /> : null}
-      {activeFinger === 5 ? <path d="M 88,55 v -15 a 6,6 0 0,1 12,0 v 15 Z" fill="#ef6a47" /> : null}
-      
-      <path d="M 90,100
-               C 100,95 100,80 100,55
-               v -15 a 6,6 0 0,0 -12,0
-               v 15
-               v -25 a 6,6 0 0,0 -12,0
-               v 25
-               v -35 a 6,6 0 0,0 -12,0
-               v 35
-               v -25 a 6,6 0 0,0 -12,0
-               v 10
-               L 35,48 a 6,6 0 0,0 -8.5,8.5 L 44,73
-               C 40,90 45,100 50,100
-               A 20,20 0 0,0 90,100 Z"
-            stroke="currentColor" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+      {activeFinger === 1 ? <path d="M 6.8 15.2 L 3.2 11.6 a 2 2 0 0 1 2.8 -2.8 L 9.6 12.4 Z" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 2 ? <rect x="6" y="4" width="4" height="12" rx="2" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 3 ? <rect x="10" y="2" width="4" height="15" rx="2" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 4 ? <rect x="14" y="4" width="4" height="13" rx="2" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 5 ? <rect x="18" y="6" width="4" height="10" rx="2" fill="#ef6a47" stroke="none" /> : null}
+
+      <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0" />
+      <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
+      <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
     </svg>
   );
 }
