@@ -32,36 +32,35 @@ export function HandIcon({
   activeFinger?: 1 | 2 | 3 | 4 | 5;
   className?: string;
 }) {
-  const restColor = '#d7d2da';
-  const colorFor = (finger: 1 | 2 | 3 | 4 | 5) =>
-    activeFinger === finger ? 'currentColor' : restColor;
-
   return (
     <svg
-      viewBox="0 0 100 118"
+      viewBox="0 0 120 120"
       className={className}
       style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
       fill="none"
+      stroke="none"
       aria-hidden="true"
     >
-      {/* palm */}
-      <path
-        d="M22 118c-16 0-29-13-29-29V66c0-16 13-29 29-29h44c16 0 29 13 29 29v23c0 16-13 29-29 29H22Z"
-        fill={activeFinger === undefined ? 'currentColor' : restColor}
-      />
-      {/* thumb */}
-      <path
-        d="M22 68c-2.6-7-10.4-10.6-17.4-8-7 2.6-10.6 10.4-8 17.4l10.6 28.7c2.6 7 10.4 10.6 17.4 8 7-2.6 10.6-10.4 8-17.4L22 68Z"
-        fill={colorFor(1)}
-      />
-      {/* index */}
-      <rect x="21" y="20" width="16.5" height="46" rx="8.25" fill={colorFor(2)} />
-      {/* middle */}
-      <rect x="41.75" y="6" width="16.5" height="60" rx="8.25" fill={colorFor(3)} />
-      {/* ring */}
-      <rect x="62.5" y="12" width="16.5" height="54" rx="8.25" fill={colorFor(4)} />
-      {/* pinky */}
-      <rect x="83" y="24" width="15" height="42" rx="7.5" fill={colorFor(5)} />
+      {activeFinger === 1 ? <path d="M 52,65 L 35,48 a 6,6 0 0,0 -8.5,8.5 L 44,73 Z" fill="#ef6a47" /> : null}
+      {activeFinger === 2 ? <path d="M 52,55 v -25 a 6,6 0 0,1 12,0 v 25 Z" fill="#ef6a47" /> : null}
+      {activeFinger === 3 ? <path d="M 64,55 v -35 a 6,6 0 0,1 12,0 v 35 Z" fill="#ef6a47" /> : null}
+      {activeFinger === 4 ? <path d="M 76,55 v -25 a 6,6 0 0,1 12,0 v 25 Z" fill="#ef6a47" /> : null}
+      {activeFinger === 5 ? <path d="M 88,55 v -15 a 6,6 0 0,1 12,0 v 15 Z" fill="#ef6a47" /> : null}
+      
+      <path d="M 90,100
+               C 100,95 100,80 100,55
+               v -15 a 6,6 0 0,0 -12,0
+               v 15
+               v -25 a 6,6 0 0,0 -12,0
+               v 25
+               v -35 a 6,6 0 0,0 -12,0
+               v 35
+               v -25 a 6,6 0 0,0 -12,0
+               v 10
+               L 35,48 a 6,6 0 0,0 -8.5,8.5 L 44,73
+               C 40,90 45,100 50,100
+               A 20,20 0 0,0 90,100 Z"
+            stroke="currentColor" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
