@@ -35,11 +35,8 @@ export function HandIcon({
       viewBox="0 0 146 158"
       className={className}
       style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
-      fill="none"
-      stroke={activeFinger ? `url(#${id})` : 'currentColor'}
-      strokeWidth="3.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill={activeFinger ? `url(#${id})` : "currentColor"}
+      stroke="none"
       aria-hidden="true"
     >
       {activeFinger ? <defs>
@@ -51,7 +48,7 @@ export function HandIcon({
           <stop offset="100%" stopColor="#d8d1d9" />
         </linearGradient>
       </defs> : null}
-      <path d="M43 96 31 84c-6-6-15-6-21 0-6 6-6 15 0 22l24 30c8 10 18 15 32 15h21c32 0 51-20 51-54V43c0-7-5-12-12-12s-12 5-12 12v31-38c0-7-5-12-12-12s-12 5-12 12v34-40c0-7-5-12-12-12s-12 5-12 12v40-34c0-7-5-12-12-12s-12 5-12 12v63" />
+      <path d="M40 158c-13 0-25-5.4-34.3-15L2 139c-4.9-5.1-3.9-13.4 2-17.3 5.1-3.4 11.9-2.6 16.1 1.7l9.6 10.1c1.9 2 5.1.6 5.1-2.1V44a10.5 10.5 0 0 1 21 0v45a4 4 0 0 0 8 0V22a10.5 10.5 0 0 1 21 0v67a4 4 0 0 0 8 0V32a10.5 10.5 0 0 1 21 0v57a4 4 0 0 0 8 0V44a10.5 10.5 0 0 1 21 0v58c0 30.9-25.1 56-56 56Z" />
     </svg>
   );
 }
