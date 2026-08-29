@@ -1,5 +1,6 @@
 import type { DetectedNote, DrillPlan } from './timing';
 import { pitchToMidi } from './timing';
+import type { SpotifyNote } from './basicPitchAnalysis';
 
 export interface CapturedPcm {
   id: number;
@@ -22,6 +23,23 @@ export interface ScoreAnalysisResult {
 
 const WORKER_URL = '/audio/score-analyzer-worker.js?v=physical-evidence-v17-2026-08-26';
 const ANALYSIS_TIMEOUT_MS = 10_000;
+// This lane is optional and pre-warmed during microphone setup. On a cold or
+// resource-constrained device, skip it instead of making grading look frozen.
+const BASIC_PITCH_TIMEOUT_MS = 4_500;
+
+function settleWithin<T>(promise: Promise<T>, fallback: T, timeoutMs: number): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: T) => {
+      if (settled) return;
+      settled = true;
+      globalThis.clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = globalThis.setTimeout(() => finish(fallback), timeoutMs);
+    promise.then(finish, () => finish(fallback));
+  });
+}
 
 function combineChunks(chunks: readonly Float32Array[]): Float32Array {
   const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -70,11 +88,12 @@ export function credibleRealtimeFallback(
 }
 
 /** Run score-aware analysis off the UI and audio threads. */
-export function analyzeCapturedTake(
+function analyzeWithWorker(
   capture: CapturedPcm,
   plan: DrillPlan,
   playStartTime: number,
   realtime: readonly DetectedNote[],
+  samples: Float32Array,
 ): Promise<ScoreAnalysisResult> {
   if (
     typeof Worker === 'undefined' ||
@@ -93,7 +112,6 @@ export function analyzeCapturedTake(
     });
   }
 
-  const samples = combineChunks(capture.chunks);
   const requestId = `${capture.id}:${Date.now()}:${samples.length}`;
 
   return new Promise((resolve) => {
@@ -170,4 +188,59 @@ export function analyzeCapturedTake(
       finish(fallback('worker-construction-error'));
     }
   });
+}
+
+/**
+ * Reconcile the purpose-built low-latency detector with Spotify Basic Pitch's
+ * independent whole-take transcription. The neural lane may recover a real
+ * soft/high note, but only in the matching written slot; it cannot invent
+ * score credit or replace the responsive live detector.
+ */
+export async function analyzeCapturedTake(
+  capture: CapturedPcm,
+  plan: DrillPlan,
+  playStartTime: number,
+  realtime: readonly DetectedNote[],
+): Promise<ScoreAnalysisResult> {
+  const samples = combineChunks(capture.chunks);
+  const workerPromise = analyzeWithWorker(
+    capture,
+    plan,
+    playStartTime,
+    realtime,
+    samples.slice(),
+  );
+  // The neural lane is supplemental. A slow model load or unavailable WebGL
+  // backend must never freeze the grading screen; the purpose-built worker
+  // remains authoritative and completes independently.
+  const spotifyPromise = settleWithin<SpotifyNote[]>(
+    import('./basicPitchAnalysis')
+      .then(({ analyzeWithBasicPitch }) => analyzeWithBasicPitch(samples, capture.sampleRate))
+      .catch(() => []),
+    [],
+    BASIC_PITCH_TIMEOUT_MS,
+  );
+
+  const [workerResult, spotifyNotes] = await Promise.all([workerPromise, spotifyPromise]);
+  if (spotifyNotes.length === 0) return workerResult;
+  const { mergeSpotifyRecoveries } = await import('./basicPitchAnalysis');
+  const merged = mergeSpotifyRecoveries(
+    workerResult.notes,
+    spotifyNotes,
+    plan,
+    capture.startTime,
+    playStartTime,
+  );
+  return {
+    ...workerResult,
+    notes: merged.notes,
+    recovered: workerResult.recovered + merged.recovered,
+    expectedAccepted: Math.min(
+      workerResult.expectedCount,
+      workerResult.expectedAccepted + merged.recovered,
+    ),
+    reason: merged.recovered > 0
+      ? `${workerResult.reason}+spotify-basic-pitch`
+      : workerResult.reason,
+  };
 }

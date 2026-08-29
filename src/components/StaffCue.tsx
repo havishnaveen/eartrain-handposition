@@ -60,6 +60,8 @@ const PER_BARLINE = 30;
 const MIN_STAVE_W = 260;
 /** Space for the final notehead, accidental, stem and finger annotation. */
 const NOTE_RIGHT_GUTTER = 44;
+/** Presentation scale shared by every staff; engraving/layout units stay exact. */
+const NOTE_DISPLAY_SCALE = 1.14;
 
 const CANVAS_H = 560;
 const STAVE_X = 12;
@@ -766,8 +768,8 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       `${boundsLeft - boundsPadX} ${box.y - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
     );
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    // Give the SVG an intrinsic size equal to its own viewBox (1 SVG unit =
-    // 1 CSS px) instead of leaving width/height unset, which the container
+    // Give the SVG a slightly enlarged intrinsic size instead of leaving
+    // width/height unset, which the container
     // CSS used to stretch to 100% of the card on every exercise. That made
     // notehead size a function of note COUNT: a 3-note phrase and a
     // 12-note one were forced into the same box, so the busier exercise's
@@ -776,8 +778,8 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // 100%` (staff-cue.css) renders every exercise at the same true
     // engraving scale, only shrinking proportionally if content is wider
     // than the card can hold at all — never as a function of note count.
-    svg.setAttribute('width', String(viewBoxWidth));
-    svg.setAttribute('height', String(viewBoxHeight));
+    svg.setAttribute('width', String(viewBoxWidth * NOTE_DISPLAY_SCALE));
+    svg.setAttribute('height', String(viewBoxHeight * NOTE_DISPLAY_SCALE));
     // Renderer.resize() writes the original full-canvas dimensions as inline
     // styles. Attributes alone do not override those styles, so the cropped
     // score was being letterboxed inside a hidden 560px-tall SVG and looked

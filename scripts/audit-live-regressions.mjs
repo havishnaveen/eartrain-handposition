@@ -27,6 +27,9 @@ try {
   const { credibleRealtimeFallback } = await server.ssrLoadModule(
     '/src/audio/scoreAnalysis.ts',
   );
+  const { mergeSpotifyRecoveries } = await server.ssrLoadModule(
+    '/src/audio/basicPitchAnalysis.ts',
+  );
 
   assert.equal(hasCredibleAcousticAttack({
     peakRms: 0.00026,
@@ -205,6 +208,77 @@ try {
   const oneMissStandard = gradeSequence(expected, perfect.slice(0, -1));
   assert.ok(oneMissStandard.scores.overall >= 4 && oneMissStandard.scores.overall < 5,
     'One missed note in an otherwise clean four-note take should score near 4, never 3 or 5.');
+
+  const timedPlan = {
+    bpm: 120,
+    secondsPerBeat: 0.5,
+    beatsPerBar: 4,
+    totalBeats: 4,
+    notes: expected.map((pitch) => ({ pitch, beats: 1, isRest: false })),
+    expectedNotes: expected.map((pitch, beat) => ({ pitch, beat, beats: 1 })),
+    tailBeats: 1,
+    recordSeconds: 2.5,
+    countInLabels: ['1', '2', '3', '4', '1', '2', '3', '4'],
+    countInSeconds: 4,
+    guideNote: false,
+  };
+  const spotifyRecovery = mergeSpotifyRecoveries(
+    perfect.filter((_, index) => index !== 2),
+    [
+      { midi: 64, startTimeSeconds: 1, durationSeconds: 0.45, amplitude: 0.82 },
+      { midi: 59, startTimeSeconds: 1.5, durationSeconds: 0.45, amplitude: 0.95 },
+    ],
+    timedPlan,
+    10,
+    10,
+  );
+  assert.equal(spotifyRecovery.recovered, 1,
+    'Spotify Basic Pitch should recover one strong expected note in its written slot.');
+  assert.deepEqual(spotifyRecovery.notes.map(({ midi }) => midi), [60, 62, 64, 65],
+    'Independent transcription must never snap an unrelated note into the expected score.');
+  const badlyDistortedRhythm = perfect.map((note, index) => ({
+    ...note,
+    time: [10, 10.9, 11, 11.9][index],
+  }));
+  const badRhythmGrade = gradeSequence(expected, badlyDistortedRhythm, {
+    plan: timedPlan,
+    playStartTime: 10,
+    lessonLevel: 1,
+    totalLessons: 24,
+  });
+  assert.equal(badRhythmGrade.scores.pitch, 5,
+    'Correct notes must remain a perfect Pitch result even when rhythm is poor.');
+  assert.ok((badRhythmGrade.scores.timing ?? 5) <= 2.5,
+    'Alternating rushed and late notes must receive a clearly poor Timing result.');
+  assert.ok(badRhythmGrade.scores.overall <= 4,
+    'Severely poor rhythm must materially lower Overall, not round to a high 4.x.');
+
+  const moderatelyUnevenRhythm = perfect.map((note, index) => ({
+    ...note,
+    time: note.time + [0, 0.45, 0, 0.45][index] * timedPlan.secondsPerBeat,
+  }));
+  const moderateRhythmGrade = gradeSequence(expected, moderatelyUnevenRhythm, {
+    plan: timedPlan,
+    playStartTime: 10,
+    lessonLevel: 1,
+    totalLessons: 24,
+  });
+  assert.ok(
+    (moderateRhythmGrade.scores.timing ?? 0) >= 3.8 &&
+      (moderateRhythmGrade.scores.timing ?? 5) < 4.8,
+    `Moderately uneven rhythm was crushed or over-rewarded: ${JSON.stringify(moderateRhythmGrade.scores)}`,
+  );
+  assert.ok(moderateRhythmGrade.scores.overall >= 4.3,
+    'Correct notes with moderate rhythm errors should remain clearly above a 3/5 overall.');
+
+  const tooLittleTimingEvidence = gradeSequence(expected, perfect.slice(0, 2), {
+    plan: timedPlan,
+    playStartTime: 10,
+    lessonLevel: 1,
+    totalLessons: 24,
+  });
+  assert.equal(tooLittleTimingEvidence.scores.timing, null,
+    'Timing must be ungraded when fewer than 60% of the written notes were matched.');
 
   const pcmRecovered = perfect.map((note, index) => index === 2
     ? {

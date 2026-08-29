@@ -6,7 +6,6 @@ import {
 import type { CSSProperties, ReactNode } from 'react';
 import { Hand } from 'lucide-react';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
-import type { ProofHoldFailure } from '../audio/useDrillAudio';
 import type {
   AnchorShiftSpec,
   BlindMemorySpec,
@@ -87,7 +86,6 @@ export interface ExerciseViewProps {
   inputLevel?: number;
   detectedNotes?: string[];
   proofProgress?: 0 | 1 | 2 | 3;
-  proofHoldFailure?: ProofHoldFailure | null;
   spatialProgress?: 0 | 1 | 2 | 3;
   spatialFoundMidi?: readonly number[];
   spatialWrongGuesses?: number;
@@ -245,6 +243,38 @@ function proofRegisterParts(pitch: string): { register: string; noteName: string
   return { register, noteName };
 }
 
+function FingerHandCue({
+  finger,
+  hand,
+  done = false,
+}: {
+  finger: number;
+  hand: 'right' | 'left';
+  done?: boolean;
+}) {
+  const fingerParts = [1, 2, 3, 4, 5];
+  return (
+    <figure
+      className={`et-finger-hand et-finger-hand--${hand}${done ? ' is-done' : ''}`}
+      aria-label={`${hand === 'right' ? 'Right' : 'Left'} hand, finger ${finger}`}
+    >
+      <svg viewBox="0 0 96 82" role="img" aria-hidden="true">
+        <rect className="et-finger-hand__palm" x="30" y="38" width="46" height="37" rx="17" />
+        <rect className={finger === 1 ? 'is-active' : ''} x="15" y="42" width="28" height="14" rx="7" transform="rotate(-27 29 49)" />
+        <rect className={finger === 2 ? 'is-active' : ''} x="31" y="12" width="11" height="37" rx="6" />
+        <rect className={finger === 3 ? 'is-active' : ''} x="44" y="5" width="11" height="44" rx="6" />
+        <rect className={finger === 4 ? 'is-active' : ''} x="57" y="10" width="11" height="39" rx="6" />
+        <rect className={finger === 5 ? 'is-active' : ''} x="70" y="20" width="10" height="31" rx="5" />
+        {fingerParts.map((number) => number === finger ? (
+          <text key={number} x={number === 1 ? 25 : 23 + number * 13} y={number === 1 ? 52 : number === 3 ? 19 : number === 5 ? 35 : 27}>
+            {number}
+          </text>
+        ) : null)}
+      </svg>
+    </figure>
+  );
+}
+
 /**
  * ExerciseView owns the five visual states of one drill. Grading and report
  * return early so the instruction, active staff, and recording controls are
@@ -344,6 +374,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const isSearching = isRootSearch || isShapeSearch;
       const rootName = proofPitchName(spatialChord.rootPitch);
       const handName = spatialChord.hand === 'right' ? 'Right Hand' : 'Left Hand';
+      const anchorIsShown = spatialChord.rootSupport === 'shown';
+      const heldAnchorLabel = anchorIsShown ? rootName : 'the bottom note';
       const rootFinger = spatialChord.hand === 'right' ? 1 : 5;
       const outerFinger = spatialChord.hand === 'right' ? 5 : 1;
       const orderedToneEntries = spatialChord.buildOrder.map((chordIndex, stepIndex) => ({
@@ -356,26 +388,32 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const activeTone = activeStep >= 0 ? orderedToneEntries[activeStep] : null;
       const chordSucceeded = Boolean(report?.passed);
       const activeAction = activeStep === 0
-        ? `Play the given ${rootName} anchor with Finger ${rootFinger}`
+        ? anchorIsShown
+          ? `Play the given ${rootName} anchor with Finger ${rootFinger}`
+          : `Match the bottom broken note with Finger ${rootFinger}`
         : activeStep === 1
-          ? `Keep ${rootName}. Find the chord's middle sound with Finger 3`
+          ? `Keep ${heldAnchorLabel}. Find the chord's middle sound with Finger 3`
           : activeStep === 2
             ? `Keep both keys down. Complete the sound with Finger ${outerFinger}`
             : '';
       const activeAnswer = activeStep === 0
-        ? rootName
+        ? anchorIsShown ? rootName : 'Bottom note'
         : activeStep === 1
           ? 'Finger 3'
           : `Finger ${outerFinger}`;
       const activeHint = activeStep === 0
-        ? 'The anchor is supplied—this is not a perfect-pitch test'
+        ? anchorIsShown
+          ? 'The anchor is supplied—this is not a perfect-pitch test'
+          : 'Use the first note of the broken example—no perfect pitch needed'
         : activeStep === 1
           ? spatialWrongGuesses >= 3
             ? 'Compare nearby keys to the broken-chord replay'
             : 'Listen to the distance above the anchor'
           : 'Sound all three together—the brief check confirms the chord';
       const retryMessage = activeStep === 0
-        ? `That was not the given ${rootName}. Return to the anchor.`
+        ? anchorIsShown
+          ? `That was not the given ${rootName}. Return to the anchor.`
+          : 'That did not match the bottom broken note. Replay and compare.'
         : activeStep === 1
           ? 'Middle tone missed. Replay and match the second sound in 1–3–5.'
           : 'Outside tone missed. Replay and match the final sound in 1–3–5.';
@@ -398,7 +436,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             </h2>
             <p>
               {status === 'prompt'
-                ? `${rootName} is supplied. Hear the chord whole, then copy its 1–3–5 shape without seeing the answer.`
+                ? anchorIsShown
+                  ? `${rootName} is supplied. Hear the chord whole, then copy its 1–3–5 shape without seeing the other notes.`
+                  : 'Hear the chord whole, then use the broken example to find its bottom note and copy the shape.'
                 : isCue
                   ? `First hear the chord together. Then hear its notes as 1–3–5.`
                   : isComplete
@@ -428,7 +468,12 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
             {isCue ? (
               <div className="et-spatial__cue-card">
-                <div className="et-spatial__listen-passes" aria-label={`${rootName} is supplied; the other chord tones remain hidden`}>
+                <div
+                  className="et-spatial__listen-passes"
+                  aria-label={anchorIsShown
+                    ? `${rootName} is supplied; the other chord tones remain hidden`
+                    : 'All note names remain hidden; match the blocked and broken piano examples'}
+                >
                   <div className="et-spatial__listen-pass">
                     <small>1 · Whole chord</small>
                     <span className="et-spatial__chord-dots" aria-hidden="true"><i /><i /><i /></span>
@@ -456,8 +501,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             {isSearching && activeTone ? (
               <div className="et-spatial__answer-card et-spatial__answer-card--ear">
                 <div className="et-spatial__anchor-strip">
-                  <span>Given anchor</span>
-                  <strong>{rootName}</strong>
+                  <span>{anchorIsShown ? 'Given anchor' : 'Match by ear'}</span>
+                  <strong>{anchorIsShown ? rootName : 'Hidden'}</strong>
                   <small>{handName} · Finger {rootFinger}</small>
                 </div>
                 <div className="et-spatial__tones" aria-label={`Step ${activeStep + 1} of 3`}>
@@ -562,12 +607,14 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       return (
         <section className={`et-proof et-proof--${status}`} aria-live="polite">
           <div className="et-proof__halo" aria-hidden="true"><span /><span /><span /></div>
-          <div className="et-proof__layout">
+          <div className={`et-proof__layout${status === 'position-prompt' ? ' et-proof__layout--ready' : ''}`}>
             <div className="et-proof__identity">
               <LessonPanel
                 keyName={proofPositionTitle(positionProof?.positionName)}
                 hands={requiredHands === 'both' ? ['left', 'right'] : [requiredHands]}
-                subtitle={`Play the three ${proofHandLabel.toLowerCase()} notes, one after another.`}
+                subtitle={status === 'position-prompt'
+                  ? `${proofHandLabel} ready? The notes appear after Start.`
+                  : `Play the three notes one after another with your ${proofHandLabel.toLowerCase()}.`}
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
               />
@@ -586,7 +633,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               ) : null}
             </div>
 
-            <div className="et-proof__task">
+            {status !== 'position-prompt' ? <div className="et-proof__task">
               <div className="et-proof__card">
                 <div className="et-proof__eyebrow">
                   {status === 'proof-success' ? 'DONE' : `STEP ${Math.min(proofProgress + 1, proofNotes.length)} OF ${proofNotes.length}`}
@@ -594,7 +641,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <div className="et-proof__headline">
                   {status === 'proof-success'
                     ? 'Nice work! 🎉'
-                    : `Play Finger ${proofNotes[Math.min(proofProgress, proofNotes.length - 1)].finger}`}
+                    : `Play ${proofPitchName(proofNotes[Math.min(proofProgress, proofNotes.length - 1)].pitch)}`}
                 </div>
                 <ul className="et-proof__keys">
                   {proofNotes.map((note, index) => {
@@ -613,14 +660,18 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                           {register ? <small className="et-proof__key-register">{register}</small> : null}
                           <strong>{noteName}</strong>
                         </span>
-                        <span className="et-proof__key-finger">Finger {note.finger}</span>
-                        <i aria-hidden="true">{keyState === 'done' ? '✓' : note.finger}</i>
+                        <FingerHandCue
+                          finger={note.finger}
+                          hand={requiredHands === 'left' ? 'left' : 'right'}
+                          done={keyState === 'done'}
+                        />
+                        <i aria-hidden="true">{keyState === 'done' ? '✓' : '•'}</i>
                       </li>
                     );
                   })}
                 </ul>
               </div>
-            </div>
+            </div> : null}
           </div>
         </section>
       );
@@ -631,6 +682,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       isBlindMemory &&
       (status === 'prompt' || status === 'leadin' || status === 'listening');
     const memoryWaiting = isBlindMemory && status === 'prompt';
+    const hideUntilStart = status === 'prompt' && exerciseMode !== 'standard';
     const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
     const shiftWaitSeconds = anchorShift?.timedShift?.waitSeconds;
     const isChordReading = exerciseMode === 'standard' && /stacked chord/i.test(instruction);
@@ -641,11 +693,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
         ? 'Find the pattern and remember it.'
         : status === 'leadin' || status === 'listening'
           ? 'Now play from memory.'
-          : 'Ready to remember?'
+          : ''
       : exerciseMode === 'anchor-shift'
-        ? shiftWaitSeconds
-          ? `Phrase reveal: play the first card, then study the new card for ${shiftWaitSeconds} seconds before playing it.`
-          : 'Play the first card. Move when the arrow lights up.'
+        ? status === 'prompt' ? '' : 'Play, move, continue.'
         : instruction;
 
     return (
@@ -667,18 +717,18 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
         </span>
         {isBlindMemory ? (
           <div className="et-kid-steps" aria-label="Remember it steps">
-            <span className={status === 'prompt' || status === 'memory-preview' ? 'is-active' : 'is-done'}><b>1</b> Look for {memoryPreviewSeconds} seconds</span>
-            <span className={status === 'leadin' ? 'is-active' : status === 'listening' ? 'is-done' : ''}><b>2</b> Notes hide</span>
-            <span className={status === 'listening' ? 'is-active' : ''}><b>3</b> Play from memory</span>
+            <span className={status === 'prompt' || status === 'memory-preview' ? 'is-active' : 'is-done'}><b>1</b> Look</span>
+            <span className={status === 'leadin' ? 'is-active' : status === 'listening' ? 'is-done' : ''}><b>2</b> Hide</span>
+            <span className={status === 'listening' ? 'is-active' : ''}><b>3</b> Play</span>
           </div>
         ) : exerciseMode === 'anchor-shift' ? (
           <div className="et-kid-steps et-kid-steps--shift" aria-label="Timed hand switch steps">
-            <span><b>1</b> Play the first box</span>
-            <span><b>2</b> {shiftWaitSeconds ? `Move during the ${shiftWaitSeconds}s timer` : 'Move at the arrow'}</span>
-            <span><b>3</b> Play the second box</span>
+            <span className={status === 'prompt' || status === 'leadin' ? 'is-active' : ''}><b>1</b> Play</span>
+            <span><b>2</b> Move</span>
+            <span><b>3</b> Continue</span>
           </div>
         ) : null}
-        <p className="et-instruction">{visibleInstruction}</p>
+        {visibleInstruction ? <p className="et-instruction">{visibleInstruction}</p> : null}
 
         <div
           className={`et-piece-progress${showPieceProgress ? ' et-piece-progress--live' : ' et-piece-progress--waiting'}`}
@@ -701,13 +751,20 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           </div>
         </div>
 
-        <div className={`et-cue et-cue--${status}${memoryHidden ? ` et-cue--memory-${blindMemory?.hideStyle ?? 'vanish'}` : ''}`}>
-          <div className="et-cue__content" aria-hidden={memoryHidden}>{children}</div>
+        <div className={`et-cue et-cue--${status}${memoryHidden ? ` et-cue--memory-${blindMemory?.hideStyle ?? 'vanish'}` : ''}${hideUntilStart ? ' et-cue--start-hidden' : ''}`}>
+          <div className="et-cue__content" aria-hidden={memoryHidden || hideUntilStart}>{children}</div>
           {memoryHidden ? (
             <div className="et-memory-hidden" role="status">
               <span className="et-memory-hidden__mark" aria-hidden="true">{memoryWaiting ? memoryPreviewSeconds : '✓'}</span>
-              <strong>{memoryWaiting ? `Tap Start for a ${memoryPreviewSeconds}-second look.` : 'The notes are hidden.'}</strong>
-              <span>{memoryWaiting ? 'Then they disappear.' : 'Play what you remember.'}</span>
+              <strong>{memoryWaiting ? `Start for a ${memoryPreviewSeconds}-second look.` : 'The notes are hidden.'}</strong>
+              <span>{memoryWaiting ? 'Then play from memory.' : 'Play what you remember.'}</span>
+            </div>
+          ) : null}
+          {hideUntilStart && !memoryHidden ? (
+            <div className="et-start-hidden" role="status">
+              <span aria-hidden="true">♪</span>
+              <strong>Ready when you are</strong>
+              <small>The exercise appears after Start.</small>
             </div>
           ) : null}
         </div>
@@ -727,11 +784,11 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <p className={`et-panel__sub${micBlocked ? ' et-panel__sub--alert' : ''}`}>
               {micMessage ?? (
                 exerciseMode === 'blind-memory'
-                  ? 'Tap once. Look carefully. Then play.'
+                  ? `You will have ${memoryPreviewSeconds} seconds to look.`
                   : exerciseMode === 'anchor-shift'
                     ? shiftWaitSeconds
-                      ? `This is timed. Start in ${anchorShift?.fromPositionName ?? 'the first position'}, then move to ${anchorShift?.toPositionName ?? 'the second position'} during the ${shiftWaitSeconds}-second silent countdown.`
-                      : `Start in ${anchorShift?.fromPositionName ?? 'the first position'}. When MOVE lights up, land in ${anchorShift?.toPositionName ?? 'the second position'}.`
+                      ? `A ${shiftWaitSeconds}-second move timer appears during the exercise.`
+                      : 'Move when the arrow lights up.'
                     : 'Listen to the two-measure count in. Then play.'
               )}
             </p>

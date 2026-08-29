@@ -100,7 +100,6 @@ export const REMEDIATION_PROBLEMS = [
   'chord-by-ear',
   'chord-quality-spacing',
   'major-minor-hearing',
-  'background-piano-separation',
   'chord-shape-transfer',
 ] as const;
 
@@ -110,7 +109,8 @@ export type ChordQuality = 'major' | 'minor';
 export type SpatialInstrumentLayer = 'pad' | 'bass' | 'pulse' | 'strings';
 /**
  * How the anchor is supplied. Neither option tests absolute/perfect pitch:
- * `shown` names the key; `matched` plays the isolated anchor after the mix.
+ * `shown` names the key; `matched` asks the learner to find the bottom note
+ * from the isolated blocked/broken piano examples.
  */
 export type SpatialRootSupport = 'shown' | 'matched';
 
@@ -163,8 +163,8 @@ export interface PositionProofSpec {
   hand: Hand;
   /** Three exact notes, played in order to establish the full hand shape. */
   proofNotes: [PositionProofNote, PositionProofNote, PositionProofNote];
-  /** When true, each earlier key must stay down while the next is added. */
-  requireHeld: boolean;
+  /** Must remain false: Prove It verifies ordered anchors, not a held chord. */
+  requireHeld: false;
   /** Time allowed from the first requested note to the final one. */
   acceptWindowMs: number;
 }

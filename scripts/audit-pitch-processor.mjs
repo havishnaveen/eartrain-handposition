@@ -688,7 +688,7 @@ assert.ok(
 
 console.log(
   'Pitch processor audit passed: room noise, speech quarantine, soft notes, sustained notes, release timing, ' +
-  'cumulative Prove It holds including inharmonic B4–F#5, watched inner-note recovery, re-attacks, scheduled click rejection, ' +
+  'inharmonic B4–F#5, watched inner-note recovery, re-attacks, scheduled click rejection, ' +
   'on/after-click piano recovery, 120-BPM sixteenths, ' +
   'lossless PCM handoff, and 44.1/48-kHz devices.',
 );

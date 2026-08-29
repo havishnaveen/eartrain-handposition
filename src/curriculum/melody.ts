@@ -165,11 +165,10 @@ export function fingerFor(offset: number, hand: Hand): number {
    carry an honest time signature and real barlines: a five-note phrase is
    written across two bars, not stamped 4/4 and left ragged.
 
-   Subdivisions arrive only after the pulse is established. Lessons 6–12
-   contain an eighth-note pair in 60% of drills. From Lesson 13 onward, 60%
-   contain a four-sixteenth group, 24% retain eighths, and 16% stay simple.
-   The latter two paths are intentional: crossing a lesson boundary should
-   introduce a rhythm, not make every later drill look identical. */
+   Subdivisions arrive only after the pulse is established. Callers may cap
+   `lessonLevel` when a later lesson introduces a different high-load skill
+   (movement, a deep key, or polyphony), so rhythmic complexity does not jump
+   on the same drill as motor or harmonic complexity. */
 
 const BEATS_FOR: Record<number, string> = {
   0.25: '16',

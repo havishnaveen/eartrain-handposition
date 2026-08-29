@@ -1171,7 +1171,6 @@ export function PathwayRouter({
         inputLevel={audio.inputLevel}
         detectedNotes={audio.detectedNames}
         proofProgress={audio.proofProgress}
-        proofHoldFailure={audio.proofHoldFailure}
         spatialProgress={audio.spatialProgress}
         spatialFoundMidi={audio.spatialFoundMidi}
         spatialWrongGuesses={audio.spatialWrongGuesses}

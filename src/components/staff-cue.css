@@ -18,9 +18,8 @@
 
 .et-staff svg {
   display: block;
-  /* Explicit width/height attributes (set in StaffCue.tsx) give the SVG a
-   * true intrinsic size at 1 SVG unit = 1 CSS px, so every exercise draws
-   * noteheads at the same real engraving scale. auto+max-width+max-height
+  /* Explicit width/height attributes (set in StaffCue.tsx) give every score
+   * one shared, intentionally enlarged engraving scale. auto+max-width+max-height
    * only shrinks it — proportionally, aspect ratio preserved — when a
    * genuinely wide exercise would not otherwise fit the card; it never
    * stretches a short exercise up or squeezes a long one down by default. */

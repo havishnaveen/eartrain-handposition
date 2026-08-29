@@ -478,7 +478,7 @@ export function timingLeniencyForLesson(
   const linear = clamp01((Math.max(1, lessonLevel) - 1) / (safeTotal - 1));
   const progress = linear * linear * (3 - 2 * linear);
   return {
-    onBeatWindow: mix(0.68, 0.46, progress),
+    onBeatWindow: mix(0.52, 0.36, progress),
     // Speaker-to-microphone and browser input latency shifts an otherwise
     // steady phrase as a block. Grade the intervals, not that fixed hardware
     // delay; a non-uniform or genuinely late rhythm still survives below.
@@ -486,9 +486,9 @@ export function timingLeniencyForLesson(
     // A continuous curve with no plateau penalised even a dead-centre take:
     // ordinary microphone/onset uncertainty turned 5.0 into 4.6. Preserve a
     // small, lesson-aware full-credit region, then grade the residual error.
-    fullCreditOnsetWindow: mix(0.28, 0.20, progress),
+    fullCreditOnsetWindow: mix(0.22, 0.16, progress),
     fullCreditDurationWindow: mix(0.42, 0.28, progress),
-    zeroScoreWindow: mix(1.90, 1.30, progress),
+    zeroScoreWindow: mix(1.02, 0.78, progress),
   };
 }
 
@@ -1382,6 +1382,14 @@ export function gradeSequence(
     Math.max(2, Math.ceil(expectedCount * 0.25)),
   );
   const hasPerformanceEvidence = matches.length >= minimumPerformanceMatches;
+  // Rhythm cannot be inferred honestly from a small, cherry-picked fragment
+  // of the phrase. In particular, two well-timed correct notes inside a
+  // mostly wrong take must never manufacture a 5/5 Timing result.
+  const minimumTimingMatches = Math.min(
+    expectedCount,
+    Math.max(2, Math.ceil(expectedCount * 0.6)),
+  );
+  const hasTimingEvidence = matches.length >= minimumTimingMatches;
 
   // Five means there is no useful timing correction to give—not that every
   // FFT timestamp landed inside an artificially tiny mathematical plateau.
@@ -1395,7 +1403,7 @@ export function gradeSequence(
     (completePitch || memoryPatternRecognized) &&
     rhythm &&
     rhythm.accuracy === 1 &&
-    rhythm.meanIntervalErrorBeats <= timingProfile.onBeatWindow * 1.2 &&
+    rhythm.meanIntervalErrorBeats <= timingProfile.fullCreditOnsetWindow * 1.8 &&
     (
       rhythm.durationAccuracy === null ||
       rhythm.durationEvaluated < 2 ||
@@ -1406,6 +1414,8 @@ export function gradeSequence(
   const timingScore =
     !hasPerformanceEvidence
       ? 0
+      : !hasTimingEvidence
+        ? null
       : fullCreditTiming
         ? 5
         : baseTimingScore === null
@@ -1431,9 +1441,9 @@ export function gradeSequence(
         : clamp5(5 - 0.8 * significantExtraCount);
 
   // Pitch carries the most weight: this app exists to verify hand position.
-  const wPitch = isMemory ? 0.7 : 0.5;
-  const wTiming = isMemory ? 0.1 : 0.2;
-  const wClean = isMemory ? 0.2 : 0.3;
+  const wPitch = isMemory ? 0.7 : 0.43;
+  const wTiming = isMemory ? 0.15 : 0.42;
+  const wClean = 0.15;
   const weightedOverall = calculateOverallScore(
     pitchScore,
     timingScore,

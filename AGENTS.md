@@ -15,6 +15,12 @@ optional styling preferences:
   checks at 320px, 768/1024px, and 1440px.
 - Do not allow score content, instructions, orientation text, or grading
   animation notes to clip or create horizontal page overflow.
+- Every non-standard exercise must keep its answer/notation hidden until its
+  Start action. Prove It may show only position/hand identity before Start;
+  advanced (`matched`) chord-by-ear must not reveal the root name while the
+  learner is searching.
+- `PositionProof.requireHeld` is the literal `false`. Never restore a cumulative
+  or timed hold gate in Prove It; simultaneous-tone proof belongs only to chord exercises.
 - Run `npm run build`, `npm run audit:curriculum`, and the relevant audio/score
   audits after touching shared exercise rendering. A change that breaks these
   protections must not be committed.
@@ -55,6 +61,14 @@ a seemingly harmless reorder can send a referred student to the wrong skill.
   harmonic evidence; written chords require all tones simultaneously.
 - Do not tune detector thresholds from one anecdote. Add the failure as an
   audio regression, then run `npm run audit:audio` and `npm run audit:score`.
+- Keep Pitch, Timing, and Cleanliness independent. Correct pitches played with
+  poor rhythm must keep Pitch credit and lose Timing; fewer than 60% matched
+  notes cannot manufacture a Timing 5; one missed written note cannot earn an
+  overall 5 outside the explicitly lenient memory rubric.
+- Chord-by-ear plays exactly two piano presentations: the target together,
+  then the same notes broken bottom-to-top. Do not add backing layers,
+  unrelated lead-in chords, or a progression. The curriculum audit enforces
+  this because those sounds previously confused the answer.
 
 ## Development controls never ship
 

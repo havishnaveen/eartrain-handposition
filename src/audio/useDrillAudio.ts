@@ -97,8 +97,6 @@ const EMPTY_DIAGNOSTICS: RecognitionDiagnostics = {
   offlineReason: 'not-run',
 };
 
-/** The final three-note shape must remain acoustically present, not merely be tapped in sequence. */
-const PROOF_FINAL_HOLD_VERIFY_MS = 520;
 /** Prove It must not reset from a weak, ambiguous decay estimate. */
 const PROOF_RELEASE_MIN_CONFIDENCE = 0.66;
 const OUTPUT_GAIN_MULTIPLIER = 2.025;
@@ -423,7 +421,8 @@ export interface PositionProofTarget {
     { pitch: string; finger: number },
     { pitch: string; finger: number },
   ];
-  requireHeld?: boolean;
+  /** Product invariant: Prove It is sequential; simultaneous holds belong to chord drills. */
+  requireHeld?: false;
   acceptWindowMs?: number;
 }
 
@@ -438,8 +437,6 @@ export interface DrillAudio {
   detectedNames: string[];
   /** Number of correct position notes heard so far. */
   proofProgress: 0 | 1 | 2 | 3;
-  /** The exact Prove It keys released during the most recent failed hold. */
-  proofHoldFailure: ProofHoldFailure | null;
   /** Unique root/third/fifth targets locked in the spatial chord exercise. */
   spatialProgress: 0 | 1 | 2 | 3;
   /** Exact target tones locked so an either-order third/fifth search renders truthfully. */
@@ -965,7 +962,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const [inputLevel, setInputLevel] = useState(0);
   const [detectedNames, setDetectedNames] = useState<string[]>([]);
   const [proofProgress, setProofProgress] = useState<0 | 1 | 2 | 3>(0);
-  const [proofHoldFailure, setProofHoldFailure] = useState<ProofHoldFailure | null>(null);
+  const [, setProofHoldFailure] = useState<ProofHoldFailure | null>(null);
   const [spatialProgress, setSpatialProgress] = useState<0 | 1 | 2 | 3>(0);
   const [spatialFoundMidi, setSpatialFoundMidi] = useState<number[]>([]);
   const [spatialWrongGuesses, setSpatialWrongGuesses] = useState(0);
@@ -1421,7 +1418,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         const acceptProofNote = (
           midi: number,
           time: number,
-          detectorId: number,
         ): boolean => {
           const proof = proofRef.current;
           if (!proof) return false;
@@ -1440,27 +1436,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           );
           if (expired) clearProofHolds();
 
-          if (proof.requireHeld !== false && proof.nextIndex > 0 && !expired) {
-            // The acoustic release detector is deliberately conservative.
-            // A 220 ms grace absorbs FFT centring/room decay, but a genuinely
-            // released earlier finger cannot be used to complete the shape.
-            const releasedNoteIndices = unheldProofNoteIndices(
-              proof,
-              proofHoldByMidiRef.current,
-              time,
-            );
-            if (releasedNoteIndices.length > 0) {
-              proof.nextIndex = 0;
-              proof.firstHeardAt = null;
-              clearProofHolds();
-              safeSet(setProofProgress, 0);
-              safeSet(setProofHoldFailure, { releasedNoteIndices });
-              // If this strike happens to be the first requested key, let it
-              // immediately begin a fresh attempt; otherwise wait for Finger 1.
-              if (midi !== proof.targetMidi[0]) return false;
-            }
-          }
-
           const result = advancePositionProof(proof, midi, time);
           if (proofAudioDebugRef.current) {
             // eslint-disable-next-line no-console
@@ -1476,61 +1451,22 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           safeSet(setProofProgress, result.progress);
           if (result.progress > 0 && midi === proof.targetMidi[result.progress - 1]) {
             safeSet(setProofHoldFailure, null);
-            proofHoldByMidiRef.current.set(midi, { detectorId, releasedAt: null });
-            proofMidiByDetectorRef.current.set(detectorId, midi);
           }
           if (!result.complete) {
             const nextWanted = proof.targetMidi[proof.nextIndex];
             worklet.port.postMessage({ type: 'watch-pitch', midi: nextWanted });
             return false;
           }
-          // Simple mode (the default): the third note sounding is the whole
-          // proof. No held hand-shape, no release check — the child just
-          // plays the three notes in order.
-          if (proof.requireHeld === false) {
-            proofRef.current = null;
-            clearProofHolds();
-            worklet.port.postMessage({ type: 'clear-watch-pitch' });
-            worklet.port.postMessage({ type: 'idle' });
-            safeSet(setPhase, 'idle' as DrillPhase);
-            safeSet(setInputLevel, 0);
-            playProofSuccessChime();
-            cbRef.current.onProofSuccess?.();
-            return false;
-          }
-          // Do not unlock on the third attack alone. Keep listening briefly
-          // and require all three release trackers to remain active. This
-          // makes Prove It a held hand shape instead of three unrelated taps.
-          proof.verifying = true;
-          clearProofCompletionTimer();
-          proofCompletionTimerRef.current = window.setTimeout(() => {
-            proofCompletionTimerRef.current = 0;
-            if (!mountedRef.current || proofRef.current !== proof) return;
-            const releasedNoteIndices = unheldProofNoteIndices(
-              proof,
-              proofHoldByMidiRef.current,
-              ctx.currentTime,
-              0.08,
-            );
-            if (releasedNoteIndices.length > 0) {
-              proof.nextIndex = 0;
-              proof.firstHeardAt = null;
-              proof.verifying = false;
-              clearProofHolds();
-              safeSet(setProofProgress, 0);
-              safeSet(setProofHoldFailure, { releasedNoteIndices });
-              worklet.port.postMessage({ type: 'watch-pitch', midi: proof.targetMidi[0] });
-              return;
-            }
-            proofRef.current = null;
-            clearProofHolds();
-            worklet.port.postMessage({ type: 'clear-watch-pitch' });
-            worklet.port.postMessage({ type: 'idle' });
-            safeSet(setPhase, 'idle' as DrillPhase);
-            safeSet(setInputLevel, 0);
-            playProofSuccessChime();
-            cbRef.current.onProofSuccess?.();
-          }, PROOF_FINAL_HOLD_VERIFY_MS);
+          // The third ordered anchor completes Prove It immediately. Chord
+          // simultaneity is verified by the separate polyphonic chord lane.
+          proofRef.current = null;
+          clearProofHolds();
+          worklet.port.postMessage({ type: 'clear-watch-pitch' });
+          worklet.port.postMessage({ type: 'idle' });
+          safeSet(setPhase, 'idle' as DrillPhase);
+          safeSet(setInputLevel, 0);
+          playProofSuccessChime();
+          cbRef.current.onProofSuccess?.();
           return false;
         };
 
@@ -1857,7 +1793,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                 });
               }
             }
-            const completed = acceptProofNote(midi, Number(data.time), detectorId);
+            const completed = acceptProofNote(midi, Number(data.time));
             if (!completed) {
               safeSet(
                 setDetectedNames,
@@ -2306,6 +2242,12 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       clickGainRef.current = clickGain;
 
       safeSet(setMicStatus, 'ready' as MicStatus);
+      // Lazy-load Spotify's whole-take transcription model after microphone
+      // setup. It remains off the audio/render threads, but warming it here
+      // prevents the first grading screen from paying the model-load cost.
+      void import('./basicPitchAnalysis')
+        .then(({ warmBasicPitch }) => warmBasicPitch())
+        .catch(() => undefined);
       return ctx;
     } catch (err) {
       const denied =
@@ -2523,7 +2465,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       proofRef.current = {
         targetMidi: targetMidi as [number, number, number],
         acceptWindowSec: Math.max(1.2, (target.acceptWindowMs ?? 2800) / 1000),
-        requireHeld: target.requireHeld !== false,
+        // Never infer a hold requirement from an omitted field. Prove It is a
+        // sequential position map; simultaneous acoustic proof is reserved
+        // for the dedicated chord detector and chord exercises.
+        requireHeld: false,
         nextIndex: 0,
         firstHeardAt: null,
         verifying: false,
@@ -3062,7 +3007,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     inputLevel,
     detectedNames,
     proofProgress,
-    proofHoldFailure,
     spatialProgress,
     spatialFoundMidi,
     spatialWrongGuesses,

@@ -29,11 +29,8 @@ try {
     advancePositionProof,
     advanceSpatialChord,
     isClearSamePitchRetrigger,
-    isCredibleProofRelease,
-    priorProofKeysStillHeld,
     proofDetectorWarmupRemaining,
     resolveContextualPitch,
-    unheldProofNoteIndices,
     updateSpatialChordPresence,
   } = await server.ssrLoadModule('/src/audio/useDrillAudio.ts');
   const {
@@ -100,14 +97,14 @@ try {
       { index: 2, phase: 0, title: 'Shape a right-hand phrase', focus: 'Read steps, turns, and gentle repeats without moving the hand.' },
       { index: 3, phase: 0, title: 'Meet the left hand', focus: 'Learn bass-clef C position before adding any sharps.' },
       { index: 4, phase: 0, title: 'White-key phrases', focus: 'Alternate hands while the pitch language stays familiar.' },
-      { index: 5, phase: 1, title: 'G major: one sharp', focus: 'Meet F-sharp in an otherwise familiar five-finger shape.' },
-      { index: 6, phase: 1, title: 'Sing in G major', focus: 'Use one sharp inside complete tonal phrases.' },
-      { index: 7, phase: 1, title: 'D major: two sharps', focus: 'Add C-sharp while keeping the phrase stepwise.' },
-      { index: 8, phase: 1, title: 'Shape D-major melodies', focus: 'Combine two sharps with turns, repeats, and gentle skips.' },
-      { index: 9, phase: 2, title: 'A major: three sharps', focus: 'Add G-sharp after G- and D-major feel secure.' },
-      { index: 10, phase: 2, title: 'Flow through A major', focus: 'Keep three sharps stable through a longer phrase.' },
-      { index: 11, phase: 2, title: 'E major: four sharps', focus: 'Add D-sharp with a calm, compact melodic path.' },
-      { index: 12, phase: 2, title: 'Color E-major phrases', focus: 'Read four sharps through repeated ideas and skips.' },
+      { index: 5, phase: 1, title: 'G major: one sharp', focus: 'Read the one-sharp signature while placing G-A-B-C-D on familiar white keys.' },
+      { index: 6, phase: 1, title: 'Sing in G major', focus: 'Keep the G-position tonic map stable through complete tonal phrases.' },
+      { index: 7, phase: 1, title: 'D major: two sharps', focus: 'Make F-sharp physical inside D-E-F-sharp-G-A while reading the two-sharp signature.' },
+      { index: 8, phase: 1, title: 'Shape D-major melodies', focus: 'Keep F-sharp secure through turns, repeats, and gentle skips in D position.' },
+      { index: 9, phase: 2, title: 'A major: three sharps', focus: 'Transfer black-key awareness to C-sharp inside the A five-finger map.' },
+      { index: 10, phase: 2, title: 'Flow through A major', focus: 'Keep the A-position C-sharp stable through a longer phrase.' },
+      { index: 11, phase: 2, title: 'E major: four sharps', focus: 'Coordinate F-sharp and G-sharp inside a calm, compact E-position path.' },
+      { index: 12, phase: 2, title: 'Color E-major phrases', focus: 'Keep both black keys secure through repeated ideas and skips in E position.' },
       { index: 13, phase: 3, title: 'Leap from C to G', focus: 'Release one known position and land a fifth away without searching.' },
       { index: 14, phase: 3, title: 'Leap from G to D', focus: 'Move between one- and two-sharp hand maps in time.' },
       { index: 15, phase: 4, title: 'Leap from D to A', focus: 'Transfer the same tactile shape into a three-sharp landing.' },
@@ -117,9 +114,9 @@ try {
       { index: 19, phase: 6, title: 'Anchor, then build', focus: 'Start from a supplied root, add the third, then complete the chord with the fifth.' },
       { index: 20, phase: 6, title: 'Complete the chord frame', focus: 'Build every chord in the familiar 1-3-5 order.' },
       { index: 21, phase: 6, title: 'Move the middle tone', focus: 'Hear how the third changes while the root-to-third-to-fifth order stays familiar.' },
-      { index: 22, phase: 6, title: 'Match an anchor in texture', focus: 'Match an isolated reference note, then rebuild the chord in 1-3-5 order.' },
-      { index: 23, phase: 7, title: 'Separate the background piano', focus: 'Track the centered piano through a mix, match its anchor, and rebuild by shape.' },
-      { index: 24, phase: 7, title: 'Carry the shape through a song', focus: 'Retain the piano target through four chords and rebuild it without chord-name guessing.' },
+      { index: 22, phase: 6, title: 'Match an isolated anchor', focus: 'Find the bottom note from the broken example, then rebuild the chord in 1-3-5 order.' },
+      { index: 23, phase: 7, title: 'Retain the heard shape', focus: 'Keep all three chord tones after the blocked and broken examples, then rebuild them together.' },
+      { index: 24, phase: 7, title: 'Transfer the heard shape', focus: 'Rebuild major and minor shapes across the widest root and register range without visual note clues.' },
     ],
     'The deployed 24-lesson pathway must match the approved phase structure.',
   );
@@ -129,23 +126,23 @@ try {
   assert.deepEqual(
     CURRICULUM_BLUEPRINT.map(({ drills }) => drills),
     [
-      ['prove-it', 'standard', 'standard', 'prove-it'],
+      ['standard', 'standard', 'prove-it', 'prove-it'],
       ['standard', 'prove-it', 'blind-memory', 'standard'],
-      ['prove-it', 'standard', 'standard', 'prove-it'],
+      ['standard', 'standard', 'prove-it', 'prove-it'],
       ['standard', 'prove-it', 'blind-memory', 'standard'],
-      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
-      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
-      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
-      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
+      ['standard', 'prove-it', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
-      ['prove-it', 'prove-it', 'prove-it', 'chord-reading'],
+      ['standard', 'prove-it', 'standard', 'prove-it'],
       ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
       ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'],
       ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
@@ -156,6 +153,13 @@ try {
     ],
     'Every lesson must keep its reviewed four-drill teaching order.',
   );
+
+  const curriculumDifficultyRungs = CURRICULUM_BLUEPRINT.flatMap((lesson) =>
+    lesson.drills.map((_, drillIndex) => Math.min(1, lesson.difficultyBase + drillIndex * 0.012)));
+  curriculumDifficultyRungs.slice(1).forEach((difficulty, index) => {
+    assert.ok(difficulty > curriculumDifficultyRungs[index],
+      `Difficulty must rise at every drill boundary; rung ${index + 2} went backward.`);
+  });
 
   for (const lesson of PROGRESSIVE_CONCEPTS) {
     const blueprint = CURRICULUM_BLUEPRINT[lesson.index - 1];
@@ -352,7 +356,7 @@ try {
             const localRep = (questionNumber - 1) % concept.baseQuestionCount;
             assert.equal(
               question.difficulty,
-              Math.min(1, blueprint.difficultyBase + localRep * 0.035),
+              Math.min(1, blueprint.difficultyBase + localRep * 0.012),
               `Lesson ${concept.index}, drill ${questionNumber} left its fixed difficulty rung.`,
             );
             if (durations.some((duration) => duration.startsWith('16'))) rhythms.sixteenth += 1;
@@ -406,20 +410,10 @@ try {
               assert.equal(question.spatialChord.context.targetChordIndex,
                 question.spatialChord.context.progression.length - 1);
               const progression = question.spatialChord.context.progression;
-              assert.deepEqual(progression.at(-1), question.spatialChord.chordPitches,
-                'Every contextual progression must resolve to the exact tonic target.');
-              progression.forEach((chord, chordIndex) => {
-                const voicing = chord.map(pitchToMidi);
-                assert.equal(voicing.length, 3);
-                assert.ok(voicing[0] < voicing[1] && voicing[1] < voicing[2],
-                  'Context chords must use an ascending, non-crossing voicing.');
-                assert.ok(voicing[2] - voicing[0] <= 12,
-                  'Context chords must remain compact enough to sound like one hand shape.');
-                if (chordIndex === 0) return;
-                const previous = progression[chordIndex - 1].map(pitchToMidi);
-                assert.ok(voicing.every((midi, voice) => Math.abs(midi - previous[voice]) <= 5),
-                  'Each chord voice must move smoothly into the next harmony.');
-              });
+              assert.deepEqual(question.spatialChord.context.layers, [],
+                'Chord by ear must not reintroduce confusing accompaniment layers.');
+              assert.deepEqual(progression, [question.spatialChord.chordPitches],
+                'Chord by ear must contain only the target chord; live audio adds its broken form.');
             }
 
             if (question.exerciseMode !== 'spatial-chord') {
@@ -569,6 +563,10 @@ try {
                 const missGrade = gradeSequence(question.expectedSequence, oneMiss, gradeOptions);
                 assert.ok(missGrade.scores.pitch > 0 && missGrade.scores.overall > 0,
                   `One missed note zeroed Lesson ${concept.index}, drill ${questionNumber}.`);
+                if (question.exerciseMode !== 'blind-memory') {
+                  assert.ok(missGrade.scores.pitch < 5 && missGrade.scores.overall < 5,
+                    `One missed note incorrectly earned 5.0 in Lesson ${concept.index}, drill ${questionNumber}.`);
+                }
 
                 const oneOnly = gradeSequence(question.expectedSequence, [perfect[0]], gradeOptions);
                 assert.ok(oneOnly.scores.overall < 2,
@@ -695,7 +693,9 @@ try {
     if (concept.index >= 6 && concept.index <= 12) assert.equal(rhythms.sixteenth, 0);
     if (concept.index >= 6 && concept.index <= 12) assert.ok(rhythms.eighth > 0);
     if (concept.index >= 13 && concept.index <= 18) {
-      assert.ok(rhythms.plain > 0 && rhythms.eighth + rhythms.sixteenth > 0,
+      assert.equal(rhythms.sixteenth, 0,
+        `Lesson ${concept.index} must not combine a new movement/key demand with sixteenths.`);
+      assert.ok(rhythms.plain > 0 && rhythms.eighth > 0,
         `Lesson ${concept.index} must mix a simple-pulse drill with a subdivision drill.`);
       shiftPhaseRhythms.eighth += rhythms.eighth;
       shiftPhaseRhythms.sixteenth += rhythms.sixteenth;
@@ -712,9 +712,8 @@ try {
   }
   assert.ok(
     shiftPhaseRhythms.eighth > 0 &&
-    shiftPhaseRhythms.sixteenth > 0 &&
     shiftPhaseRhythms.plain > 0,
-    'The shift phase must deliberately retain quarters while introducing eighths and sixteenths.',
+    'The shift phase must deliberately retain quarters while using only established eighths.',
   );
 
   // Earlier retries must never rotate the teaching order of a later lesson.
@@ -752,55 +751,8 @@ try {
   assert.deepEqual(advancePositionProof(proof, 60, 1.1), { progress: 1, complete: false });
   assert.deepEqual(advancePositionProof(proof, 64, 1.8), { progress: 2, complete: false });
   assert.deepEqual(advancePositionProof(proof, 67, 2.4), { progress: 3, complete: true });
-  const cumulativeProof = {
-    targetMidi: [60, 64, 67],
-    acceptWindowSec: 5,
-    requireHeld: true,
-    nextIndex: 2,
-    firstHeardAt: 1,
-  };
-  assert.equal(priorProofKeysStillHeld(
-    cumulativeProof,
-    new Map([[60, { releasedAt: null }], [64, { releasedAt: null }]]),
-    2,
-  ), true, 'Prove It must allow the final key only while Fingers 1 and 3 remain down.');
-  assert.equal(priorProofKeysStillHeld(
-    cumulativeProof,
-    new Map([[60, { releasedAt: 1.5 }], [64, { releasedAt: null }]]),
-    2,
-  ), false, 'Releasing Finger 1 must prevent a cumulative Prove It completion.');
-  // Exhaust all hold/release combinations after Step 1, Step 2, and during
-  // final verification. Personalized feedback must name exactly every key
-  // that was released, including simultaneous two- and three-key failures.
-  for (const heldCount of [1, 2, 3]) {
-    const proofAtStage = {
-      ...cumulativeProof,
-      nextIndex: Math.min(2, heldCount),
-      verifying: heldCount === 3,
-    };
-    for (let releasedMask = 0; releasedMask < 2 ** heldCount; releasedMask += 1) {
-      const expectedReleased = [];
-      const holds = new Map();
-      proofAtStage.targetMidi.slice(0, heldCount).forEach((midi, index) => {
-        const released = (releasedMask & (1 << index)) !== 0;
-        if (released) expectedReleased.push(index);
-        holds.set(midi, { releasedAt: released ? 1 : null });
-      });
-      assert.deepEqual(
-        unheldProofNoteIndices(proofAtStage, holds, 2, 0.22),
-        expectedReleased,
-        `Step ${heldCount} release mask ${releasedMask} must identify every unheld key.`,
-      );
-    }
-  }
   assert.equal(proofDetectorWarmupRemaining(1000, 1100), 160);
   assert.equal(proofDetectorWarmupRemaining(1000, 1400), 0);
-  assert.equal(isCredibleProofRelease('energy-drop', 0.65), false,
-    'A weak decay estimate must not reset a child who is still holding.');
-  assert.equal(isCredibleProofRelease('energy-drop', 0.66), true,
-    'A well-supported acoustic release must invalidate the hold.');
-  assert.equal(isCredibleProofRelease('reattack', 1), false,
-    'Detector-id handoff during re-articulation is not a Prove It key-up.');
 
   const sampleSpatialSpec = PROGRESSIVE_CONCEPTS[18].generate(
     54,
@@ -895,6 +847,17 @@ try {
   // Reducer-level route audit: stale events are ignored and a completed proof
   // unlocks exactly once before the ordinary drill begins.
   let route = createInitialPathwayState({ seed: 20260802, cap: 1000 });
+  assert.equal(route.status, 'prompt',
+    'The pathway must open on the supported standard drill, not an assessment gate.');
+  const proofQuestion = generateFor(1, 3, 2, route.difficulty, route.signal, route.seed);
+  route = {
+    ...route,
+    question: 3,
+    ordinal: 2,
+    current: proofQuestion,
+    status: 'position-prompt',
+    proofCompleted: false,
+  };
   const firstId = route.current.id;
   assert.equal(pathwayReducer(route, { type: 'PROOF_SUCCESS', questionId: firstId }).status,
     'position-prompt');
@@ -935,9 +898,9 @@ try {
   });
   assert.equal(route.status, 'report');
   route = pathwayReducer(route, { type: 'CONTINUE', difficultyNudge: 0 });
-  assert.equal(route.question, 2);
+  assert.equal(route.question, 4);
   assert.notEqual(route.current.id, firstId);
-  assert.equal(route.status, 'prompt');
+  assert.equal(route.status, 'position-prompt');
 
   // Blind Memory has one guarded path: prompt -> preview -> count-in -> play.
   // Repeated/stale actions must not skip the preview or restart it underneath
