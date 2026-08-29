@@ -32,9 +32,14 @@ export function HandIcon({
   activeFinger?: 1 | 2 | 3 | 4 | 5;
   className?: string;
 }) {
+  const textProps = (x: number) => ({
+    x: mirrored ? x : -x,
+    transform: mirrored ? undefined : 'scale(-1, 1)',
+  });
+
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="-3 -3 30 30"
       className={className}
       style={mirrored ? undefined : { transform: 'scaleX(-1)' }}
       fill="none"
@@ -54,10 +59,15 @@ export function HandIcon({
       <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
       <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
       <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+
+      {activeFinger === 1 ? <text {...textProps(2)} y="9" fontSize="4.5" fontFamily="Inter, Roboto, sans-serif" fontWeight="800" fill="#ef6a47" stroke="none" textAnchor="middle">1</text> : null}
+      {activeFinger === 2 ? <text {...textProps(8)} y="2" fontSize="4.5" fontFamily="Inter, Roboto, sans-serif" fontWeight="800" fill="#ef6a47" stroke="none" textAnchor="middle">2</text> : null}
+      {activeFinger === 3 ? <text {...textProps(12)} y="0" fontSize="4.5" fontFamily="Inter, Roboto, sans-serif" fontWeight="800" fill="#ef6a47" stroke="none" textAnchor="middle">3</text> : null}
+      {activeFinger === 4 ? <text {...textProps(16)} y="2" fontSize="4.5" fontFamily="Inter, Roboto, sans-serif" fontWeight="800" fill="#ef6a47" stroke="none" textAnchor="middle">4</text> : null}
+      {activeFinger === 5 ? <text {...textProps(20)} y="4" fontSize="4.5" fontFamily="Inter, Roboto, sans-serif" fontWeight="800" fill="#ef6a47" stroke="none" textAnchor="middle">5</text> : null}
     </svg>
   );
 }
-
 export function LessonPanel({
   keyName,
   hands,
