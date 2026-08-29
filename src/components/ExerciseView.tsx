@@ -4,18 +4,19 @@ import {
   useRef,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { Hand } from 'lucide-react';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
 import type {
   AnchorShiftSpec,
   BlindMemorySpec,
+  CueSpec,
   ExerciseMode,
   HandScope,
   PositionProofSpec,
   SpatialChordSpec,
 } from '../curriculum/types';
 import ExerciseReport from './ExerciseReport';
-import LessonPanel from './LessonPanel';
+import LessonPanel, { HandIcon } from './LessonPanel';
+import StaffCue from './StaffCue';
 import './exercise.css';
 
 export type ExerciseStatus =
@@ -59,6 +60,7 @@ export interface ExerciseViewProps {
   anchorShift?: AnchorShiftSpec;
   spatialChord?: SpatialChordSpec;
   memorySecondsRemaining?: number;
+  analysisProgress?: number;
   children?: ReactNode;
 
   onStart?: () => void;
@@ -112,13 +114,14 @@ const RecordDot = () => (
   </svg>
 );
 
-function PerformanceAnalysis() {
+function PerformanceAnalysis({ progress }: { progress: number }) {
+  const percent = Math.max(0, Math.min(100, Math.round(progress)));
   return (
     <section className="et-analysis" role="status" aria-live="polite" aria-label="Analyzing your performance">
       <div className="et-analysis__card">
         <header className="et-analysis__header">
           <span><i /> Performance review</span>
-          <small>Listening back</small>
+          <small>{percent}% complete</small>
         </header>
         <div className="et-analysis__score" aria-hidden="true">
           <span className="et-analysis__staff"><i /><i /><i /><i /><i /></span>
@@ -141,7 +144,17 @@ function PerformanceAnalysis() {
           <span><i /> Rhythm</span>
           <span><i /> Clarity</span>
         </div>
-        <span className="et-analysis__progress" aria-hidden="true"><i /></span>
+        <div
+          className="et-analysis__progress"
+          role="progressbar"
+          aria-label="Grading progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
+          <i style={{ transform: `scaleX(${percent / 100})` }} />
+          <strong>{percent}%</strong>
+        </div>
       </div>
     </section>
   );
@@ -169,14 +182,26 @@ function proofPitchName(pitch: string): string {
   return pitch.replace(/-?\d+$/, '');
 }
 
-function HandBadge({ hand }: { hand: 'right' | 'left' }) {
+function HandBadge({
+  hand,
+  activeFinger,
+  showLabel = true,
+}: {
+  hand: 'right' | 'left';
+  activeFinger?: 1 | 2 | 3 | 4 | 5;
+  showLabel?: boolean;
+}) {
   const label = hand === 'right' ? 'Right Hand' : 'Left Hand';
   return (
     <figure className={`et-hand-badge et-hand-badge--${hand}`} aria-label={label}>
       <div className="et-hand-badge__tile">
         <span className="et-hand-badge__shine" aria-hidden="true" />
-        <Hand className="et-hand-badge__icon" strokeWidth={1.45} aria-hidden="true" />
-        <figcaption className="et-hand-badge__label">{label}</figcaption>
+        <HandIcon
+          mirrored={hand === 'left'}
+          activeFinger={activeFinger}
+          className="et-hand-badge__icon"
+        />
+        {showLabel ? <figcaption className="et-hand-badge__label">{label}</figcaption> : null}
       </div>
     </figure>
   );
@@ -234,45 +259,9 @@ export function proofRegisterLabel(pitch: string): string {
  * size the register word and the note letter independently — "Middle C" set
  * at one huge font size wraps onto two lines and reads worse than either
  * part alone. */
-function proofRegisterParts(pitch: string): { register: string; noteName: string } {
-  const match = /^([A-G](?:#|b)?)(-?\d+)$/.exec(pitch.trim());
-  if (!match) return { register: '', noteName: proofPitchName(pitch) };
-  const [, noteName, octaveText] = match;
-  const octave = Number(octaveText);
-  const register = octave <= 3 ? 'Bass' : octave >= 5 ? 'Treble' : 'Middle';
-  return { register, noteName };
-}
-
-function FingerHandCue({
-  finger,
-  hand,
-  done = false,
-}: {
-  finger: number;
-  hand: 'right' | 'left';
-  done?: boolean;
-}) {
-  const fingerParts = [1, 2, 3, 4, 5];
-  return (
-    <figure
-      className={`et-finger-hand et-finger-hand--${hand}${done ? ' is-done' : ''}`}
-      aria-label={`${hand === 'right' ? 'Right' : 'Left'} hand, finger ${finger}`}
-    >
-      <svg viewBox="0 0 96 82" role="img" aria-hidden="true">
-        <rect className="et-finger-hand__palm" x="30" y="38" width="46" height="37" rx="17" />
-        <rect className={finger === 1 ? 'is-active' : ''} x="15" y="42" width="28" height="14" rx="7" transform="rotate(-27 29 49)" />
-        <rect className={finger === 2 ? 'is-active' : ''} x="31" y="12" width="11" height="37" rx="6" />
-        <rect className={finger === 3 ? 'is-active' : ''} x="44" y="5" width="11" height="44" rx="6" />
-        <rect className={finger === 4 ? 'is-active' : ''} x="57" y="10" width="11" height="39" rx="6" />
-        <rect className={finger === 5 ? 'is-active' : ''} x="70" y="20" width="10" height="31" rx="5" />
-        {fingerParts.map((number) => number === finger ? (
-          <text key={number} x={number === 1 ? 25 : 23 + number * 13} y={number === 1 ? 52 : number === 3 ? 19 : number === 5 ? 35 : 27}>
-            {number}
-          </text>
-        ) : null)}
-      </svg>
-    </figure>
-  );
+function proofPitchToStaffKey(pitch: string): string {
+  const match = /^([A-G])([#b]?)(-?\d+)$/.exec(pitch);
+  return match ? `${match[1].toLowerCase()}${match[2]}/${match[3]}` : 'c/4';
 }
 
 /**
@@ -292,6 +281,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       anchorShift,
       spatialChord,
       memorySecondsRemaining = 3,
+      analysisProgress = 0,
       children,
       onStart,
       onCancelStart,
@@ -358,7 +348,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     }
 
     if (status === 'grading') {
-      return <PerformanceAnalysis />;
+      return <PerformanceAnalysis progress={analysisProgress} />;
     }
 
     const level = Math.min(1, Math.max(0, inputLevel));
@@ -583,25 +573,28 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     }
 
     if (
-      exerciseMode === 'prove-it' &&
+      positionProof &&
       (status === 'position-prompt' || status === 'proving' || status === 'proof-success')
     ) {
-      const requiredHands: HandScope = handScope ?? positionProof?.hand ?? 'right';
-      const suppliedProofNotes = positionProof?.proofNotes ?? [
-        { pitch: 'C4', finger: 1 as const },
-        { pitch: 'E4', finger: 3 as const },
-        { pitch: 'G4', finger: 5 as const },
-      ];
-      // Normalize legacy Prove It data at the rendering boundary. A three-note
-      // position uses the root, third, and fifth fingers—not consecutive 1-2-3.
-      const proofFingers = requiredHands === 'left'
-        ? ([5, 3, 1] as const)
-        : ([1, 3, 5] as const);
-      const proofNotes = suppliedProofNotes.map((note, index) => ({
-        ...note,
-        finger: proofFingers[index] ?? note.finger,
-      }));
-      const proofHandLabel = requiredHands === 'left' ? 'Left Hand' : 'Right Hand';
+      const requiredHands: HandScope = handScope ?? positionProof.hand;
+      const proofHand = positionProof.hand;
+      const proofNotes = positionProof.proofNotes;
+      const activeProofIndex = Math.min(proofProgress, proofNotes.length - 1);
+      const activeProofNote = proofNotes[activeProofIndex];
+      const proofCue: CueSpec = {
+        keySignature: 'C',
+        timeSignature: '3/4',
+        staves: [{
+          clef: proofHand === 'right' ? 'treble' : 'bass',
+          hand: proofHand,
+          notes: proofNotes.map((note, index) => ({
+            keys: [proofPitchToStaffKey(note.pitch)],
+            duration: 'q',
+            finger: note.finger,
+            anchor: index === activeProofIndex && status !== 'proof-success',
+          })),
+        }],
+      };
       // Prove It maps three anchor notes in sequence. It deliberately avoids
       // acoustic key-release judgments, which are unreliable across rooms.
       return (
@@ -611,12 +604,14 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <div className="et-proof__identity">
               <LessonPanel
                 keyName={proofPositionTitle(positionProof?.positionName)}
-                hands={requiredHands === 'both' ? ['left', 'right'] : [requiredHands]}
+                hands={[proofHand]}
                 subtitle={status === 'position-prompt'
-                  ? `${proofHandLabel} ready? The notes appear after Start.`
-                  : `Play the three notes one after another with your ${proofHandLabel.toLowerCase()}.`}
+                  ? 'Set the hand shape. Start when you are ready.'
+                  : 'Play each highlighted note once.'}
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
+                activeFinger={status === 'position-prompt' ? proofNotes[0].finger : activeProofNote.finger}
+                showHandLabel={false}
               />
 
               {orientationNotice ? (
@@ -641,35 +636,30 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <div className="et-proof__headline">
                   {status === 'proof-success'
                     ? 'Nice work! 🎉'
-                    : `Play ${proofPitchName(proofNotes[Math.min(proofProgress, proofNotes.length - 1)].pitch)}`}
+                    : `Play ${proofPitchName(activeProofNote.pitch)}`}
                 </div>
-                <ul className="et-proof__keys">
-                  {proofNotes.map((note, index) => {
-                    const keyState = index < proofProgress || status === 'proof-success'
-                      ? 'done'
-                      : index === proofProgress
-                        ? 'active'
-                        : null;
-                    const { register, noteName } = proofRegisterParts(note.pitch);
-                    return (
-                      <li
-                        key={note.pitch + index}
-                        className={keyState ? `et-proof__key et-proof__key--${keyState}` : 'et-proof__key'}
-                      >
-                        <span className="et-proof__key-note">
-                          {register ? <small className="et-proof__key-register">{register}</small> : null}
-                          <strong>{noteName}</strong>
-                        </span>
-                        <FingerHandCue
-                          finger={note.finger}
-                          hand={requiredHands === 'left' ? 'left' : 'right'}
-                          done={keyState === 'done'}
-                        />
-                        <i aria-hidden="true">{keyState === 'done' ? '✓' : '•'}</i>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <div className="et-proof__mini-score" aria-label={`Notes ${proofNotes.map((note) => proofPitchName(note.pitch)).join(', ')}`}>
+                  <StaffCue
+                    cue={proofCue}
+                    compact
+                    accentColor="#ef6a47"
+                    inkColor="#242237"
+                    successPitches={proofNotes
+                      .slice(0, status === 'proof-success' ? proofNotes.length : proofProgress)
+                      .map((note) => note.pitch)}
+                  />
+                </div>
+                <div className="et-proof__finger-focus">
+                  <HandBadge
+                    hand={proofHand}
+                    activeFinger={activeProofNote.finger}
+                    showLabel={false}
+                  />
+                  <span>
+                    <small>{requiredHands === 'both' ? `${proofHand === 'right' ? 'Right' : 'Left'} hand` : 'Use finger'}</small>
+                    <strong>{activeProofNote.finger}</strong>
+                  </span>
+                </div>
               </div>
             </div> : null}
           </div>

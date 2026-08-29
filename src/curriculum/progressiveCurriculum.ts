@@ -6,6 +6,7 @@ import type {
   Hand,
   LessonDefinition,
   PhaseId,
+  PositionProofSpec,
   Question,
   RemediationProblem,
   SpatialChordSpec,
@@ -622,7 +623,7 @@ function progressiveContourPick(
     .map((contour, sourceIndex) => ({ contour, sourceIndex, demand: contourDemand(contour) }))
     .sort((a, b) => a.demand - b.demand || a.sourceIndex - b.sourceIndex);
   const baseRank = Math.floor(clamp01(difficulty) * (ranked.length - 1) * 0.72);
-  const slotOffset = positiveModulo(slot, Math.min(3, ranked.length));
+  const slotOffset = positiveModulo(slot, ranked.length);
   return ranked[Math.min(ranked.length - 1, baseRank + slotOffset)].contour;
 }
 
@@ -691,6 +692,67 @@ function scientificToVex(pitch: string): string {
   const match = /^([A-G])([#b]?)(-?\d+)$/.exec(pitch);
   if (!match) return 'c/4';
   return `${match[1].toLowerCase()}${match[2]}/${match[3]}`;
+}
+
+function vexToScientificPitch(key: string): string | null {
+  const match = /^([a-g])([#b]?)\/(-?\d+)$/i.exec(key);
+  if (!match) return null;
+  return `${match[1].toUpperCase()}${match[2]}${match[3]}`;
+}
+
+/** Attach one deterministic position check without replacing the real drill. */
+function withPositionProof(question: Question, preferredHand: Hand): Question {
+  if (question.positionProof) return question;
+
+  const hand = question.handScope === 'left' ? 'left' : preferredHand;
+  const staff = question.cue.staves.find((candidate) => candidate.hand === hand)
+    ?? question.cue.staves[0];
+  const writtenPitches = staff?.notes.flatMap((note) =>
+    note.duration.endsWith('r')
+      ? []
+      : note.keys.map(vexToScientificPitch).filter((pitch): pitch is string => pitch !== null)
+  ) ?? [];
+  // Chord-by-ear must not leak its unknown middle tone in the preceding
+  // position check. Use root, adjacent key, and outer fifth as a neutral hand
+  // warm-up; the real chord quality remains something the student hears.
+  const spatialWarmup = question.spatialChord
+    ? [
+        question.spatialChord.rootPitch,
+        transposePitch(question.spatialChord.rootPitch, 2),
+        transposePitch(question.spatialChord.rootPitch, 7),
+      ]
+    : null;
+  const sourcePitches = spatialWarmup
+    ?? (writtenPitches.length > 0 ? writtenPitches : question.expectedSequence);
+  const uniquePitches = [...new Set(sourcePitches)]
+    .sort((a, b) => localPitchToMidi(a) - localPitchToMidi(b));
+  const fallbackRoot = uniquePitches[0] ?? question.expectedSequence[0] ?? 'C4';
+  while (uniquePitches.length < 3) {
+    uniquePitches.push(transposePitch(fallbackRoot, uniquePitches.length === 1 ? 4 : 7));
+  }
+  const middleIndex = Math.floor((uniquePitches.length - 1) / 2);
+  const anchors = [
+    uniquePitches[0],
+    uniquePitches[middleIndex],
+    uniquePitches[uniquePitches.length - 1],
+  ] as [string, string, string];
+  const fingers = question.spatialChord
+    ? hand === 'right' ? ([1, 2, 5] as const) : ([5, 4, 1] as const)
+    : hand === 'right' ? ([1, 3, 5] as const) : ([5, 3, 1] as const);
+  const positionName = question.spatialChord
+    ? `${question.spatialChord.rootPitch.replace(/-?\d+$/, '')} Position`
+    : question.positionLabel
+        .replace(/\s+[—→].*$/, '')
+        .replace(/\s+\([^)]*\)$/, '')
+        .trim();
+  const positionProof: PositionProofSpec = {
+    positionName,
+    hand,
+    proofNotes: anchors.map((pitch, index) => ({ pitch, finger: fingers[index] })) as PositionProofSpec['proofNotes'],
+    requireHeld: false,
+    acceptWindowMs: 5500,
+  };
+  return { ...question, positionProof };
 }
 
 function chordPitches(rootPitch: string, quality: ChordQuality): [string, string, string] {
@@ -995,7 +1057,7 @@ function questionFor(
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
 
   if (drillKind === 'chord-reading') {
-    return chordalStandardQuestion(
+    return withPositionProof(chordalStandardQuestion(
       lesson,
       ordinal,
       localRep + 1,
@@ -1003,7 +1065,7 @@ function questionFor(
       mode,
       modeDifficulty,
       hand,
-    );
+    ), hand);
   }
 
   if (
@@ -1011,7 +1073,7 @@ function questionFor(
     lesson.spatialChord &&
     (lesson.exerciseMode === 'spatial-chord' || lesson.spatialChord.questionNumbers.length > 0)
   ) {
-    return spatialChordQuestion(
+    return withPositionProof(spatialChordQuestion(
       lesson,
       lesson.spatialChord,
       ordinal,
@@ -1019,7 +1081,7 @@ function questionFor(
       fixedDifficulty,
       mode,
       hand,
-    );
+    ), hand);
   }
 
   if (drillKind === 'anchor-shift' && lesson.shiftPairs?.length) {
@@ -1076,7 +1138,7 @@ function questionFor(
     const waitSeconds = lesson.index === 15 ? 5 : lesson.index === 16 ? 3.5 : 2;
     const stagedReveal = lesson.index >= 15;
 
-    return {
+    return withPositionProof({
       id: `${lesson.id}#${ordinal}`,
       conceptId: lesson.id,
       exerciseMode: 'anchor-shift',
@@ -1121,7 +1183,7 @@ function questionFor(
           ? { timedShift: { waitSeconds, revealSecond: true } }
           : {}),
       },
-    };
+    }, hand);
   }
 
   // Position introductions must not depend on how many adaptive drills were
@@ -1187,11 +1249,11 @@ function questionFor(
     const standardContour = extendLength
       ? [...contour, ...continuation].slice(0, notesPerSystem * 2)
       : contour;
-    return twoHandStandardQuestion(
+    return withPositionProof(twoHandStandardQuestion(
       lesson, position, standardContour, beatsPerBar, ordinal, materialIndex,
       fixedDifficulty, mode, rand, modeDifficulty,
       extendLength ? 2 : undefined,
-    );
+    ), hand);
   }
 
   const notes: CueNote[] = contour.map((degree, index) => ({
@@ -1201,7 +1263,7 @@ function questionFor(
     anchor: index === 0,
   }));
 
-  return {
+  return withPositionProof({
     id: `${lesson.id}#${ordinal}`,
     conceptId: lesson.id,
     exerciseMode,
@@ -1256,7 +1318,7 @@ function questionFor(
     ...(exerciseMode === 'blind-memory'
       ? { blindMemory: { previewSeconds: memoryPreviewSeconds, hideStyle: 'vanish' as const } }
       : {}),
-  };
+  }, hand);
 }
 
 export const PROGRESSIVE_CONCEPTS: LessonDefinition[] = LESSONS.map((lesson) => {

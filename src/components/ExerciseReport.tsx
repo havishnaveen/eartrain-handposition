@@ -23,7 +23,7 @@ export interface ExerciseReportProps {
   nextLabel?: string;
 }
 
-const AUTO_ADVANCE_MS = 5000;
+const AUTO_ADVANCE_MS = 15000;
 const AUTO_ADVANCE_TICK_MS = 50;
 
 const CheckIcon = () => (

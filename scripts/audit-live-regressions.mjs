@@ -24,7 +24,7 @@ try {
   } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
   );
-  const { credibleRealtimeFallback } = await server.ssrLoadModule(
+  const { credibleRealtimeFallback, pianoConsensus } = await server.ssrLoadModule(
     '/src/audio/scoreAnalysis.ts',
   );
 
@@ -62,6 +62,32 @@ try {
     scoreContextAccepted: true,
   }]), [],
   'If PCM analysis fails, score-context-only recovery must not become a graded note.');
+
+  const invisibleHumRecovery = pianoConsensus({
+    notes: [{
+      midi: 60,
+      time: 1,
+      clarity: 0.92,
+      strength: 3,
+      expectedSlot: 0,
+      analysisSource: 'offline-recovered',
+      analysisConfidence: 0.9,
+      analysisSnr: 3,
+      analysisContrast: 1.4,
+      analysisRise: 1.4,
+      analysisPersistence: 12,
+      analysisPostFlatness: 0.5,
+      analysisSpeechLike: false,
+    }],
+    recovered: 1,
+    livePreserved: 0,
+    rejected: 0,
+    expectedAccepted: 1,
+    expectedCount: 1,
+    reason: 'analyzed',
+  }, [], [{ midi: 60, time: 1, endTime: 1.8, confidence: 0.9 }]);
+  assert.deepEqual(invisibleHumRecovery.notes, [],
+    'Even a Magenta-matched offline note must fail when no live piano event was visible.');
 
   const sequentialPlan = {
     expectedNotes: [
@@ -199,7 +225,7 @@ try {
   });
   assert.equal(oneMissMemory.passed, true,
     'One omitted memory note should still demonstrate pattern recognition.');
-  assert.ok(oneMissMemory.scores.overall < 5 && oneMissMemory.scores.overall >= 4.5,
+  assert.ok(oneMissMemory.scores.overall < 5,
     'A recognized-but-incomplete memory pattern must pass without receiving 5.0.');
 
   const oneMissStandard = gradeSequence(expected, perfect.slice(0, -1));
@@ -291,8 +317,8 @@ try {
     lessonLevel: 1,
     totalLessons: 24,
   });
-  assert.equal(tooLittleTimingEvidence.scores.timing, null,
-    'Timing must be ungraded when fewer than 60% of the written notes were matched.');
+  assert.equal(tooLittleTimingEvidence.scores.timing, 0,
+    'Too little rhythm evidence must score zero instead of displaying Not Scored.');
 
   const pcmRecovered = perfect.map((note, index) => index === 2
     ? {

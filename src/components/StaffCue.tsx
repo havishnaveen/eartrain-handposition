@@ -521,7 +521,11 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
 
             const annotation = new Annotation(String(cueNote.finger))
               .setVerticalJustification(placement)
-              .setFont('Inter, Roboto, sans-serif', 17, '700');
+              .setFont('Inter, Roboto, sans-serif', 12, '650');
+            // Standard fingering sits beside the attack lane instead of under
+            // the animated playhead, and should never read like a note glyph.
+            (annotation as any).setXShift(9);
+            (annotation as any).setYShift(staffSpec.hand === 'right' ? -5 : 5);
             // Annotation inherits Element.setStyle at runtime, but VexFlow 4's
             // declaration omits it from Annotation. Keep the runtime styling
             // while containing the typing gap here.

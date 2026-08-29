@@ -592,8 +592,9 @@
 .et-analysis__checks span:nth-child(2) i { background: var(--et-orange); }
 .et-analysis__checks span:nth-child(3) i { background: #6f63d9; }
 .et-analysis__progress {
+  position: relative;
   display: block;
-  height: 4px;
+  height: 26px;
   margin-top: 23px;
   border-radius: 999px;
   background: rgba(239,106,71,.1);
@@ -601,20 +602,29 @@
 }
 .et-analysis__progress i {
   display: block;
-  width: 42%;
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--et-orange), #7a6ddd);
-  animation: et-analysis-progress 1.6s ease-in-out infinite;
+  transform-origin: left center;
+  transition: transform 240ms ease;
+}
+.et-analysis__progress strong {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-shadow: 0 1px 2px rgba(36,34,55,.32);
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes et-analysis-live { 50% { opacity: .38; transform: scale(.82); } }
 @keyframes et-analysis-note { 50% { transform: translateY(-4px); color: var(--et-orange-deep); } }
 @keyframes et-analysis-scan { to { left: 100%; } }
-@keyframes et-analysis-progress {
-  0% { transform: translateX(-105%); }
-  100% { transform: translateX(240%); }
-}
 
 /* --- Exercise ------------------------------------------------------------- */
 
@@ -1117,7 +1127,7 @@
   /* Keep only the functional analysis indicators moving. A frozen scan line
      looked like the grader had crashed on systems with Reduce Motion on. */
   .et-analysis__scan { animation: et-analysis-scan 3.2s linear infinite; }
-  .et-analysis__progress i { animation: et-analysis-progress 2.8s linear infinite; }
+  .et-analysis__progress i { transition: none; }
   .et-count__arc,
   .et-panel,
   .et-lesson-progress__tick,
@@ -2124,6 +2134,51 @@
   box-sizing: border-box;
 }
 
+.et-proof__mini-score {
+  width: 100%;
+  height: 180px;
+  margin: 18px 0 16px;
+  padding: 8px 14px;
+  border: 1px solid rgba(111, 99, 217, .16);
+  border-radius: 20px 20px 20px 8px;
+  background: linear-gradient(145deg, rgba(246,244,255,.76), #fff);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.et-proof__finger-focus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+.et-proof__finger-focus .et-hand-badge { width: 122px; }
+.et-proof__finger-focus .et-hand-badge__tile { aspect-ratio: 1.25; }
+.et-proof__finger-focus .et-hand-badge__icon {
+  width: 92px;
+  height: 92px;
+  margin: 0;
+}
+.et-proof__finger-focus > span {
+  min-width: 94px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+.et-proof__finger-focus small {
+  color: var(--et-ink-soft);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.et-proof__finger-focus strong {
+  color: var(--et-orange-deep);
+  font-size: 44px;
+  line-height: 1;
+}
+
 .et-proof__eyebrow {
   margin: 0 0 6px;
   color: #c74a27;
@@ -2880,6 +2935,8 @@
   .et-proof__key--active { transform: scale(1.01); }
   .et-proof__key--active::after { display: none; }
   .et-proof__key--done { transform: none; }
+  .et-proof__mini-score { height: 150px; padding-inline: 6px; }
+  .et-proof__finger-focus .et-hand-badge { width: 104px; }
   .et-kid-steps { grid-template-columns: 1fr; gap: 5px; }
   .et-shift-map {
     width: calc(100% - 24px);

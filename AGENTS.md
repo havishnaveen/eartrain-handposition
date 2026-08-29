@@ -21,6 +21,9 @@ optional styling preferences:
   learner is searching.
 - `PositionProof.requireHeld` is the literal `false`. Never restore a cumulative
   or timed hold gate in Prove It; simultaneous-tone proof belongs only to chord exercises.
+- Every generated `Question` must carry `positionProof`, and every new question
+  must route through `position-prompt` before its real drill. This is a gate,
+  not permission to replace memory, shift, chord, or reading exercise modes.
 - Run `npm run build`, `npm run audit:curriculum`, and the relevant audio/score
   audits after touching shared exercise rendering. A change that breaks these
   protections must not be committed.
@@ -64,9 +67,14 @@ a seemingly harmless reorder can send a referred student to the wrong skill.
 - Keep whole-take analysis inside its worker and keep its failure timeout at or
   below two seconds. Do not add neural/model inference to the browser UI thread;
   it previously froze the grading animation and delayed every result.
+- Magenta Onsets & Frames is confirmation only and must remain in
+  `magenta-transcriber-worker.js`. Its own documentation says voice can be
+  transcribed, so it may never create a scored note without independent PCM
+  hammer evidence. Invisible offline recovery alone earns no credit.
 - Keep Pitch, Timing, and Cleanliness independent. Correct pitches played with
   poor rhythm must keep Pitch credit and lose Timing; fewer than 60% matched
-  notes cannot manufacture a Timing 5; one missed written note cannot earn an
+  notes must display Timing 0, never “Not Scored,” and cannot manufacture a
+  Timing 5; one missed written note cannot earn an
   overall 5 outside the explicitly lenient memory rubric.
 - Chord-by-ear plays exactly two piano presentations: the target together,
   then the same notes broken bottom-to-top. Do not add backing layers,

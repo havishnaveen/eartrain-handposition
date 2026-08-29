@@ -16,6 +16,7 @@ import {
   type CapturedPcm,
   type ScoreAnalysisResult,
 } from './scoreAnalysis';
+import { warmPianoTranscriber } from './magentaPianoTranscription';
 import {
   getAudioContext as getPianoAudioContext,
   initAudio as initPianoAudio,
@@ -42,6 +43,8 @@ export interface UseDrillAudioOptions {
   ) => void;
   /** Fired as soon as recording closes and final pitch frames begin flushing. */
   onAnalysisStart?: () => void;
+  /** Reports actual grading pipeline milestones from 0 through 100. */
+  onAnalysisProgress?: (percent: number) => void;
   /**
    * Called every animation frame while counting in or playing, with the
    * position in beats from the downbeat (negative during count-in).
@@ -2399,12 +2402,18 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   }, [stopLoops, stopSpatialPlayback, cancelMicRecording, cancelPcmCapture, clearProofCompletionTimer, safeSet]);
 
   const prepare = useCallback(async (): Promise<boolean> => {
+    // Model loading is intentionally parallel with microphone preparation;
+    // it must never delay the Start button or the audio worklets.
+    void warmPianoTranscriber();
     const ctx = await ensureGraph();
     return Boolean(ctx && workletRef.current && chordWorkletRef.current && mountedRef.current);
   }, [ensureGraph]);
 
   const beginProof = useCallback(
     async (target: PositionProofTarget): Promise<boolean> => {
+      // The short position check gives the larger piano model useful warm-up
+      // time before the real graded performance begins.
+      void warmPianoTranscriber();
       const runToken = ++runTokenRef.current;
       const targetMidi = target.proofNotes.map((note) => pitchToMidi(note.pitch));
       if (targetMidi.some((midi) => midi === null)) return false;
@@ -2631,6 +2640,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           spatialChordConfirmationTimerRef.current = 0;
         }
         cbRef.current.onAnalysisStart?.();
+        cbRef.current.onAnalysisProgress?.(35);
         const recordingDone = stopMicRecording();
         safeSet(setPhase, 'idle' as DrillPhase);
         safeSet(setInputLevel, 0);
@@ -2661,6 +2671,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               { ...diagnosticsRef.current },
               spatialPerformance,
             );
+            cbRef.current.onAnalysisProgress?.(100);
           });
         }, 180);
       };
@@ -2901,6 +2912,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             finishedRef.current = true;
             listeningRef.current = false;
             cbRef.current.onAnalysisStart?.();
+            cbRef.current.onAnalysisProgress?.(12);
             const recordingDone = stopMicRecording();
             stopLoops();
             safeSet(setPhase, 'idle' as DrillPhase);
@@ -2931,6 +2943,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               ]).then(async ([, capture]) => {
                 if (!mountedRef.current || runTokenRef.current !== runToken) return;
                 const realtime = onsetsRef.current.slice();
+                cbRef.current.onAnalysisProgress?.(32);
                 let analysis: ScoreAnalysisResult = {
                   notes: realtime,
                   recovered: 0,
@@ -2941,13 +2954,16 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                   reason: 'capture-unavailable',
                 };
                 if (capture) {
+                  cbRef.current.onAnalysisProgress?.(48);
                   analysis = await analyzeCapturedTake(
                     capture,
                     currentPlan,
                     playStartRef.current,
                     realtime,
+                    (percent) => cbRef.current.onAnalysisProgress?.(percent),
                   );
                 }
+                cbRef.current.onAnalysisProgress?.(92);
                 if (!mountedRef.current || runTokenRef.current !== runToken) return;
                 diagnosticsRef.current.offlineRecovered = analysis.recovered;
                 diagnosticsRef.current.offlineLivePreserved = analysis.livePreserved;
@@ -2964,6 +2980,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                     analysis.notes,
                     { ...diagnosticsRef.current },
                   );
+                  cbRef.current.onAnalysisProgress?.(100);
                 }, 60);
               });
             }, PITCH_FLUSH_MS);

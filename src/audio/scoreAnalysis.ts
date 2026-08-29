@@ -1,5 +1,9 @@
 import type { DetectedNote, DrillPlan } from './timing';
 import { pitchToMidi } from './timing';
+import {
+  transcribePianoCapture,
+  type PianoTranscriptNote,
+} from './magentaPianoTranscription';
 
 export interface CapturedPcm {
   id: number;
@@ -22,6 +26,17 @@ export interface ScoreAnalysisResult {
 
 const WORKER_URL = '/audio/score-analyzer-worker.js?v=physical-evidence-v17-2026-08-26';
 const ANALYSIS_TIMEOUT_MS = 2_000;
+
+type AnalyzedNote = DetectedNote & {
+  analysisSource?: string;
+  analysisConfidence?: number;
+  analysisSnr?: number;
+  analysisContrast?: number;
+  analysisRise?: number;
+  analysisPersistence?: number;
+  analysisPostFlatness?: number;
+  analysisSpeechLike?: boolean;
+};
 
 function combineChunks(chunks: readonly Float32Array[]): Float32Array {
   const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -69,12 +84,70 @@ export function credibleRealtimeFallback(
   });
 }
 
+export function pianoConsensus(
+  result: ScoreAnalysisResult,
+  realtime: readonly DetectedNote[],
+  transcript: readonly PianoTranscriptNote[] | null,
+): ScoreAnalysisResult {
+  const strictRealtime = credibleRealtimeFallback(realtime);
+  const hasRealtimeMatch = (note: DetectedNote) => strictRealtime.some((live) =>
+    live.midi === note.midi && (
+      (live.expectedSlot !== undefined && live.expectedSlot === note.expectedSlot) ||
+      Math.abs(live.time - note.time) <= 0.28
+    )
+  );
+  const hasTranscriptMatch = (note: DetectedNote) => transcript?.some((modelNote) =>
+    modelNote.midi === note.midi && Math.abs(modelNote.time - note.time) <= 0.3
+  ) ?? false;
+  const hasStrongPianoAttack = (note: AnalyzedNote) => (
+    note.analysisSpeechLike !== true &&
+    (Number(note.analysisConfidence) || 0) >= 0.5 &&
+    (Number(note.analysisSnr) || 0) >= 1.75 &&
+    (Number(note.analysisContrast) || 0) >= 1.02 &&
+    (Number(note.analysisRise) || 0) >= 1.1 &&
+    (Number(note.analysisPersistence) || 0) >= 7 &&
+    (Number(note.analysisPostFlatness) || 0) <= 0.8
+  );
+
+  const notes = result.notes.filter((rawNote) => {
+    const note = rawNote as AnalyzedNote;
+    const live = hasRealtimeMatch(note);
+    const model = hasTranscriptMatch(note);
+    if (note.analysisSource === 'offline-recovered') {
+      // This is the exact path that previously let an invisible hum earn
+      // 4.4/5. Magenta's own demo can transcribe voice, so a model match is
+      // not permission to manufacture a note the live piano lane never saw.
+      return false;
+    }
+    if (note.analysisSource === 'reconciled' || note.analysisSource?.startsWith('realtime-')) {
+      return live || (model && hasStrongPianoAttack(note));
+    }
+    if (note.analysisSource?.startsWith('offline-')) {
+      return live || (model && hasStrongPianoAttack(note));
+    }
+    return live;
+  });
+  const expectedSlots = new Set(
+    notes.flatMap((note) => note.expectedSlot === undefined ? [] : [note.expectedSlot]),
+  );
+  const recovered = notes.filter((note) => note.analysisSource === 'offline-recovered').length;
+  return {
+    ...result,
+    notes,
+    recovered,
+    rejected: result.rejected + Math.max(0, result.notes.length - notes.length),
+    expectedAccepted: expectedSlots.size,
+    reason: `${result.reason}+${transcript === null ? 'strict-piano-only' : 'magenta-piano-consensus'}`,
+  };
+}
+
 /** Run score-aware analysis off the UI and audio threads. */
 export function analyzeCapturedTake(
   capture: CapturedPcm,
   plan: DrillPlan,
   playStartTime: number,
   realtime: readonly DetectedNote[],
+  onProgress?: (percent: number) => void,
 ): Promise<ScoreAnalysisResult> {
   if (
     typeof Worker === 'undefined' ||
@@ -95,8 +168,12 @@ export function analyzeCapturedTake(
 
   const samples = combineChunks(capture.chunks);
   const requestId = `${capture.id}:${Date.now()}:${samples.length}`;
+  const transcriptPromise = transcribePianoCapture(capture).then((transcript) => {
+    onProgress?.(84);
+    return transcript;
+  });
 
-  return new Promise((resolve) => {
+  const workerAnalysis = new Promise<ScoreAnalysisResult>((resolve) => {
     let settled = false;
     let worker: Worker | null = null;
     const finish = (result: ScoreAnalysisResult) => {
@@ -170,4 +247,13 @@ export function analyzeCapturedTake(
       finish(fallback('worker-construction-error'));
     }
   });
+  const trackedWorker = workerAnalysis.then((analysis) => {
+    onProgress?.(68);
+    return analysis;
+  });
+  return Promise.all([trackedWorker, transcriptPromise])
+    .then(([analysis, transcript]) => {
+      onProgress?.(92);
+      return pianoConsensus(analysis, realtime, transcript);
+    });
 }

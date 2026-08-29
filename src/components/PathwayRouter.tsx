@@ -210,7 +210,7 @@ export function initialStatusFor(
   question: Question,
   proofCompleted = false,
 ): ExerciseStatus {
-  return question.exerciseMode === 'prove-it' && !proofCompleted ? 'position-prompt' : 'prompt';
+  return question.positionProof && !proofCompleted ? 'position-prompt' : 'prompt';
 }
 
 function difficultyNudgeFor(
@@ -469,7 +469,14 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
         pendingRecord: null,
       };
 
-      if (state.repeatQuestion) return { ...base, attempt: state.attempt + 1 };
+      if (state.repeatQuestion) {
+        return {
+          ...base,
+          status: initialStatusFor(state.current, false),
+          proofCompleted: false,
+          attempt: state.attempt + 1,
+        };
+      }
 
       const concept = getConcept(state.lesson);
       const questionsServed = state.questionsServed + 1;
@@ -604,6 +611,7 @@ export function PathwayRouter({
   const staffRef = useRef<StaffCueHandle>(null);
   const exerciseViewRef = useRef<ExerciseViewHandle>(null);
   const [memorySecondsRemaining, setMemorySecondsRemaining] = useState(6);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
   const [orientationNotice, setOrientationNotice] = useState<OrientationNotice | null>(
     () => firstUnseenOrientationNotice(question),
   );
@@ -661,8 +669,13 @@ export function PathwayRouter({
     if (!questionId) return;
     const now = Date.now();
     analysisStartedAtRef.current = now;
+    setAnalysisProgress(8);
     staffRef.current?.hide();
     dispatch({ type: 'ANALYSIS_START', questionId, now });
+  }, []);
+
+  const handleAnalysisProgress = useCallback((percent: number) => {
+    setAnalysisProgress((current) => Math.max(current, Math.min(100, Math.max(0, percent))));
   }, []);
 
   const handleFinish = useCallback((
@@ -678,6 +691,7 @@ export function PathwayRouter({
       dispatch({ type: 'ANALYSIS_START', questionId, now });
     }
     const active = questionRef.current;
+    setAnalysisProgress(100);
     const result = gradeSequence(active.expectedSequence, detected, {
       plan: planRef.current ?? undefined,
       playStartTime: playStartRef.current,
@@ -752,6 +766,7 @@ export function PathwayRouter({
     onFrame: handleFrame,
     onPlayStart: handlePlayStart,
     onAnalysisStart: handleAnalysisStart,
+    onAnalysisProgress: handleAnalysisProgress,
     onFinish: handleFinish,
     onProofListenStart: handleProofListenStart,
     onProofSuccess: handleProofSuccess,
@@ -782,6 +797,7 @@ export function PathwayRouter({
     if (reportTimerRef.current) window.clearTimeout(reportTimerRef.current);
     reportTimerRef.current = 0;
     analysisStartedAtRef.current = 0;
+    setAnalysisProgress(0);
     exerciseViewRef.current?.resetProgress();
     staffRef.current?.hide();
     dispatch({ type: 'START', questionId });
@@ -848,7 +864,7 @@ export function PathwayRouter({
       return;
     }
 
-    if (active.exerciseMode === 'prove-it' && active.positionProof && state.status === 'position-prompt') {
+    if (active.positionProof && state.status === 'position-prompt') {
       if (proofStartingRef.current) return;
       proofStartingRef.current = true;
       const questionId = active.id;
@@ -1149,6 +1165,7 @@ export function PathwayRouter({
         anchorShift={question.anchorShift}
         spatialChord={question.spatialChord}
         memorySecondsRemaining={memorySecondsRemaining}
+        analysisProgress={analysisProgress}
         onStart={handleStart}
         onCancelStart={handleCancelStart}
         startLabel={

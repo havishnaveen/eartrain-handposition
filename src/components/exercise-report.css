@@ -494,14 +494,15 @@
 }
 
 .et-report-auto__stay {
-  padding: 9px 13px;
-  border: 1px solid rgba(36, 34, 55, 0.18);
+  min-height: 50px;
+  padding: 13px 22px;
+  border: 2px solid rgba(111, 99, 217, 0.36);
   border-radius: 7px 14px 7px 14px;
   color: var(--et-ink-strong);
-  background: rgba(255, 255, 255, 0.76);
+  background: #fff;
   font: inherit;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 850;
   cursor: pointer;
   box-shadow: 3px 3px 0 rgba(111, 99, 217, 0.13);
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;

@@ -294,6 +294,13 @@ export interface DetectedNote {
   harmonicIndependentAttack?: boolean;
   analysisSource?: string;
   analysisConfidence?: number;
+  analysisSnr?: number;
+  analysisContrast?: number;
+  analysisRise?: number;
+  analysisPersistence?: number;
+  analysisFlatness?: number;
+  analysisPostFlatness?: number;
+  analysisSpeechLike?: boolean;
 }
 
 export type ExtraKind = 'repeat' | 'resonance' | 'faint' | 'hesitation' | 'wrong';
@@ -1420,15 +1427,34 @@ export function gradeSequence(
     (!transition || (transition.measured && transition.score === 5))
   );
 
+  // `gradeSequence` is also used by lightweight integrations that omit a
+  // written beat plan. Keep Timing numeric there by measuring pulse
+  // consistency from consecutive matched attacks; the full app always uses
+  // the stricter score-aligned `rhythm` branch above.
+  const inferredPulseScore = (() => {
+    if (matches.length < 2) return 0;
+    const gaps = matches.slice(1).map((match, index) =>
+      Math.max(0.001, match.note.time - matches[index].note.time)
+    );
+    const sorted = [...gaps].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    if (median <= 0) return 0;
+    const relativeError = gaps.reduce(
+      (sum, gap) => sum + Math.abs(gap - median) / median,
+      0,
+    ) / gaps.length;
+    return clamp5(5 * Math.max(0, 1 - relativeError / 0.65));
+  })();
+
   const timingScore =
     !hasPerformanceEvidence
       ? 0
       : !hasTimingEvidence
-        ? null
+        ? 0
       : timingMastery
         ? 5
         : baseTimingScore === null
-          ? transition?.score ?? null
+          ? transition?.score ?? inferredPulseScore
           : transition
             ? clamp5(baseTimingScore * 0.65 + transition.score * 0.35)
             : baseTimingScore;

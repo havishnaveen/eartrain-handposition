@@ -227,6 +227,13 @@ try {
       `Lesson ${lessonIndex} must contrast major and minor in its two ear drills.`);
   }
 
+  const lessonOne = baseQuestionsFor(1);
+  assert.notDeepEqual(
+    lessonOne[0].expectedSequence,
+    lessonOne[3].expectedSequence,
+    'Lesson 1 drills 1 and 4 must not repeat the same C-D-E-F-G phrase.',
+  );
+
   let globalOrdinal = 0;
   const shiftPhaseRhythms = { eighth: 0, sixteenth: 0, plain: 0 };
   for (const concept of PROGRESSIVE_CONCEPTS) {
@@ -363,15 +370,16 @@ try {
             else if (durations.some((duration) => duration.startsWith('8'))) rhythms.eighth += 1;
             else rhythms.plain += 1;
 
+            assert.ok(question.positionProof,
+              `Lesson ${concept.index}, drill ${questionNumber} needs its per-drill position gate.`);
+            assert.equal(question.positionProof.requireHeld, false,
+              `Lesson ${concept.index}, drill ${questionNumber} must use sequential anchor notes.`);
+            assert.equal(question.positionProof.acceptWindowMs, 5500,
+              `Lesson ${concept.index}, drill ${questionNumber} must use the gently widened proof window.`);
             if (question.exerciseMode === 'prove-it') {
-              assert.ok(question.positionProof, 'Prove It needs a proof specification.');
               const expectedFingers = staff.hand === 'right' ? [1, 3, 5] : [5, 3, 1];
               assert.deepEqual(question.positionProof.proofNotes.map((note) => note.finger), expectedFingers,
                 `Lesson ${concept.index}, drill ${questionNumber} has invalid ${staff.hand}-hand proof fingers.`);
-              assert.equal(question.positionProof.requireHeld, false,
-                `Lesson ${concept.index}, drill ${questionNumber} must use sequential anchor notes.`);
-              assert.equal(question.positionProof.acceptWindowMs, 5500,
-                `Lesson ${concept.index}, drill ${questionNumber} must use the gently widened proof window.`);
             }
             if (question.exerciseMode === 'blind-memory') {
               const noteCount = question.expectedSequence.length;
@@ -899,7 +907,8 @@ try {
   route = pathwayReducer(route, { type: 'CONTINUE', difficultyNudge: 0 });
   assert.equal(route.question, 2);
   assert.notEqual(route.current.id, firstId);
-  assert.equal(route.status, 'prompt');
+  assert.equal(route.status, 'position-prompt',
+    'Every newly generated drill must return through its position gate.');
 
   // Blind Memory has one guarded path: prompt -> preview -> count-in -> play.
   // Repeated/stale actions must not skip the preview or restart it underneath
@@ -1105,6 +1114,10 @@ try {
       now: 10_000 + struggleGuard,
     });
     struggleRoute = pathwayReducer(struggleRoute, { type: 'CONTINUE', difficultyNudge: -0.08 });
+    if (struggleGuard === 1) {
+      assert.equal(struggleRoute.status, 'position-prompt',
+        'A failed drill retry must also return through the position gate.');
+    }
   }
   assert.equal(struggleRoute.lesson, 2, 'Maximum remedial practice must still advance to Lesson 2.');
   assert.equal(struggleRoute.questionsServed, PROGRESSIVE_CONCEPTS[0].maxQuestionCount);
