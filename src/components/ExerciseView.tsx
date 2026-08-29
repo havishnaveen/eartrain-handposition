@@ -611,7 +611,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   : 'Play each highlighted note once.'}
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
-                activeFinger={status === 'position-prompt' ? proofNotes[0].finger : activeProofNote.finger}
+                activeFinger={status === 'position-prompt' ? undefined : activeProofNote.finger}
                 showHandLabel={false}
               />
 

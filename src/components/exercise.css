@@ -2214,7 +2214,7 @@
 }
 
 .et-proof__mini-score .et-staff { display: flex; justify-content: center; }
-.et-proof__mini-score .et-staff svg { max-height: 92px; width: auto; }
+.et-proof__mini-score .et-staff svg { max-height: 140px; width: auto; }
 
 .et-proof__steps {
   display: flex;
