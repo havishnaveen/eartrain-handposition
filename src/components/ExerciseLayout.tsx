@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import BugReportButton from './BugReportButton';
+import { useState, type ReactNode } from 'react';
 import './exercise.css';
 
 export interface ExerciseLayoutProps {
@@ -45,10 +44,26 @@ export function ExerciseLayout({
   const loopSize = Math.max(1, questionsInLoop);
   const current = Math.min(Math.max(1, questionNumber), loopSize);
   const lesson = Math.min(Math.max(1, lessonNumber), Math.max(1, totalLessons));
+  // Collapsed by default: the pathway rail is reference material, not the
+  // focus of the page — a first-time student's attention belongs on the
+  // staff, and this keeps the stage uncluttered until they ask for context.
+  const [collapsed, setCollapsed] = useState(true);
 
   return (
-    <div className="et-shell et-shell--pathway">
-      <aside className="et-sidebar" aria-label="Current learning pathway">
+    <div className={`et-shell et-shell--pathway${collapsed ? ' et-shell--sidebar-collapsed' : ''}`}>
+      <button
+        type="button"
+        className="et-sidebar-toggle"
+        onClick={() => setCollapsed((value) => !value)}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Show learning pathway' : 'Hide learning pathway'}
+      >
+        <span className="et-sidebar-toggle__icon" aria-hidden="true">
+          <NoteMark />
+        </span>
+        <span className="et-sidebar-toggle__chevron" aria-hidden="true">{collapsed ? '›' : '‹'}</span>
+      </button>
+      <aside className="et-sidebar" aria-label="Current learning pathway" aria-hidden={collapsed}>
         <div className="et-sidebar__inner">
           <div className="et-sidebar__brand">
             <span className="et-sidebar__mark"><NoteMark /></span>
@@ -125,11 +140,6 @@ export function ExerciseLayout({
         </div>
         <div className="et-stage__inner">{children}</div>
       </main>
-      <BugReportButton
-        lessonNumber={lesson}
-        lessonTitle={lessonTitle}
-        questionNumber={current}
-      />
     </div>
   );
 }

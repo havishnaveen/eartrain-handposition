@@ -42,6 +42,15 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
     const secondRef = useRef<StaffCueHandle>(null);
     const countdownRef = useRef<HTMLElement>(null);
     const countdownFillRef = useRef<HTMLElement>(null);
+    // When there is no scripted timedShift pause (e.g. Lessons 13-14, whose
+    // audio timeline deliberately keeps Position 2 always visible with zero
+    // reserved beats), the written beat clock crosses the hand-off in a
+    // single animation frame and "move" is applied and overwritten before a
+    // student can read it. This wall-clock latch — independent of the beat
+    // timeline, so grading and count-in timing are untouched — holds the
+    // indicator visible for a real minimum stretch instead.
+    const unscriptedMoveEnteredAtRef = useRef<number | null>(null);
+    const UNSCRIPTED_MOVE_MIN_MS = 700;
     const staff = cue.staves[0];
     const split = Math.min(
       Math.max(1, shift.splitIndex),
@@ -93,11 +102,25 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           return;
         }
         if (beat < firstBeats + waitBeats) {
+          unscriptedMoveEnteredAtRef.current = null;
           rootRef.current?.setAttribute('data-active-position', 'move');
           showCountdown(waitSeconds - (beat - firstBeats) * secondsPerBeat);
           firstRef.current?.hide();
           secondRef.current?.hide();
           return;
+        }
+        if (waitBeats === 0) {
+          const now = performance.now();
+          if (unscriptedMoveEnteredAtRef.current === null) {
+            unscriptedMoveEnteredAtRef.current = now;
+          }
+          if (now - unscriptedMoveEnteredAtRef.current < UNSCRIPTED_MOVE_MIN_MS) {
+            rootRef.current?.setAttribute('data-active-position', 'move');
+            showCountdown(0);
+            firstRef.current?.hide();
+            secondRef.current?.hide();
+            return;
+          }
         }
         rootRef.current?.setAttribute('data-active-position', 'to');
         showCountdown(0);
@@ -105,6 +128,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         secondRef.current?.seekToBeat(beat - firstBeats - waitBeats);
       },
       hide() {
+        unscriptedMoveEnteredAtRef.current = null;
         rootRef.current?.setAttribute('data-active-position', 'from');
         showCountdown(waitSeconds);
         firstRef.current?.hide();
@@ -134,9 +158,18 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} compact />
         </section>
 
-        <div className="et-anchor-cue__bridge" aria-label={waitSeconds > 0 ? `${waitSeconds}-second phrase-preview countdown` : 'Move your hand'}>
+        <div
+          className="et-anchor-cue__bridge"
+          aria-label={
+            waitSeconds > 0
+              ? stagedReveal
+                ? `${waitSeconds}-second phrase-preview countdown`
+                : `${waitSeconds}-second move-your-hand window`
+              : 'Move your hand'
+          }
+        >
           <span className="et-anchor-cue__step">2</span>
-          <b>{waitSeconds > 0 ? 'Study & move' : 'Move hand'}</b>
+          <b>{stagedReveal ? 'Study & move' : 'Move hand'}</b>
           <i className="et-anchor-cue__arrow" aria-hidden="true">→</i>
           {waitSeconds > 0 ? (
             <>
@@ -144,7 +177,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
               <span className="et-anchor-cue__countdown-track" aria-hidden="true">
                 <i ref={countdownFillRef} />
               </span>
-              <small>See the new phrase</small>
+              <small>{stagedReveal ? 'See the new phrase' : 'Keep the beat'}</small>
             </>
           ) : <small>Keep the beat</small>}
         </div>

@@ -14,7 +14,10 @@ export interface CueNote {
   keys: string[];
   /** VexFlow duration: w/h/q/8/16, optional dot(s), then optional r for rest. */
   duration: string;
+  /** Single-note finger number. For a stacked chord (keys.length > 1), use `fingers` instead. */
   finger?: number;
+  /** Per-key finger numbers for a stacked chord, parallel to `keys`. Takes priority over `finger` when set. */
+  fingers?: number[];
   /** Anchor note the drill is built around — drawn in accent color. */
   anchor?: boolean;
 }
@@ -100,6 +103,7 @@ export const REMEDIATION_PROBLEMS = [
   'chord-by-ear',
   'chord-quality-spacing',
   'major-minor-hearing',
+  'background-piano-separation',
   'chord-shape-transfer',
 ] as const;
 
@@ -109,8 +113,7 @@ export type ChordQuality = 'major' | 'minor';
 export type SpatialInstrumentLayer = 'pad' | 'bass' | 'pulse' | 'strings';
 /**
  * How the anchor is supplied. Neither option tests absolute/perfect pitch:
- * `shown` names the key; `matched` asks the learner to find the bottom note
- * from the isolated blocked/broken piano examples.
+ * `shown` names the key; `matched` plays the isolated anchor after the mix.
  */
 export type SpatialRootSupport = 'shown' | 'matched';
 
@@ -163,8 +166,8 @@ export interface PositionProofSpec {
   hand: Hand;
   /** Three exact notes, played in order to establish the full hand shape. */
   proofNotes: [PositionProofNote, PositionProofNote, PositionProofNote];
-  /** Must remain false: Prove It verifies ordered anchors, not a held chord. */
-  requireHeld: false;
+  /** When true, each earlier key must stay down while the next is added. */
+  requireHeld: boolean;
   /** Time allowed from the first requested note to the final one. */
   acceptWindowMs: number;
 }
