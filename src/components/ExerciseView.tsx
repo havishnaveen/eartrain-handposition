@@ -276,7 +276,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       instruction,
       exerciseMode,
       positionProof,
-      handScope,
       blindMemory,
       anchorShift,
       spatialChord,
@@ -576,23 +575,25 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       positionProof &&
       (status === 'position-prompt' || status === 'proving' || status === 'proof-success')
     ) {
-      const requiredHands: HandScope = handScope ?? positionProof.hand;
       const proofHand = positionProof.hand;
       const proofNotes = positionProof.proofNotes;
       const activeProofIndex = Math.min(proofProgress, proofNotes.length - 1);
       const activeProofNote = proofNotes[activeProofIndex];
+      // Only the single note the student needs right now — echoing all three
+      // proof notes here duplicated the identity card's own staff and made
+      // two displays disagree about which one mattered this instant.
       const proofCue: CueSpec = {
         keySignature: 'C',
-        timeSignature: '3/4',
+        timeSignature: '4/4',
         staves: [{
           clef: proofHand === 'right' ? 'treble' : 'bass',
           hand: proofHand,
-          notes: proofNotes.map((note, index) => ({
-            keys: [proofPitchToStaffKey(note.pitch)],
+          notes: [{
+            keys: [proofPitchToStaffKey(activeProofNote.pitch)],
             duration: 'q',
-            finger: note.finger,
-            anchor: index === activeProofIndex && status !== 'proof-success',
-          })),
+            finger: activeProofNote.finger,
+            anchor: status !== 'proof-success',
+          }],
         }],
       };
       // Prove It maps three anchor notes in sequence. It deliberately avoids
@@ -638,27 +639,27 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     ? 'Nice work! 🎉'
                     : `Play ${proofPitchName(activeProofNote.pitch)}`}
                 </div>
-                <div className="et-proof__mini-score" aria-label={`Notes ${proofNotes.map((note) => proofPitchName(note.pitch)).join(', ')}`}>
-                  <StaffCue
-                    cue={proofCue}
-                    compact
-                    accentColor="#ef6a47"
-                    inkColor="#242237"
-                    successPitches={proofNotes
-                      .slice(0, status === 'proof-success' ? proofNotes.length : proofProgress)
-                      .map((note) => note.pitch)}
-                  />
-                </div>
-                <div className="et-proof__finger-focus">
-                  <HandBadge
-                    hand={proofHand}
-                    activeFinger={activeProofNote.finger}
-                    showLabel={false}
-                  />
-                  <span>
-                    <small>{requiredHands === 'both' ? `${proofHand === 'right' ? 'Right' : 'Left'} hand` : 'Use finger'}</small>
-                    <strong>{activeProofNote.finger}</strong>
-                  </span>
+                {status !== 'proof-success' ? (
+                  <div className="et-proof__mini-score" aria-label={`Note ${proofPitchName(activeProofNote.pitch)}, finger ${activeProofNote.finger}`}>
+                    <StaffCue
+                      cue={proofCue}
+                      compact
+                      accentColor="#ef6a47"
+                      inkColor="#242237"
+                    />
+                  </div>
+                ) : null}
+                <div className="et-proof__steps" aria-hidden="true">
+                  {proofNotes.map((note, index) => {
+                    const done = index < proofProgress || status === 'proof-success';
+                    const active = !done && index === activeProofIndex;
+                    return (
+                      <span
+                        key={note.pitch + index}
+                        className={`et-proof__step-dot${done ? ' et-proof__step-dot--done' : active ? ' et-proof__step-dot--active' : ''}`}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div> : null}

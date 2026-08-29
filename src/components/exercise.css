@@ -2166,6 +2166,7 @@
 .et-proof__task {
   grid-area: task;
   min-width: 0;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   align-self: center;
@@ -2174,7 +2175,11 @@
 
 .et-proof__card {
   width: 100%;
-  padding: 32px 28px;
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   border: 1px solid rgba(239, 106, 71, 0.25);
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.95);
@@ -2184,7 +2189,7 @@
 }
 
 .et-proof__eyebrow {
-  margin: 0 0 6px;
+  margin: 0;
   color: #c74a27;
   font-size: 13px;
   font-weight: 820;
@@ -2197,7 +2202,42 @@
   font-size: 26px;
   font-weight: 860;
   line-height: 1.25;
-  margin: 0 0 8px;
+  margin: 0;
+}
+
+.et-proof__mini-score {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 220px;
+  margin: 10px 0 2px;
+}
+
+.et-proof__mini-score .et-staff { display: flex; justify-content: center; }
+.et-proof__mini-score .et-staff svg { max-height: 92px; width: auto; }
+
+.et-proof__steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.et-proof__step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--et-rail, #e7ddd3);
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.et-proof__step-dot--done { background: var(--et-pass-edge, #4fa87c); }
+
+.et-proof__step-dot--active {
+  background: #ef6a47;
+  transform: scale(1.35);
+  box-shadow: 0 0 0 4px rgba(239, 106, 71, 0.18);
 }
 
 .et-proof__hold-guide,
