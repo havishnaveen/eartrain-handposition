@@ -2926,3 +2926,27 @@
   .et-proof__key--active,
   .et-memory-hidden { animation: none; }
 }
+.et-sidebar-warning {
+  position: absolute;
+  top: 70px;
+  left: 20px;
+  background: #ff5252;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 1000;
+  animation: fadein 0.3s;
+  box-shadow: 0 4px 12px rgba(255,0,0,0.2);
+  pointer-events: none;
+}
+.et-shell--sidebar-collapsed .et-sidebar-warning {
+  left: 70px;
+}
+@media (max-width: 800px) {
+  .et-sidebar-warning {
+    top: 50px;
+    left: 10px;
+  }
+}

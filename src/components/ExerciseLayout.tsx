@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import './exercise.css';
 
 export interface ExerciseLayoutProps {
@@ -48,13 +48,37 @@ export function ExerciseLayout({
   // focus of the page — a first-time student's attention belongs on the
   // staff, and this keeps the stage uncluttered until they ask for context.
   const [collapsed, setCollapsed] = useState(true);
+  const [clicks, setClicks] = useState<number[]>([]);
+  const [locked, setLocked] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
 
+  useEffect(() => {
+    setLocked(false);
+    setShowWarning(false);
+    setClicks([]);
+  }, [questionNumber]);
+
+  const handleToggle = () => {
+    if (locked) return;
+    const now = Date.now();
+    const recent = clicks.filter(c => now - c < 3000);
+    recent.push(now);
+    if (recent.length >= 4) {
+      setLocked(true);
+      setShowWarning(true);
+      setCollapsed(true);
+      setClicks([]);
+    } else {
+      setClicks(recent);
+      setCollapsed(c => !c);
+    }
+  };
   return (
     <div className={`et-shell et-shell--pathway${collapsed ? ' et-shell--sidebar-collapsed' : ''}`}>
       <button
         type="button"
         className="et-sidebar-toggle"
-        onClick={() => setCollapsed((value) => !value)}
+        onClick={handleToggle}
         aria-expanded={!collapsed}
         aria-label={collapsed ? 'Show learning pathway' : 'Hide learning pathway'}
       >
@@ -63,7 +87,11 @@ export function ExerciseLayout({
         </span>
         <span className="et-sidebar-toggle__chevron" aria-hidden="true">{collapsed ? '›' : '‹'}</span>
       </button>
-      <aside className="et-sidebar" aria-label="Current learning pathway" aria-hidden={collapsed}>
+      {showWarning ? (
+        <div className="et-sidebar-warning" role="alert">
+          Focus on the exercise! Unlocks next question.
+        </div>
+      ) : null}      <aside className="et-sidebar" aria-label="Current learning pathway" aria-hidden={collapsed}>
         <div className="et-sidebar__inner">
           <div className="et-sidebar__brand">
             <span className="et-sidebar__mark"><NoteMark /></span>
