@@ -2085,12 +2085,11 @@
 
 .et-proof {
   position: relative;
-  min-height: min(640px, 74vh);
+  padding: 48px clamp(24px, 5vw, 72px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px clamp(24px, 5vw, 72px);
   border: 1px solid var(--et-line);
   border-radius: 34px 34px 34px 12px;
   background:
@@ -2142,10 +2141,8 @@
   position: relative;
   z-index: 2;
   width: min(100%, 920px);
-  display: grid;
-  grid-template-areas:
-    "identity task";
-  grid-template-columns: minmax(240px, 310px) minmax(380px, 1fr);
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: clamp(24px, 4vw, 44px);
@@ -2166,7 +2163,7 @@
 .et-proof__task {
   grid-area: task;
   min-width: 0;
-  max-width: 320px;
+  max-width: 500px;
   display: flex;
   flex-direction: column;
   align-self: center;
@@ -2210,11 +2207,11 @@
   justify-content: center;
   width: 100%;
   max-width: 507px;
-  margin: 10px 0 2px;
+  margin: 40px 0 30px;
 }
 
 .et-proof__mini-score .et-staff { display: flex; justify-content: center; }
-.et-proof__mini-score .et-staff svg { width: 100%; max-width: 450px; height: auto; }
+.et-proof__mini-score .et-staff svg { width: 100%; max-width: 450px; height: auto; transform: scale(1.6); transform-origin: center; }
 
 .et-proof__steps {
   display: flex;
