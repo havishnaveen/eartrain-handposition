@@ -2085,7 +2085,7 @@
 
 .et-proof {
   position: relative;
-  min-height: 0;
+  min-height: min(640px, 74vh);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2146,8 +2146,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(24px, 4vw, 44px);
   margin: 0 auto;
+}
+
+.et-proof__layout--ready {
+  grid-template-areas: "identity";
+  grid-template-columns: 1fr;
 }
 
 .et-proof__identity {
@@ -2156,13 +2160,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px; width: 100%;
+  gap: 16px;
   padding: 0;
   text-align: center;
 }
 
 .et-proof__task {
-  grid-area: task;
   min-width: 0;
   max-width: 500px; width: 100%;
   display: flex;
@@ -2832,14 +2835,15 @@
   }
 
   .et-proof__identity {
-    min-height: 0;
-    align-items: center;
-    gap: 20px;
-    padding: 16px 0 20px;
-    border-left: 0;
-    border-bottom: none;
-    text-align: center;
-  }
+  grid-area: identity;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0;
+  text-align: center;
+}
 
   .et-hand-requirement { justify-content: center; }
 

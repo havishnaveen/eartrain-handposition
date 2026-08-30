@@ -601,19 +601,57 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       return (
         <section className={`et-proof et-proof--${status}`} aria-live="polite">
           <div className="et-proof__halo" aria-hidden="true"><span /><span /><span /></div>
-          <div className={`et-proof__layout${status === 'position-prompt' ? ' et-proof__layout--ready' : ''}`}>
-            <div className="et-proof__identity">
-              <LessonPanel
-                keyName={proofPositionTitle(positionProof?.positionName)}
-                hands={[proofHand]}
-                subtitle={status === 'position-prompt'
-                  ? 'Set the hand shape. Start when you are ready.'
-                  : 'Play each highlighted note once.'}
-                onStart={status === 'position-prompt' ? onStart : undefined}
-                disabled={startBlocked}
-                activeFinger={status === 'position-prompt' ? undefined : activeProofNote.finger}
-                showHandLabel={false}
-              />
+          <div className="et-proof__layout et-proof__layout--unified">
+            <div className="et-proof__task">
+              <div className="et-proof__card">
+                <LessonPanel
+                  keyName={proofPositionTitle(positionProof?.positionName)}
+                  hands={[proofHand]}
+                  subtitle={status === 'position-prompt'
+                    ? 'Set the hand shape. Start when you are ready.'
+                    : 'Play each highlighted note once.'}
+                  onStart={status === 'position-prompt' ? onStart : undefined}
+                  disabled={startBlocked}
+                  activeFinger={status === 'position-prompt' ? undefined : activeProofNote.finger}
+                  showHandLabel={false}
+                  className="lp lp--integrated"
+                />
+
+                {status !== 'position-prompt' ? (
+                  <>
+                    <div className="et-proof__eyebrow" style={{ marginTop: '24px' }}>
+                      {status === 'proof-success' ? 'DONE' : `STEP ${Math.min(proofProgress + 1, proofNotes.length)} OF ${proofNotes.length}`}
+                    </div>
+                    <div className="et-proof__headline">
+                      {status === 'proof-success'
+                        ? 'Nice work! 🎉'
+                        : `Play ${proofPitchName(activeProofNote.pitch)}`}
+                    </div>
+                    {status !== 'proof-success' ? (
+                      <div className="et-proof__mini-score" aria-label={`Note ${proofPitchName(activeProofNote.pitch)}, finger ${activeProofNote.finger}`}>
+                        <StaffCue
+                          cue={proofCue}
+                          compact
+                          accentColor="#ef6a47"
+                          inkColor="#242237"
+                        />
+                      </div>
+                    ) : null}
+                    <div className="et-proof__steps" aria-hidden="true">
+                      {proofNotes.map((note, index) => {
+                        const done = index < proofProgress || status === 'proof-success';
+                        const active = !done && index === activeProofIndex;
+                        return (
+                          <span
+                            key={note.pitch + index}
+                            className={`et-proof__step-dot${done ? ' et-proof__step-dot--done' : active ? ' et-proof__step-dot--active' : ''}`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : null}
+              </div>
 
               {orientationNotice ? (
                 <OrientationCallout
@@ -628,41 +666,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 </p>
               ) : null}
             </div>
-
-            {status !== 'position-prompt' ? <div className="et-proof__task">
-              <div className="et-proof__card">
-                <div className="et-proof__eyebrow">
-                  {status === 'proof-success' ? 'DONE' : `STEP ${Math.min(proofProgress + 1, proofNotes.length)} OF ${proofNotes.length}`}
-                </div>
-                <div className="et-proof__headline">
-                  {status === 'proof-success'
-                    ? 'Nice work! 🎉'
-                    : `Play ${proofPitchName(activeProofNote.pitch)}`}
-                </div>
-                {status !== 'proof-success' ? (
-                  <div className="et-proof__mini-score" aria-label={`Note ${proofPitchName(activeProofNote.pitch)}, finger ${activeProofNote.finger}`}>
-                    <StaffCue
-                      cue={proofCue}
-                      compact
-                      accentColor="#ef6a47"
-                      inkColor="#242237"
-                    />
-                  </div>
-                ) : null}
-                <div className="et-proof__steps" aria-hidden="true">
-                  {proofNotes.map((note, index) => {
-                    const done = index < proofProgress || status === 'proof-success';
-                    const active = !done && index === activeProofIndex;
-                    return (
-                      <span
-                        key={note.pitch + index}
-                        className={`et-proof__step-dot${done ? ' et-proof__step-dot--done' : active ? ' et-proof__step-dot--active' : ''}`}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div> : null}
           </div>
         </section>
       );

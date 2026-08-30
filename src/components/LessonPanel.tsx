@@ -12,6 +12,7 @@ export interface LessonPanelProps {
   disabled?: boolean;
   activeFinger?: 1 | 2 | 3 | 4 | 5;
   showHandLabel?: boolean;
+  className?: string;
 }
 
 /**
@@ -78,6 +79,7 @@ export function LessonPanel({
   disabled = false,
   activeFinger,
   showHandLabel = true,
+  className,
 }: LessonPanelProps) {
   const bothHands = hands.length > 1;
   const handLabel = bothHands
@@ -88,7 +90,7 @@ export function LessonPanel({
 
   return (
     <section
-      className="lp"
+      className={`lp ${className || ''}`.trim()}
       aria-label={`${keyName}, ${handLabel}${anchorNote ? `, start on ${anchorNote}` : ''}`}
     >
       <header className="lp__head">
