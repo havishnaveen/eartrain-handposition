@@ -76,8 +76,8 @@ if (!exerciseView.includes("status !== 'position-prompt' ? ' et-proof__layout--a
     !exerciseView.includes('<div className="et-proof__identity">')) {
   throw new Error('The hand tile must stay centered before Start and remain beside the task afterward.');
 }
-if (!exerciseView.includes('noteGlyphScale={64}')) {
-  throw new Error('Prove It noteheads are no longer enlarged independently of the card.');
+if (!exerciseView.includes('notationScale={1.28}')) {
+  throw new Error('The complete Prove It engraving is no longer proportionally enlarged.');
 }
 for (const layoutGuard of [
   'width: min(100%, 360px);',

@@ -31,6 +31,8 @@ export interface StaffCueProps {
   compact?: boolean;
   /** Overrides VexFlow's notehead size without changing the surrounding card. */
   noteGlyphScale?: number;
+  /** Zooms the complete engraving—staff, clef, notes, and annotations—together. */
+  notationScale?: number;
 }
 
 export interface StaffCueHandle {
@@ -253,6 +255,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     minimumTimelineBeats = 0,
     compact = false,
     noteGlyphScale = NOTE_GLYPH_SCALE,
+    notationScale = 1,
   },
   ref,
 ) {
@@ -262,6 +265,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
   const trailRef = useRef<SVGRectElement | null>(null);
   const successPitchKey = [...successPitches].sort().join('|');
   const resolvedNoteGlyphScale = Math.max(39, Math.min(68, noteGlyphScale));
+  const resolvedNotationScale = Math.max(1, Math.min(1.5, notationScale));
 
   useImperativeHandle(
     ref,
@@ -745,9 +749,13 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     const boundsRight = Math.max(canvasWidth, box.x + box.width);
     const viewBoxWidth = boundsRight - boundsLeft + boundsPadX * 2;
     const viewBoxHeight = box.height + BOUNDS_PAD_Y * 2;
+    const scaledViewBoxWidth = viewBoxWidth / resolvedNotationScale;
+    const scaledViewBoxHeight = viewBoxHeight / resolvedNotationScale;
+    const scaledViewBoxX = boundsLeft - boundsPadX + (viewBoxWidth - scaledViewBoxWidth) / 2;
+    const scaledViewBoxY = box.y - BOUNDS_PAD_Y + (viewBoxHeight - scaledViewBoxHeight) / 2;
     svg.setAttribute(
       'viewBox',
-      `${boundsLeft - boundsPadX} ${box.y - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
+      `${scaledViewBoxX} ${scaledViewBoxY} ${scaledViewBoxWidth} ${scaledViewBoxHeight}`,
     );
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     // Give the SVG an intrinsic size equal to its own viewBox (1 SVG unit =
@@ -778,7 +786,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       lineRef.current = null;
       trailRef.current = null;
     };
-  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats, resolvedNoteGlyphScale]);
+  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats, resolvedNoteGlyphScale, resolvedNotationScale]);
 
   return <div className="et-staff" ref={hostRef} />;
 });
