@@ -250,11 +250,11 @@ export function hasCredibleAcousticAttack(
   const candidate = lane === 'candidate';
 
   if (
-    peakRms < Math.max(0.00038, gate * (candidate ? 0.7 : 0.98)) ||
-    attackConfidence < (candidate ? 0.4 : 0.5) ||
+    peakRms < Math.max(0.0002, gate * (candidate ? 0.7 : 0.98)) ||
+    attackConfidence < (candidate ? 0.3 : 0.4) ||
     bandCoverage < 2 ||
-    stableFrames < (candidate ? 3 : 3) ||
-    consensus < (candidate ? 0.54 : 0.5) ||
+    stableFrames < (candidate ? 2 : 2) ||
+    consensus < (candidate ? 0.4 : 0.4) ||
     clarity < (candidate ? 0.26 : 0.25) ||
     frameRise < (candidate ? 0.965 : 0.96) ||
     novelty < (candidate ? 0.14 : 0.16)

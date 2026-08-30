@@ -485,17 +485,17 @@ export function timingLeniencyForLesson(
   const linear = clamp01((Math.max(1, lessonLevel) - 1) / (safeTotal - 1));
   const progress = linear * linear * (3 - 2 * linear);
   return {
-    onBeatWindow: mix(0.52, 0.36, progress),
+    onBeatWindow: mix(0.72, 0.52, progress),
     // Speaker-to-microphone and browser input latency shifts an otherwise
     // steady phrase as a block. Grade the intervals, not that fixed hardware
     // delay; a non-uniform or genuinely late rhythm still survives below.
-    startOffsetAllowance: mix(0.95, 0.70, progress),
+    startOffsetAllowance: mix(1.15, 0.90, progress),
     // A continuous curve with no plateau penalised even a dead-centre take:
     // ordinary microphone/onset uncertainty turned 5.0 into 4.6. Preserve a
     // small, lesson-aware full-credit region, then grade the residual error.
-    fullCreditOnsetWindow: mix(0.22, 0.16, progress),
-    fullCreditDurationWindow: mix(0.42, 0.28, progress),
-    zeroScoreWindow: mix(1.02, 0.78, progress),
+    fullCreditOnsetWindow: mix(0.35, 0.28, progress),
+    fullCreditDurationWindow: mix(0.60, 0.45, progress),
+    zeroScoreWindow: mix(1.42, 1.10, progress),
   };
 }
 
