@@ -1750,7 +1750,7 @@
 }
 .et-spatial__score-label span { color: var(--et-orange-deep); font-size: 10px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
 .et-spatial__score-label strong { font-size: 13px; line-height: 1.35; }
-.et-spatial__notation { min-width: 0; height: 250px; padding: 2px 18px 2px 4px; }
+.et-spatial__notation { min-width: 0; height: 166px; padding: 2px 18px 2px 4px; }
 .et-spatial__score--playing { border-color: rgba(239, 106, 71, .35); box-shadow: 0 0 0 4px rgba(239,106,71,.07); }
 .et-spatial__score--playing .et-spatial__score-label { animation: et-spatial-label 850ms ease-in-out infinite alternate; }
 
@@ -1826,11 +1826,11 @@
   box-shadow: 0 18px 42px rgba(53,44,104,.09);
 }
 .et-spatial__cue-card .et-spatial__notation {
-  height: 300px;
+  height: 215px;
   padding: 10px 24px 0;
 }
 .et-spatial__listen-passes {
-  min-height: 300px;
+  min-height: 215px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
@@ -1867,7 +1867,7 @@
 .et-spatial__chord-dots i:nth-child(3) { transform: translateY(-13px); }
 .et-spatial__finger-shape { color: #5b50b6; font-size: 25px; font-weight: 900; letter-spacing: .02em; }
 .et-spatial__ear-map {
-  min-height: 300px;
+  min-height: 215px;
   display: grid;
   grid-template-columns: minmax(125px, .72fr) minmax(80px, .48fr) minmax(180px, 1fr);
   align-items: center;
@@ -2142,16 +2142,14 @@
   position: relative;
   z-index: 2;
   width: min(100%, 920px);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-areas:
+    "identity task";
+  grid-template-columns: minmax(240px, 310px) minmax(380px, 1fr);
   align-items: center;
   justify-content: center;
+  gap: clamp(24px, 4vw, 44px);
   margin: 0 auto;
-}
-
-.et-proof__layout--ready {
-  grid-template-areas: "identity";
-  grid-template-columns: 1fr;
 }
 
 .et-proof__identity {
@@ -2166,8 +2164,9 @@
 }
 
 .et-proof__task {
+  grid-area: task;
   min-width: 0;
-  max-width: 500px; width: 100%;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   align-self: center;
@@ -2835,15 +2834,14 @@
   }
 
   .et-proof__identity {
-  grid-area: identity;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 0;
-  text-align: center;
-}
+    min-height: 0;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 0 20px;
+    border-left: 0;
+    border-bottom: none;
+    text-align: center;
+  }
 
   .et-hand-requirement { justify-content: center; }
 
@@ -2865,7 +2863,7 @@
   .et-spatial__score { min-height: 146px; grid-template-columns: 1fr; }
   .et-spatial__score-label { min-height: 42px; flex-direction: row; align-items: center; justify-content: space-between; padding: 8px 13px; }
   .et-spatial__score-label strong { font-size: 11px; }
-  .et-spatial__notation { height: 180px; padding: 0 8px; }
+  .et-spatial__notation { height: 120px; padding: 0 8px; }
   .et-spatial__tones { gap: 6px; }
   .et-spatial__tone { min-height: 76px; flex-direction: column; justify-content: center; gap: 5px; padding: 8px 5px; text-align: center; border-radius: 17px 17px 17px 6px; }
   .et-spatial__step-number { flex-basis: 26px; width: 26px; height: 26px; font-size: 11px; }
@@ -2877,7 +2875,7 @@
   .et-spatial__single-stage { min-height: 300px; }
   .et-spatial__intro .et-hand-badge { width: 160px; }
   .et-spatial__intro .et-hand-badge__icon { width: 104px; height: 104px; }
-  .et-spatial__cue-card .et-spatial__notation { height: 240px; padding: 5px 8px 0; }
+  .et-spatial__cue-card .et-spatial__notation { height: 170px; padding: 5px 8px 0; }
   .et-spatial__ear-map { min-height: 250px; grid-template-columns: 1fr; gap: 10px; padding: 18px; }
   .et-spatial__listen-passes { min-height: 270px; grid-template-columns: 1fr; gap: 8px; padding: 14px; }
   .et-spatial__listen-pass { min-height: 76px; padding: 10px; }

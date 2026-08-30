@@ -169,10 +169,3 @@
   .lp__start { transition: none; }
   .lp__start:hover:not(:disabled) { transform: none; }
 }
-
-.lp--integrated {
-  border: none;
-  background: transparent;
-  padding: 0;
-  max-width: 100%;
-}
