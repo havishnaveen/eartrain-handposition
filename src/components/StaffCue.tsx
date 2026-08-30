@@ -58,8 +58,8 @@ const KEY_ACCIDENTALS: Record<string, number> = {
 const CLEF_WIDTH = 62;
 const ACCIDENTAL_WIDTH = 14;
 const TIME_SIG_WIDTH = 30;
-const PER_BEAT = 62;
-const MIN_PER_NOTE = 48;
+const PER_BEAT = 40;
+const MIN_PER_NOTE = 30;
 const PER_BARLINE = 30;
 const MIN_STAVE_W = 260;
 /** Space for the final notehead, accidental, stem and finger annotation. */
@@ -338,8 +338,8 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     trailRef.current = null;
 
     const beatsPerBar = beatsPerBarOf(cue);
-    const perBeat = compact ? 44 : PER_BEAT;
-    const minPerNote = compact ? 38 : MIN_PER_NOTE;
+    const perBeat = compact ? 25 : PER_BEAT;
+    const minPerNote = compact ? 25 : MIN_PER_NOTE;
     const perBarline = compact ? 22 : PER_BARLINE;
     const minStaveWidth = compact ? 120 : MIN_STAVE_W;
     const noteRightGutter = compact ? 30 : NOTE_RIGHT_GUTTER;

@@ -1229,7 +1229,7 @@ export function PathwayRouter({
           <AnchorShiftCue
             ref={staffRef}
             cue={question.cue}
-            notationScale={1.65}
+            notationScale={2.3}
             shift={question.anchorShift}
             secondsPerBeat={60 / bpm}
             accentColor="#ef6a47"
@@ -1239,7 +1239,7 @@ export function PathwayRouter({
           <StaffCue
             ref={staffRef}
             cue={question.cue}
-            notationScale={1.65}
+            notationScale={2.3}
             accentColor="#ef6a47"
             inkColor="#242237"
             successPitches={
