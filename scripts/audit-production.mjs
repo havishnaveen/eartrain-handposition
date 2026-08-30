@@ -56,6 +56,11 @@ for (const engravingGuard of [
     throw new Error(`Professional fingering placement regressed: ${engravingGuard}`);
   }
 }
+const staffCueCss = readFileSync(new URL('components/staff-cue.css', sourceRoot), 'utf8');
+if (!staffCueCss.includes('.et-staff--scaled svg path') ||
+    !staffCueCss.includes('vector-effect: none;')) {
+  throw new Error('Scaled proof notation must scale staff and ledger-line stroke widths.');
+}
 const pathwayRouter = readFileSync(new URL('components/PathwayRouter.tsx', sourceRoot), 'utf8');
 if (!pathwayRouter.includes("return question.positionProof && !proofCompleted ? 'position-prompt' : 'prompt'")) {
   throw new Error('Per-drill position proof gate is no longer universal.');

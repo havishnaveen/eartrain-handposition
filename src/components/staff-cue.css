@@ -35,6 +35,12 @@
   vector-effect: non-scaling-stroke;
 }
 
+/* Prove It deliberately zooms the complete engraving. Its staff and ledger
+   lines must gain stroke weight with the clef, time signature, and notes. */
+.et-staff--scaled svg path {
+  vector-effect: none;
+}
+
 /* Scrubber. Injected into the SVG by StaffCue so it shares the notation's
    coordinate space — it scales with the staff and needs no unit conversion.
    No CSS transition: position is written every animation frame from the

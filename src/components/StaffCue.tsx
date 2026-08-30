@@ -788,7 +788,12 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     };
   }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats, resolvedNoteGlyphScale, resolvedNotationScale]);
 
-  return <div className="et-staff" ref={hostRef} />;
+  return (
+    <div
+      className={`et-staff${resolvedNotationScale > 1 ? ' et-staff--scaled' : ''}`}
+      ref={hostRef}
+    />
+  );
 });
 
 export default StaffCue;
