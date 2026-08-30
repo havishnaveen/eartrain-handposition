@@ -766,8 +766,6 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // 100%` (staff-cue.css) renders every exercise at the same true
     // engraving scale, only shrinking proportionally if content is wider
     // than the card can hold at all — never as a function of note count.
-    svg.setAttribute('width', String(viewBoxWidth));
-    svg.setAttribute('height', String(viewBoxHeight));
     // Renderer.resize() leaves 560px canvas dimensions inline. Inline styles
     // outrank the responsive stylesheet, so the cropped score kept a 560px
     // layout box and made short proof cards look enormously tall. The
