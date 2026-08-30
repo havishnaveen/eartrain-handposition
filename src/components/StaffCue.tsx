@@ -313,7 +313,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     const perBeat = compact ? 44 : PER_BEAT;
     const minPerNote = compact ? 38 : MIN_PER_NOTE;
     const perBarline = compact ? 22 : PER_BARLINE;
-    const minStaveWidth = compact ? 218 : MIN_STAVE_W;
+    const minStaveWidth = compact ? 120 : MIN_STAVE_W;
     const noteRightGutter = compact ? 30 : NOTE_RIGHT_GUTTER;
     const boundsPadX = compact ? 24 : BOUNDS_PAD_X;
     const maxTimelineWidth = Math.max(
@@ -492,7 +492,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         const noteStart = stave.getNoteStartX();
         const noteEnd = stave.getX() + stave.getWidth();
         const timelineEnd = noteEnd - noteRightGutter;
-        const formatWidth = Math.max(110, timelineEnd - noteStart);
+        const formatWidth = Math.max(compact ? 40 : 110, timelineEnd - noteStart);
 
         new Formatter().joinVoices([voice]).format([voice], formatWidth);
         const beams = Beam.generateBeams(staveNotes);
