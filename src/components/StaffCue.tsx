@@ -762,6 +762,13 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // than the card can hold at all — never as a function of note count.
     svg.setAttribute('width', String(viewBoxWidth));
     svg.setAttribute('height', String(viewBoxHeight));
+    // Renderer.resize() leaves 560px canvas dimensions inline. Inline styles
+    // outrank the responsive stylesheet, so the cropped score kept a 560px
+    // layout box and made short proof cards look enormously tall. The
+    // measured width/height attributes above are now the intrinsic size;
+    // remove only VexFlow's stale canvas styles so CSS can shrink normally.
+    svg.style.removeProperty('width');
+    svg.style.removeProperty('height');
     svg.setAttribute('role', 'img');
     svg.setAttribute('focusable', 'false');
 

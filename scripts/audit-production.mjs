@@ -50,6 +50,7 @@ if (!exerciseReport.includes('const AUTO_ADVANCE_MS = 15000')) {
 const staffCue = readFileSync(new URL('components/StaffCue.tsx', sourceRoot), 'utf8');
 for (const engravingGuard of [
   'glyph_font_scale: resolvedNoteGlyphScale',
+  "svg.style.removeProperty('height')",
 ]) {
   if (!staffCue.includes(engravingGuard)) {
     throw new Error(`Professional fingering placement regressed: ${engravingGuard}`);
@@ -59,6 +60,11 @@ const pathwayRouter = readFileSync(new URL('components/PathwayRouter.tsx', sourc
 if (!pathwayRouter.includes("return question.positionProof && !proofCompleted ? 'position-prompt' : 'prompt'")) {
   throw new Error('Per-drill position proof gate is no longer universal.');
 }
+const app = readFileSync(new URL('App.tsx', sourceRoot), 'utf8');
+if (!app.includes("import DevLessonJumper from './dev/DevLessonJumper'") ||
+    !app.includes('<DevLessonJumper baseInitialLesson={initialLesson}>')) {
+  throw new Error('The lesson jumper is no longer mounted around PathwayRouter.');
+}
 const exerciseView = readFileSync(new URL('components/ExerciseView.tsx', sourceRoot), 'utf8');
 if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
   throw new Error('Spatial chord rendering can bypass the universal position gate.');
@@ -66,17 +72,19 @@ if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
 if (!exerciseView.includes("beatLabel === 'SHIFT HAND'")) {
   throw new Error('The hand-shift cue regressed to an oversized generic beat label.');
 }
-if (!exerciseView.includes("status === 'position-prompt' ? <div className=\"et-proof__identity\">")) {
-  throw new Error('The centered Prove It prompt must be the only card mounted before Start.');
+if (!exerciseView.includes("status !== 'position-prompt' ? ' et-proof__layout--active' : ''") ||
+    !exerciseView.includes('<div className="et-proof__identity">')) {
+  throw new Error('The hand tile must stay centered before Start and remain beside the task afterward.');
 }
 if (!exerciseView.includes('noteGlyphScale={64}')) {
   throw new Error('Prove It noteheads are no longer enlarged independently of the card.');
 }
 for (const layoutGuard of [
-  'width: min(100%, 720px);',
   'width: min(100%, 360px);',
-  'max-width: 320px;',
+  'width: min(100%, 760px);',
+  'max-width: 360px;',
   'grid-template-areas: "stage";',
+  'grid-template-areas: "identity task";',
   'min-height: 0;',
 ]) {
   if (!analysisCss.includes(layoutGuard)) {
