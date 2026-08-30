@@ -1759,7 +1759,7 @@
 }
 .et-spatial__score-label span { color: var(--et-orange-deep); font-size: 10px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
 .et-spatial__score-label strong { font-size: 13px; line-height: 1.35; }
-.et-spatial__notation { min-width: 0; height: 166px; padding: 2px 18px 2px 4px; }
+.et-spatial__notation { min-width: 0; height: 200px; padding: 2px 18px 2px 4px; }
 .et-spatial__score--playing { border-color: rgba(239, 106, 71, .35); box-shadow: 0 0 0 4px rgba(239,106,71,.07); }
 .et-spatial__score--playing .et-spatial__score-label { animation: et-spatial-label 850ms ease-in-out infinite alternate; }
 
@@ -1835,7 +1835,7 @@
   box-shadow: 0 18px 42px rgba(53,44,104,.09);
 }
 .et-spatial__cue-card .et-spatial__notation {
-  height: 166px;
+  height: 200px;
   padding: 2px 18px;
 }
 .et-spatial__listen-passes {

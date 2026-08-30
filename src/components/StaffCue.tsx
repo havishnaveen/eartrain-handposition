@@ -265,7 +265,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
   const trailRef = useRef<SVGRectElement | null>(null);
   const successPitchKey = [...successPitches].sort().join('|');
   const resolvedNoteGlyphScale = Math.max(39, Math.min(68, noteGlyphScale));
-  const resolvedNotationScale = Math.max(1, Math.min(1.5, notationScale));
+  const resolvedNotationScale = Math.max(1, Math.min(2.5, notationScale));
 
   useImperativeHandle(
     ref,
@@ -462,7 +462,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
             keys: cueNote.keys,
             duration: cueNote.duration,
             clef: resolvedClef,
-            glyph_font_scale: resolvedNoteGlyphScale,
+            
           };
           const note = new StaveNote(noteOptions);
 

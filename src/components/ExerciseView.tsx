@@ -645,7 +645,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   <div className="et-proof__mini-score" aria-label={`Note ${proofPitchName(activeProofNote.pitch)}, finger ${activeProofNote.finger}`}>
                     <StaffCue
                       cue={proofCue}
-                      notationScale={1.28}
+                      notationScale={1.65}
                       accentColor="#ef6a47"
                       inkColor="#242237"
                     />
