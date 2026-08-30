@@ -1458,6 +1458,14 @@
   animation: et-beat 620ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.et-record__beat--shift {
+  min-width: 154px;
+  padding: 0 18px;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
 .et-record__side {
   display: flex;
   align-items: center;
@@ -1493,6 +1501,7 @@
 @media (max-width: 760px) {
   .et-record { gap: 14px; }
   .et-record__beat { min-width: 60px; height: 60px; font-size: 30px; }
+  .et-record__beat--shift { min-width: 120px; padding: 0 12px; font-size: 14px; }
   .et-record__mic { width: 46px; height: 46px; }
 }
 
@@ -1826,8 +1835,8 @@
   box-shadow: 0 18px 42px rgba(53,44,104,.09);
 }
 .et-spatial__cue-card .et-spatial__notation {
-  height: 215px;
-  padding: 10px 24px 0;
+  height: 166px;
+  padding: 2px 18px;
 }
 .et-spatial__listen-passes {
   min-height: 215px;
@@ -2141,19 +2150,19 @@
 .et-proof__layout {
   position: relative;
   z-index: 2;
-  width: min(100%, 920px);
+  width: min(100%, 720px);
   display: grid;
-  grid-template-areas:
-    "identity task";
-  grid-template-columns: minmax(240px, 310px) minmax(380px, 1fr);
-  align-items: center;
-  justify-content: center;
-  gap: clamp(24px, 4vw, 44px);
+  /* Prove It has two sequential states. Each state occupies this same center
+     cell; the prompt and notation card never reserve space for one another. */
+  grid-template-areas: "stage";
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
   margin: 0 auto;
 }
 
 .et-proof__identity {
-  grid-area: identity;
+  grid-area: stage;
+  width: min(100%, 360px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2161,16 +2170,25 @@
   gap: 16px;
   padding: 0;
   text-align: center;
+  justify-self: center;
 }
 
 .et-proof__task {
-  grid-area: task;
+  grid-area: stage;
   min-width: 0;
   max-width: 320px;
   display: flex;
   flex-direction: column;
   align-self: center;
+  justify-self: center;
+  height: fit-content;
   gap: 12px;
+  animation: et-proof-task-in 280ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes et-proof-task-in {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .et-proof__card {
@@ -2188,6 +2206,11 @@
   box-sizing: border-box;
 }
 
+.et-proof--proving,
+.et-proof--proof-success {
+  min-height: 0;
+  padding-block: clamp(24px, 4vw, 40px);
+}
 .et-proof__eyebrow {
   margin: 0;
   color: #c74a27;
@@ -2811,6 +2834,10 @@
 }
 
 @media (max-width: 900px) {
+  .et-proof__halo {
+    inset: 58% auto auto 50%;
+    transform: translate(-50%, -50%);
+  }
   .et-spatial { min-height: 620px; }
   .et-spatial__lesson { grid-template-columns: 150px minmax(0, 1fr); gap: 14px; }
   .et-spatial__hand .et-hand-badge { width: 126px; }
@@ -2820,31 +2847,7 @@
   .et-spatial__tone { padding: 10px 8px; }
   .et-spatial__tone-copy strong { font-size: 25px; }
 
-  .et-proof__halo {
-    inset: 58% auto auto 50%;
-    transform: translate(-50%, -50%);
-  }
-
-  .et-proof__layout {
-    grid-template-areas:
-      "identity"
-      "task";
-    grid-template-columns: 1fr;
-    gap: 28px;
-  }
-
-  .et-proof__identity {
-    min-height: 0;
-    align-items: center;
-    gap: 20px;
-    padding: 16px 0 20px;
-    border-left: 0;
-    border-bottom: none;
-    text-align: center;
-  }
-
   .et-hand-requirement { justify-content: center; }
-
   .et-proof__mic-message { text-align: center; }
   .et-orientation-tip { margin-inline: auto; }
   .et-proof__keys { width: 100%; margin-inline: auto; }
@@ -2875,7 +2878,7 @@
   .et-spatial__single-stage { min-height: 300px; }
   .et-spatial__intro .et-hand-badge { width: 160px; }
   .et-spatial__intro .et-hand-badge__icon { width: 104px; height: 104px; }
-  .et-spatial__cue-card .et-spatial__notation { height: 170px; padding: 5px 8px 0; }
+  .et-spatial__cue-card .et-spatial__notation { height: 132px; padding: 0 8px; }
   .et-spatial__ear-map { min-height: 250px; grid-template-columns: 1fr; gap: 10px; padding: 18px; }
   .et-spatial__listen-passes { min-height: 270px; grid-template-columns: 1fr; gap: 8px; padding: 14px; }
   .et-spatial__listen-pass { min-height: 76px; padding: 10px; }
@@ -2924,6 +2927,7 @@
   .et-spatial__tone--active,
   .et-proof__halo span,
   .et-proof__key--active,
+  .et-proof__task,
   .et-memory-hidden { animation: none; }
 }
 .et-sidebar-warning {

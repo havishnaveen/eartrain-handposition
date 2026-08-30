@@ -2905,7 +2905,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           const key = moving ? 'move' : `p${Math.floor(writtenBeatPosition)}`;
           if (key !== lastBeatKeyRef.current) {
             lastBeatKeyRef.current = key;
-            safeSet(setBeatLabel, moving ? 'MOVE' : String(beatInBar + 1));
+            safeSet(setBeatLabel, moving ? 'SHIFT HAND' : String(beatInBar + 1));
           }
 
           if (now >= recordEndRef.current) {

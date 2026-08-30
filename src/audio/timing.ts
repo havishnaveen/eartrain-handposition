@@ -578,7 +578,7 @@ function allowancesFor(expectedCount: number) {
   };
 }
 
-type AlignmentOperation =
+export type PitchAlignmentOperation =
   | { kind: 'match'; expectedIndex: number; detectedIndex: number }
   | { kind: 'miss'; expectedIndex: number }
   | { kind: 'extra'; detectedIndex: number };
@@ -586,9 +586,9 @@ type AlignmentOperation =
 interface AlignmentCell {
   /** Insertions + deletions needed from this point onward. */
   edits: number;
-  /** Used only to choose between equally accurate repeated-note alignments. */
-  timingError: number;
-  operation: AlignmentOperation['kind'] | null;
+  /** Used only to honor existing detector slot hints on repeated notes. */
+  slotHintCost: number;
+  operation: PitchAlignmentOperation['kind'] | null;
 }
 
 /**
@@ -598,38 +598,34 @@ interface AlignmentCell {
  * cursor was one pitch behind, every later correct note became an "extra".
  * This is a minimum-edit alignment (insertions and deletions, exact pitch
  * matches only), so a local miss stays local. When repeated pitches create
- * multiple equally accurate alignments, written-beat timing is a tie-breaker
- * rather than a grading input; it can never buy or remove a pitch match.
+ * multiple equally accurate alignments, an existing detector slot hint is the
+ * tie-breaker. The clock is deliberately absent: rhythm can never buy, remove,
+ * or redirect a pitch match.
  */
-function alignSequences(
-  expectedMidi: number[],
-  detected: DetectedNote[],
+export function alignPitchSequences(
+  expectedMidi: readonly number[],
+  detected: readonly Pick<DetectedNote, 'midi' | 'expectedSlot'>[],
   norm: (midi: number) => number,
-  options: GradeOptions,
-): AlignmentOperation[] {
+): PitchAlignmentOperation[] {
   const expectedCount = expectedMidi.length;
   const detectedCount = detected.length;
-  const pitchedPlan = options.plan?.notes.filter((note) => !note.isRest) ?? [];
-
-  const timingTieBreak = (expectedIndex: number, detectedIndex: number): number => {
-    const { plan, playStartTime } = options;
-    if (!plan || playStartTime === undefined) return 0;
-    const beat = pitchedPlan[expectedIndex]?.beat ?? expectedIndex;
-    const expectedTime = playStartTime + beat * plan.secondsPerBeat;
-    return Math.abs(detected[detectedIndex].time - expectedTime);
+  const slotTieBreak = (expectedIndex: number, detectedIndex: number): number => {
+    const hintedSlot = detected[detectedIndex].expectedSlot;
+    if (hintedSlot === undefined) return 0;
+    return hintedSlot === expectedIndex ? 0 : 1;
   };
 
   const table: AlignmentCell[][] = Array.from(
     { length: expectedCount + 1 },
     () => Array.from({ length: detectedCount + 1 }, () => ({
       edits: Number.POSITIVE_INFINITY,
-      timingError: Number.POSITIVE_INFINITY,
+      slotHintCost: Number.POSITIVE_INFINITY,
       operation: null,
     })),
   );
-  table[expectedCount][detectedCount] = { edits: 0, timingError: 0, operation: null };
+  table[expectedCount][detectedCount] = { edits: 0, slotHintCost: 0, operation: null };
 
-  const priority: Record<AlignmentOperation['kind'], number> = {
+  const priority: Record<PitchAlignmentOperation['kind'], number> = {
     match: 0,
     miss: 1,
     extra: 2,
@@ -648,7 +644,7 @@ function alignSequences(
         const next = table[expectedIndex + 1][detectedIndex + 1];
         candidates.push({
           edits: next.edits,
-          timingError: next.timingError + timingTieBreak(expectedIndex, detectedIndex),
+          slotHintCost: next.slotHintCost + slotTieBreak(expectedIndex, detectedIndex),
           operation: 'match',
         });
       }
@@ -656,7 +652,7 @@ function alignSequences(
         const next = table[expectedIndex + 1][detectedIndex];
         candidates.push({
           edits: next.edits + 1,
-          timingError: next.timingError,
+          slotHintCost: next.slotHintCost,
           operation: 'miss',
         });
       }
@@ -664,21 +660,21 @@ function alignSequences(
         const next = table[expectedIndex][detectedIndex + 1];
         candidates.push({
           edits: next.edits + 1,
-          timingError: next.timingError,
+          slotHintCost: next.slotHintCost,
           operation: 'extra',
         });
       }
 
       candidates.sort((a, b) =>
         a.edits - b.edits ||
-        a.timingError - b.timingError ||
+        a.slotHintCost - b.slotHintCost ||
         priority[a.operation ?? 'extra'] - priority[b.operation ?? 'extra'],
       );
       table[expectedIndex][detectedIndex] = candidates[0];
     }
   }
 
-  const operations: AlignmentOperation[] = [];
+  const operations: PitchAlignmentOperation[] = [];
   let expectedIndex = 0;
   let detectedIndex = 0;
   while (expectedIndex < expectedCount || detectedIndex < detectedCount) {
@@ -1178,7 +1174,7 @@ export function gradeSequence(
   const matches: { expectedIndex: number; time: number; note: DetectedNote }[] = [];
   const accepted: DetectedNote[] = [];
 
-  const alignment = alignSequences(expectedMidi, detected, norm, options);
+  const alignment = alignPitchSequences(expectedMidi, detected, norm);
   const expectedIndexByDetected = new Map<number, number>();
   const missedExpectedIndices: number[] = [];
   alignment.forEach((operation) => {
@@ -1290,11 +1286,21 @@ export function gradeSequence(
   // must not also lower Pitch after every written pitch was subsequently
   // played in order. Sustained wrong keys and genuine repeated attacks still
   // reduce pitch precision, including the severe note-flood case.
-  const pitchErrorCount = hard + hesitations * 0.35 + playedRepeatExtras;
+  // An occasional re-strike of an otherwise correct key is a timing/
+  // cleanliness problem, not evidence that the student chose the wrong pitch.
+  // A note flood remains a different performance altogether and must still be
+  // visible in Pitch, so only repeats beyond a phrase-length allowance enter
+  // pitch precision.
+  const excessiveRepeatPitchErrors = Math.max(
+    0,
+    playedRepeatExtras - Math.max(1, Math.floor(expectedCount * 0.25)),
+  );
+  const pitchErrorCount = hard + hesitations * 0.35 + excessiveRepeatPitchErrors;
 
   const playedNames = detected.map((d) => midiToName(d.midi));
   const rhythm = buildRhythm(matches, options);
   const transition = buildTransition(matches, options);
+  const measuredTransition = transition?.measured ? transition : null;
 
   /* --- Scoring -------------------------------------------------------- */
 
@@ -1424,7 +1430,7 @@ export function gradeSequence(
       rhythm.durationEvaluated < 2 ||
       rhythm.durationAccuracy >= 0.7
     ) &&
-    (!transition || (transition.measured && transition.score === 5))
+    (!measuredTransition || measuredTransition.score === 5)
   );
 
   // `gradeSequence` is also used by lightweight integrations that omit a
@@ -1454,9 +1460,9 @@ export function gradeSequence(
       : timingMastery
         ? 5
         : baseTimingScore === null
-          ? transition?.score ?? inferredPulseScore
-          : transition
-            ? clamp5(baseTimingScore * 0.65 + transition.score * 0.35)
+          ? measuredTransition?.score ?? inferredPulseScore
+          : measuredTransition
+            ? clamp5(baseTimingScore * 0.65 + measuredTransition.score * 0.35)
             : baseTimingScore;
 
   // Cleanliness: penalises only what the student actually did. Echoes and
@@ -1558,7 +1564,7 @@ export function gradeSequence(
   } else if (!timingPassed) {
     detail = 'The notes were right, but too many attacks missed the beat.';
   } else if (transition && !transition.measured) {
-    detail = 'The notes around the position change were not both heard, so the hand shift could not be measured.';
+    detail = 'Shift timing was not measured from one boundary note; the rest of the exercise was graded normally.';
   } else if (transition && transition.score < 1.5) {
     detail = `The position change took ${transition.transitionSeconds?.toFixed(2)} seconds. Prepare the landing shape before you move.`;
   } else if (significantExtraCount >= Math.max(3, expectedCount)) {

@@ -52,6 +52,10 @@ too room-dependent for a reliable entry exercise.
 
 Routing rules:
 
+Lesson 14's G-to-D shift drills use two independent entry gates in order: G
+Major first, then D Major. Passing one position never substitutes for proving
+the other before the shift begins.
+
 1. `coreProblems` are valid reasons to assign the lesson directly.
 2. `supportingProblems` describe useful reinforcement but rank behind a core
    intervention.

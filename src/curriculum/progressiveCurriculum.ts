@@ -6,6 +6,7 @@ import type {
   Hand,
   LessonDefinition,
   PhaseId,
+  PositionProofSpec,
   Question,
   RemediationProblem,
   SpatialChordSpec,
@@ -102,6 +103,8 @@ interface LessonRecipe {
   /** Explicit lesson rung; each of the four drills rises slightly from here. */
   difficultyBase: number;
   shiftPairs?: readonly (readonly [PositionTemplate, PositionTemplate])[];
+  /** Require independent source and destination gates before a shift drill. */
+  dualShiftProof?: boolean;
   /** Optional ear-training reps interleaved with this lesson's tactile work. */
   spatialChord?: SpatialChordRecipe;
 }
@@ -285,6 +288,7 @@ const LESSONS: readonly LessonRecipe[] = [
     meters: [4], showKeySignature: true, tempoEasy: 13, tempoHard: 11.5,
     drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.47,
     shiftPairs: [[G, D]],
+    dualShiftProof: true,
   },
   {
     id: 'c15-shift-d-to-a', index: 15, phase: 4, phaseLabel: 'Anchor and shift',
@@ -591,6 +595,9 @@ export const CURRICULUM_BLUEPRINT = LESSONS.map((lesson) => {
     coreProblems: [...intervention.coreProblems],
     problemTags: interventionProblems(intervention),
     drillPurposes: [...intervention.drillPurposes] as [string, string, string, string],
+    positionProofSequence: lesson.dualShiftProof
+      ? (lesson.shiftPairs?.[0] ?? []).map((position) => `${position.id} Major`)
+      : [],
   };
 });
 
@@ -683,6 +690,82 @@ function scientificToVex(pitch: string): string {
   const match = /^([A-G])([#b]?)(-?\d+)$/.exec(pitch);
   if (!match) return 'c/4';
   return `${match[1].toLowerCase()}${match[2]}/${match[3]}`;
+}
+
+function positionProofForPosition(position: Position, hand: Hand): PositionProofSpec {
+  const displayName = position.template.id === 'F#' ? 'F-sharp' : position.template.id;
+  const fingers = hand === 'right' ? ([1, 3, 5] as const) : ([5, 3, 1] as const);
+  return {
+    positionName: `${displayName} Major`,
+    hand,
+    proofNotes: [0, 2, 4].map((degree, index) => ({
+      pitch: position.sci[degree],
+      finger: fingers[index],
+    })) as PositionProofSpec['proofNotes'],
+    requireHeld: false,
+    acceptWindowMs: 5500,
+  };
+}
+
+function vexToScientificPitch(key: string): string | null {
+  const match = /^([a-g])([#b]?)\/(-?\d+)$/i.exec(key);
+  if (!match) return null;
+  return `${match[1].toUpperCase()}${match[2]}${match[3]}`;
+}
+
+/** Attach one deterministic position check without replacing the real drill. */
+function withPositionProof(question: Question, preferredHand: Hand): Question {
+  if (question.positionProof) return question;
+
+  const hand = question.handScope === 'left' ? 'left' : preferredHand;
+  const staff = question.cue.staves.find((candidate) => candidate.hand === hand)
+    ?? question.cue.staves[0];
+  const writtenPitches = staff?.notes.flatMap((note) =>
+    note.duration.endsWith('r')
+      ? []
+      : note.keys.map(vexToScientificPitch).filter((pitch): pitch is string => pitch !== null)
+  ) ?? [];
+  // Chord-by-ear must not leak its unknown middle tone in the preceding
+  // position check. Use root, adjacent key, and outer fifth as a neutral hand
+  // warm-up; the real chord quality remains something the student hears.
+  const spatialWarmup = question.spatialChord
+    ? [
+        question.spatialChord.rootPitch,
+        transposePitch(question.spatialChord.rootPitch, 2),
+        transposePitch(question.spatialChord.rootPitch, 7),
+      ]
+    : null;
+  const sourcePitches = spatialWarmup
+    ?? (writtenPitches.length > 0 ? writtenPitches : question.expectedSequence);
+  const uniquePitches = [...new Set(sourcePitches)]
+    .sort((a, b) => localPitchToMidi(a) - localPitchToMidi(b));
+  const fallbackRoot = uniquePitches[0] ?? question.expectedSequence[0] ?? 'C4';
+  while (uniquePitches.length < 3) {
+    uniquePitches.push(transposePitch(fallbackRoot, uniquePitches.length === 1 ? 4 : 7));
+  }
+  const middleIndex = Math.floor((uniquePitches.length - 1) / 2);
+  const anchors = [
+    uniquePitches[0],
+    uniquePitches[middleIndex],
+    uniquePitches[uniquePitches.length - 1],
+  ] as [string, string, string];
+  const fingers = question.spatialChord
+    ? hand === 'right' ? ([1, 2, 5] as const) : ([5, 4, 1] as const)
+    : hand === 'right' ? ([1, 3, 5] as const) : ([5, 3, 1] as const);
+  const positionName = question.spatialChord
+    ? `${question.spatialChord.rootPitch.replace(/-?\d+$/, '')} Position`
+    : question.positionLabel
+        .replace(/\s+[—→].*$/, '')
+        .replace(/\s+\([^)]*\)$/, '')
+        .trim();
+  const positionProof: PositionProofSpec = {
+    positionName,
+    hand,
+    proofNotes: anchors.map((pitch, index) => ({ pitch, finger: fingers[index] })) as PositionProofSpec['proofNotes'],
+    requireHeld: false,
+    acceptWindowMs: 5500,
+  };
+  return { ...question, positionProof };
 }
 
 function chordPitches(rootPitch: string, quality: ChordQuality): [string, string, string] {
@@ -1178,7 +1261,7 @@ function questionFor(
     const waitSeconds = lesson.index === 15 ? 5 : lesson.index === 16 ? 3.5 : 2;
     const stagedReveal = lesson.index >= 15;
 
-    return {
+    const shiftQuestion = withPositionProof({
       id: `${lesson.id}#${ordinal}`,
       conceptId: lesson.id,
       exerciseMode: 'anchor-shift',
@@ -1227,6 +1310,17 @@ function questionFor(
           ? { timedShift: { waitSeconds, revealSecond: true } }
           : {}),
       },
+    }, hand);
+    if (!lesson.dualShiftProof) return shiftQuestion;
+
+    const positionProofs = [
+      positionProofForPosition(from, hand),
+      positionProofForPosition(to, hand),
+    ] as const;
+    return {
+      ...shiftQuestion,
+      positionProof: positionProofs[0],
+      positionProofs,
     };
   }
 
@@ -1293,11 +1387,16 @@ function questionFor(
     const standardContour = extendLength
       ? [...contour, ...continuation].slice(0, notesPerSystem * 2)
       : contour;
-    return twoHandStandardQuestion(
-      lesson, position, standardContour, beatsPerBar, ordinal, materialIndex,
+    const rightOctave = cyclePick(
+      lesson.rightOctaves,
+      Math.floor(localRep / lesson.positions.length),
+    );
+    const rightPosition = buildPosition(positionTemplate, rightOctave);
+    return withPositionProof(twoHandStandardQuestion(
+      lesson, rightPosition, standardContour, beatsPerBar, ordinal, materialIndex,
       fixedDifficulty, mode, rand, modeDifficulty,
       extendLength ? 2 : undefined,
-    );
+    ), hand);
   }
 
   const notes: CueNote[] = contour.map((degree, index) => ({

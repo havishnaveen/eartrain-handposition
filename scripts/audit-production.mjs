@@ -1,5 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 
 const dist = new URL('../dist/', import.meta.url);
 const indexPath = new URL('index.html', dist);
@@ -30,25 +29,8 @@ for (const vendor of [
   if (!existsSync(new URL(vendor, dist))) throw new Error(`Piano transcription vendor is missing: /${vendor}`);
 }
 
-const scripts = readdirSync(new URL('assets/', dist))
-  .filter((name) => name.endsWith('.js'))
-  .map((name) => readFileSync(join(new URL('assets/', dist).pathname, name), 'utf8'))
-  .join('\n');
-
-for (const required of ['DEV — Lesson', 'Jump to next lesson']) {
-  if (!scripts.includes(required)) throw new Error(`Lesson navigation missing from production: ${required}`);
-}
-
 const sourceRoot = new URL('../src/', import.meta.url);
 const analysisCss = readFileSync(new URL('components/exercise.css', sourceRoot), 'utf8');
-for (const required of [
-  '.et-analysis__scan { animation: et-analysis-scan',
-  '.et-analysis__progress i { transition: none;',
-]) {
-  if (!analysisCss.includes(required)) {
-    throw new Error(`Reduced-motion grading indicator can freeze: ${required}`);
-  }
-}
 
 const scoreAnalysis = readFileSync(new URL('audio/scoreAnalysis.ts', sourceRoot), 'utf8');
 if (!scoreAnalysis.includes('const ANALYSIS_TIMEOUT_MS = 2_000')) {
@@ -66,7 +48,9 @@ if (!exerciseReport.includes('const AUTO_ADVANCE_MS = 15000')) {
   throw new Error('Next Drill countdown must remain at 15 seconds.');
 }
 const staffCue = readFileSync(new URL('components/StaffCue.tsx', sourceRoot), 'utf8');
-for (const engravingGuard of ["setFont('Inter, Roboto, sans-serif', 12", 'setXShift(9)']) {
+for (const engravingGuard of [
+  'glyph_font_scale: resolvedNoteGlyphScale',
+]) {
   if (!staffCue.includes(engravingGuard)) {
     throw new Error(`Professional fingering placement regressed: ${engravingGuard}`);
   }
@@ -75,8 +59,32 @@ const pathwayRouter = readFileSync(new URL('components/PathwayRouter.tsx', sourc
 if (!pathwayRouter.includes("return question.positionProof && !proofCompleted ? 'position-prompt' : 'prompt'")) {
   throw new Error('Per-drill position proof gate is no longer universal.');
 }
+const exerciseView = readFileSync(new URL('components/ExerciseView.tsx', sourceRoot), 'utf8');
+if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
+  throw new Error('Spatial chord rendering can bypass the universal position gate.');
+}
+if (!exerciseView.includes("beatLabel === 'SHIFT HAND'")) {
+  throw new Error('The hand-shift cue regressed to an oversized generic beat label.');
+}
+if (!exerciseView.includes("status === 'position-prompt' ? <div className=\"et-proof__identity\">")) {
+  throw new Error('The centered Prove It prompt must be the only card mounted before Start.');
+}
+if (!exerciseView.includes('noteGlyphScale={64}')) {
+  throw new Error('Prove It noteheads are no longer enlarged independently of the card.');
+}
+for (const layoutGuard of [
+  'width: min(100%, 720px);',
+  'width: min(100%, 360px);',
+  'max-width: 320px;',
+  'grid-template-areas: "stage";',
+  'min-height: 0;',
+]) {
+  if (!analysisCss.includes(layoutGuard)) {
+    throw new Error(`Stable compact Prove It layout regressed: ${layoutGuard}`);
+  }
+}
 
 const redirects = readFileSync(new URL('_redirects', dist), 'utf8').trim();
 if (redirects !== '/* /index.html 200') throw new Error('SPA fallback is missing from the build.');
 
-console.log('Production audit passed: metadata, assets, SPA fallback, and lesson navigation.');
+console.log('Production audit passed: metadata, assets, SPA fallback, and exercise safeguards.');

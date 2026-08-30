@@ -32,6 +32,7 @@ import {
 } from '../curriculum/telemetry';
 import type { AttemptRecord } from '../curriculum/telemetry';
 import type { Question } from '../curriculum/types';
+import type { PositionProofSpec } from '../curriculum/types';
 import { useDrillAudio } from '../audio/useDrillAudio';
 import type { RecognitionDiagnostics } from '../audio/useDrillAudio';
 import {
@@ -153,6 +154,8 @@ export interface PathwayState {
   repeatQuestion: boolean;
   /** True once this exact generated question has passed its position gate. */
   proofCompleted: boolean;
+  /** Zero-based gate within Question.positionProofs. */
+  proofIndex: number;
   ordinal: number;
 
   difficulty: number;
@@ -211,6 +214,14 @@ export function initialStatusFor(
   proofCompleted = false,
 ): ExerciseStatus {
   return question.positionProof && !proofCompleted ? 'position-prompt' : 'prompt';
+}
+
+export function positionProofsForQuestion(question: Question): readonly PositionProofSpec[] {
+  return question.positionProofs?.length
+    ? question.positionProofs
+    : question.positionProof
+      ? [question.positionProof]
+      : [];
 }
 
 function difficultyNudgeFor(
@@ -274,6 +285,7 @@ export function createInitialPathwayState({
     performedNotes: [],
     repeatQuestion: false,
     proofCompleted: initialProofCompleted,
+    proofIndex: 0,
     ordinal: 0,
     difficulty: current.difficulty,
     current,
@@ -301,9 +313,13 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
         : state;
 
     case 'PROOF_SUCCESS':
-      return action.questionId === state.current.id && state.status === 'proving'
-        ? { ...state, status: 'proof-success', proofCompleted: true }
-        : state;
+      if (action.questionId !== state.current.id || state.status !== 'proving') return state;
+      return {
+        ...state,
+        status: 'proof-success',
+        proofCompleted:
+          state.proofIndex >= positionProofsForQuestion(state.current).length - 1,
+      };
 
     case 'PROOF_CANCEL':
       return action.questionId === state.current.id && state.status === 'proving'
@@ -311,9 +327,16 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
         : state;
 
     case 'PROOF_UNLOCK':
-      return action.questionId === state.current.id && state.status === 'proof-success'
-        ? { ...state, status: 'prompt' }
-        : state;
+      if (action.questionId !== state.current.id || state.status !== 'proof-success') return state;
+      if (state.proofIndex + 1 < positionProofsForQuestion(state.current).length) {
+        return {
+          ...state,
+          status: 'position-prompt',
+          proofIndex: state.proofIndex + 1,
+          proofCompleted: false,
+        };
+      }
+      return { ...state, status: 'prompt', proofCompleted: true };
 
     case 'CHORD_START':
       return action.questionId === state.current.id &&
@@ -474,6 +497,7 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
           ...base,
           status: initialStatusFor(state.current, false),
           proofCompleted: false,
+          proofIndex: 0,
           attempt: state.attempt + 1,
         };
       }
@@ -524,6 +548,7 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
           difficulty: current.difficulty,
           current,
           proofCompleted: false,
+          proofIndex: 0,
         };
       }
 
@@ -544,6 +569,7 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
         difficulty: current.difficulty,
         current,
         proofCompleted: false,
+        proofIndex: 0,
       };
     }
 
@@ -602,6 +628,8 @@ export function PathwayRouter({
   );
   const concept = getConcept(state.lesson);
   const question = state.current;
+  const activePositionProof =
+    positionProofsForQuestion(question)[state.proofIndex] ?? question.positionProof;
   const difficultyNudge = difficultyNudgeFor(
     state.lesson,
     question.positionLabel,
@@ -864,7 +892,8 @@ export function PathwayRouter({
       return;
     }
 
-    if (active.positionProof && state.status === 'position-prompt') {
+    const activeProof = positionProofsForQuestion(active)[state.proofIndex] ?? active.positionProof;
+    if (activeProof && state.status === 'position-prompt') {
       if (proofStartingRef.current) return;
       proofStartingRef.current = true;
       const questionId = active.id;
@@ -873,7 +902,7 @@ export function PathwayRouter({
       // ready. Until then the prompt stays visible and the requesting mic
       // state disables Start, so the highlighted first note never invites an
       // attack during calibration.
-      void beginProofRef.current(active.positionProof)
+      void beginProofRef.current(activeProof)
         .then((started) => {
           proofStartingRef.current = false;
           if (!started && activeProofQuestionIdRef.current === questionId) {
@@ -920,7 +949,7 @@ export function PathwayRouter({
     }
 
     startActualDrill(active.id);
-  }, [bpm, clearMemoryTimers, orientationNotice, startActualDrill, state.status]);
+  }, [bpm, clearMemoryTimers, orientationNotice, startActualDrill, state.proofIndex, state.status]);
 
   // Lets a student mid-search re-hear the chord demo without losing the
   // lesson — e.g. after a CDN hiccup left them listening for a sound that
@@ -1159,7 +1188,7 @@ export function PathwayRouter({
         status={state.status}
         instruction={question.instruction}
         exerciseMode={question.exerciseMode}
-        positionProof={question.positionProof}
+        positionProof={activePositionProof}
         handScope={question.handScope}
         blindMemory={question.blindMemory}
         anchorShift={question.anchorShift}

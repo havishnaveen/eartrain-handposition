@@ -56,6 +56,7 @@ try {
     scrubberBoundsFromOnsets,
     shiftRegionFromOnsets,
     splitNotesIntoSystems,
+    recommendedClefForStaff,
   } = await server.ssrLoadModule(
     '/src/components/StaffCue.tsx',
   );
@@ -75,6 +76,16 @@ try {
     [['q', '8', '8', 'h'], ['q']],
     'Responsive score wrapping must follow measured beats, not raw note count.',
   );
+  assert.equal(recommendedClefForStaff({
+    clef: 'treble',
+    hand: 'right',
+    notes: ['g/3', 'a/3', 'b/3'].map((key) => ({ keys: [key], duration: 'q' })),
+  }), 'bass', 'A low phrase with several treble ledger lines belongs in bass clef.');
+  assert.equal(recommendedClefForStaff({
+    clef: 'treble',
+    hand: 'right',
+    notes: ['c/4', 'e/4', 'g/4'].map((key) => ({ keys: [key], duration: 'q' })),
+  }), 'treble', 'Ordinary middle-register right-hand notation must remain in treble clef.');
 
   const modes = ['reinforce', 'normal', 'stretch'];
   const difficulties = [0, 0.25, 0.5, 0.75, 1];
@@ -405,6 +416,23 @@ try {
                   beatsForDuration(staff.notes[question.anchorShift.splitIndex].duration) >= 1,
                 `Lesson ${concept.index}, drill ${questionNumber} puts a fast subdivision across the hand shift.`,
               );
+              if (concept.index === 14) {
+                assert.deepEqual(
+                  question.positionProofs?.map((proof) => proof.positionName),
+                  ['G Major', 'D Major'],
+                  'Lesson 14 must gate G Major and D Major separately before the shift drill.',
+                );
+              }
+            }
+            if (question.cue.staves.length === 2) {
+              const treblePitches = question.cue.staves
+                .filter((candidate) => candidate.clef === 'treble')
+                .flatMap((candidate) => candidate.notes)
+                .filter((note) => !note.duration.endsWith('r'))
+                .flatMap((note) => note.keys.map(toScientific))
+                .map(pitchToMidi);
+              assert.ok(treblePitches.every((midi) => midi !== null && midi >= 60),
+                `Lesson ${concept.index}, drill ${questionNumber} put a left-hand register on the treble staff.`);
             }
             if (question.exerciseMode === 'spatial-chord') {
               assert.ok(question.spatialChord);
@@ -876,6 +904,27 @@ try {
   assert.equal(route.status, 'prompt');
   route = pathwayReducer(route, { type: 'PROOF_UNLOCK', questionId: firstId });
   assert.equal(route.status, 'prompt');
+
+  let dualProofRoute = createInitialPathwayState({
+    seed: 20260802,
+    cap: 1000,
+    initialLesson: 14,
+  });
+  const dualProofId = dualProofRoute.current.id;
+  dualProofRoute = pathwayReducer(dualProofRoute, { type: 'PROOF_START', questionId: dualProofId });
+  dualProofRoute = pathwayReducer(dualProofRoute, { type: 'PROOF_SUCCESS', questionId: dualProofId });
+  dualProofRoute = pathwayReducer(dualProofRoute, { type: 'PROOF_UNLOCK', questionId: dualProofId });
+  assert.equal(dualProofRoute.status, 'position-prompt',
+    'Lesson 14 must show its destination gate before unlocking the shift drill.');
+  assert.equal(dualProofRoute.proofIndex, 1);
+  assert.equal(dualProofRoute.proofCompleted, false);
+  dualProofRoute = pathwayReducer(dualProofRoute, { type: 'PROOF_START', questionId: dualProofId });
+  dualProofRoute = pathwayReducer(dualProofRoute, { type: 'PROOF_SUCCESS', questionId: dualProofId });
+  dualProofRoute = pathwayReducer(dualProofRoute, { type: 'PROOF_UNLOCK', questionId: dualProofId });
+  assert.equal(dualProofRoute.status, 'prompt',
+    'Lesson 14 must unlock only after both separate position gates pass.');
+  assert.equal(dualProofRoute.proofCompleted, true);
+
   route = pathwayReducer(route, { type: 'START', questionId: firstId });
   route = pathwayReducer(route, { type: 'PLAY_START', questionId: firstId, now: 1000 });
   route = pathwayReducer(route, { type: 'ANALYSIS_START', questionId: firstId, now: 2000 });

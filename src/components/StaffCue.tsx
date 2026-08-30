@@ -29,6 +29,8 @@ export interface StaffCueProps {
   minimumTimelineBeats?: number;
   /** Uses tighter horizontal engraving for narrow split-card layouts. */
   compact?: boolean;
+  /** Overrides VexFlow's notehead size without changing the surrounding card. */
+  noteGlyphScale?: number;
 }
 
 export interface StaffCueHandle {
@@ -60,6 +62,8 @@ const PER_BARLINE = 30;
 const MIN_STAVE_W = 260;
 /** Space for the final notehead, accidental, stem and finger annotation. */
 const NOTE_RIGHT_GUTTER = 44;
+/** Larger noteheads at the VexFlow engraving layer; card dimensions stay fixed. */
+const NOTE_GLYPH_SCALE = 50;
 
 const CANVAS_H = 560;
 const STAVE_X = 12;
@@ -131,6 +135,24 @@ function beatsPerBarOf(cue: CueSpec): number {
   if (!cue.timeSignature) return 0; // 0 disables barlines
   const top = Number(cue.timeSignature.split('/')[0]);
   return Number.isFinite(top) && top > 0 ? top : 0;
+}
+
+/** Prefer bass when a treble phrase would spend most of its time on ledger lines. */
+export function recommendedClefForStaff(staff: StaffSpec): StaffSpec['clef'] {
+  if (staff.clef !== 'treble') return staff.clef;
+  const midi = staff.notes
+    .filter((note) => !note.duration.endsWith('r'))
+    .flatMap((note) => note.keys)
+    .map((key) => {
+      const match = /^([a-g](?:#|b)?)\/(-?\d+)$/i.exec(key);
+      if (!match) return null;
+      return pitchToMidi(`${match[1][0].toUpperCase()}${match[1].slice(1)}${match[2]}`);
+    })
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b);
+  if (midi.length === 0) return staff.clef;
+  const median = midi[Math.floor(midi.length / 2)];
+  return midi[0] <= 57 && median < 60 ? 'bass' : staff.clef;
 }
 
 /** Indices in the note list that should be preceded by a barline. */
@@ -230,6 +252,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     shiftMarker,
     minimumTimelineBeats = 0,
     compact = false,
+    noteGlyphScale = NOTE_GLYPH_SCALE,
   },
   ref,
 ) {
@@ -238,6 +261,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
   const lineRef = useRef<SVGLineElement | null>(null);
   const trailRef = useRef<SVGRectElement | null>(null);
   const successPitchKey = [...successPitches].sort().join('|');
+  const resolvedNoteGlyphScale = Math.max(39, Math.min(68, noteGlyphScale));
 
   useImperativeHandle(
     ref,
@@ -401,6 +425,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       cue.staves.forEach((staffSpec: StaffSpec, staffIndex: number) => {
         const notesForSystem = systemsByStaff[staffIndex][systemIndex] ?? [];
         if (notesForSystem.length === 0) return;
+        const resolvedClef = recommendedClefForStaff(staffSpec);
 
         const stave = new Stave(
           STAVE_X,
@@ -412,7 +437,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         // book. Every system restates clef and key (a reader who lands
         // mid-system should never lose track of either), but the time
         // signature is conventionally shown only once, at the very start.
-        stave.addClef(staffSpec.clef);
+        stave.addClef(resolvedClef);
         if (cue.keySignature) stave.addKeySignature(cue.keySignature);
         if (cue.timeSignature && systemIndex === 0) stave.addTimeSignature(cue.timeSignature);
 
@@ -425,11 +450,17 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         const marks = barlineBefore(notesForSystem, beatsPerBar);
 
         const staveNotes = notesForSystem.map((cueNote) => {
-          const note = new StaveNote({
+          // VexFlow 4 supports glyph_font_scale, while the compatibility
+          // @types package still exposes the older constructor shape. Keeping
+          // this as an inferred variable preserves the real runtime option
+          // without casting the note instance itself.
+          const noteOptions = {
             keys: cueNote.keys,
             duration: cueNote.duration,
-            clef: staffSpec.clef,
-          });
+            clef: resolvedClef,
+            glyph_font_scale: resolvedNoteGlyphScale,
+          };
+          const note = new StaveNote(noteOptions);
 
           // The duration parser gives `hd`, `qd`, etc. their correct number of
           // ticks, but VexFlow does not draw the matching glyph dot unless the
@@ -649,7 +680,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       label.setAttribute('font-size', '11');
       label.setAttribute('font-weight', '800');
       label.setAttribute('letter-spacing', '1.1');
-      label.textContent = 'MOVE';
+      label.textContent = 'SHIFT HAND';
       group.appendChild(label);
 
       svg.appendChild(group);
@@ -740,7 +771,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       lineRef.current = null;
       trailRef.current = null;
     };
-  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats]);
+  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats, resolvedNoteGlyphScale]);
 
   return <div className="et-staff" ref={hostRef} />;
 });

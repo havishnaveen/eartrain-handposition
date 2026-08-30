@@ -355,7 +355,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     const micBlocked = micStatus === 'denied' || micStatus === 'unsupported' || micStatus === 'error';
     const startBlocked = micStatus === 'requesting' || Boolean(orientationNotice);
 
-    if (exerciseMode === 'spatial-chord' && spatialChord) {
+    const showingPositionGate =
+      status === 'position-prompt' || status === 'proving' || status === 'proof-success';
+    if (exerciseMode === 'spatial-chord' && spatialChord && !showingPositionGate) {
       const isCue = status === 'chord-cue';
       const isRootSearch = status === 'chord-root';
       const isShapeSearch = status === 'chord-build';
@@ -601,17 +603,15 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       return (
         <section className={`et-proof et-proof--${status}`} aria-live="polite">
           <div className="et-proof__halo" aria-hidden="true"><span /><span /><span /></div>
-          <div className={`et-proof__layout${status === 'position-prompt' ? ' et-proof__layout--ready' : ''}`}>
-            <div className="et-proof__identity">
+          <div className="et-proof__layout">
+            {status === 'position-prompt' ? <div className="et-proof__identity">
               <LessonPanel
                 keyName={proofPositionTitle(positionProof?.positionName)}
                 hands={[proofHand]}
-                subtitle={status === 'position-prompt'
-                  ? 'Set the hand shape. Start when you are ready.'
-                  : 'Play each highlighted note once.'}
-                onStart={status === 'position-prompt' ? onStart : undefined}
+                subtitle="Set the hand shape. Start when you are ready."
+                onStart={onStart}
                 disabled={startBlocked}
-                activeFinger={status === 'position-prompt' ? undefined : activeProofNote.finger}
+                activeFinger={undefined}
                 showHandLabel={false}
               />
 
@@ -627,7 +627,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   {micMessage}
                 </p>
               ) : null}
-            </div>
+            </div> : null}
 
             {status !== 'position-prompt' ? <div className="et-proof__task">
               <div className="et-proof__card">
@@ -644,6 +644,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     <StaffCue
                       cue={proofCue}
                       compact
+                      noteGlyphScale={64}
                       accentColor="#ef6a47"
                       inkColor="#242237"
                     />
@@ -821,7 +822,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
           <div className={`et-panel${status === 'listening' ? ' et-panel--on' : ''}`} aria-hidden={status !== 'listening'}>
             <div className="et-record">
-              <span key={`beat-${beatLabel}`} className="et-record__beat">
+              <span
+                key={`beat-${beatLabel}`}
+                className={`et-record__beat${beatLabel === 'SHIFT HAND' ? ' et-record__beat--shift' : ''}`}
+              >
                 {beatLabel}
               </span>
 

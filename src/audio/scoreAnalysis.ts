@@ -1,5 +1,5 @@
 import type { DetectedNote, DrillPlan } from './timing';
-import { pitchToMidi } from './timing';
+import { alignPitchSequences, pitchToMidi } from './timing';
 import {
   transcribePianoCapture,
   type PianoTranscriptNote,
@@ -84,6 +84,52 @@ export function credibleRealtimeFallback(
   });
 }
 
+/**
+ * Add score-slot hints using pitch order only.
+ *
+ * The live UI intentionally uses a narrow beat window for contextual pitch
+ * recovery. That window must not become a second pitch-grading gate after the
+ * take: a strict piano attack can be rhythmically late and still be the right
+ * written pitch. These hints let the PCM worker validate that attack at its
+ * actual timestamp. They never bypass the worker's physical-attack checks.
+ */
+export function withPitchOrderSlotHints(
+  plan: DrillPlan,
+  realtime: readonly DetectedNote[],
+): DetectedNote[] {
+  const expectedSlots = plan.expectedNotes.flatMap((slot, expectedSlot) => {
+    const midi = pitchToMidi(slot.pitch);
+    return midi === null ? [] : [{ midi, expectedSlot }];
+  });
+  const eligible = realtime.flatMap((note, realtimeIndex) => {
+    if (
+      (note.detectorLane !== 'strict' && note.detectorLane !== 'polyphonic') ||
+      note.voiceVeto === true ||
+      note.voiceBurst === true ||
+      (note.harmonicShadow === true && note.harmonicIndependentAttack !== true)
+    ) return [];
+    return [{ ...note, realtimeIndex }];
+  });
+  const alignment = alignPitchSequences(
+    expectedSlots.map((slot) => slot.midi),
+    eligible,
+    (midi) => midi,
+  );
+  const slotByRealtimeIndex = new Map<number, number>();
+  alignment.forEach((operation) => {
+    if (operation.kind !== 'match') return;
+    slotByRealtimeIndex.set(
+      eligible[operation.detectedIndex].realtimeIndex,
+      expectedSlots[operation.expectedIndex].expectedSlot,
+    );
+  });
+  return realtime.map((note, realtimeIndex) => {
+    const expectedSlot = slotByRealtimeIndex.get(realtimeIndex);
+    if (expectedSlot === undefined) return { ...note };
+    return { ...note, expectedSlot, scoreContextAccepted: true };
+  });
+}
+
 export function pianoConsensus(
   result: ScoreAnalysisResult,
   realtime: readonly DetectedNote[],
@@ -119,7 +165,17 @@ export function pianoConsensus(
       // not permission to manufacture a note the live piano lane never saw.
       return false;
     }
-    if (note.analysisSource === 'reconciled' || note.analysisSource?.startsWith('realtime-')) {
+    if (
+      note.analysisSource === 'reconciled' ||
+      note.analysisSource === 'realtime-pcm-preserved' ||
+      note.analysisSource === 'realtime-preserved'
+    ) {
+      // These sources exist only after the worker paired a visible live event
+      // with an independent PCM hammer/pitch event. Magenta remains useful
+      // confirmation, but its absence must not erase already-corroborated notes.
+      return true;
+    }
+    if (note.analysisSource?.startsWith('realtime-')) {
       return live || (model && hasStrongPianoAttack(note));
     }
     if (note.analysisSource?.startsWith('offline-')) {
@@ -149,6 +205,7 @@ export function analyzeCapturedTake(
   realtime: readonly DetectedNote[],
   onProgress?: (percent: number) => void,
 ): Promise<ScoreAnalysisResult> {
+  const pitchAlignedRealtime = withPitchOrderSlotHints(plan, realtime);
   if (
     typeof Worker === 'undefined' ||
     capture.chunks.length === 0 ||
@@ -156,7 +213,7 @@ export function analyzeCapturedTake(
     !Number.isFinite(capture.sampleRate)
   ) {
     return Promise.resolve({
-      notes: credibleRealtimeFallback(realtime),
+      notes: credibleRealtimeFallback(pitchAlignedRealtime),
       recovered: 0,
       livePreserved: 0,
       rejected: 0,
@@ -184,7 +241,7 @@ export function analyzeCapturedTake(
       resolve(result);
     };
     const fallback = (reason: string): ScoreAnalysisResult => ({
-      notes: credibleRealtimeFallback(realtime),
+      notes: credibleRealtimeFallback(pitchAlignedRealtime),
       recovered: 0,
       livePreserved: 0,
       rejected: 0,
@@ -211,7 +268,7 @@ export function analyzeCapturedTake(
           ? (data.notes as unknown[])
               .filter(isDetectedNote)
               .sort((a: DetectedNote, b: DetectedNote) => a.time - b.time)
-          : credibleRealtimeFallback(realtime);
+          : credibleRealtimeFallback(pitchAlignedRealtime);
         finish({
           notes,
           recovered: Number.isFinite(data.recovered) ? data.recovered : 0,
@@ -241,7 +298,7 @@ export function analyzeCapturedTake(
             beats: slot.beats,
           })),
         },
-        realtime: realtime.map((note) => ({ ...note })),
+        realtime: pitchAlignedRealtime.map((note) => ({ ...note })),
       }, [samples.buffer]);
     } catch {
       finish(fallback('worker-construction-error'));
@@ -254,6 +311,6 @@ export function analyzeCapturedTake(
   return Promise.all([trackedWorker, transcriptPromise])
     .then(([analysis, transcript]) => {
       onProgress?.(92);
-      return pianoConsensus(analysis, realtime, transcript);
+      return pianoConsensus(analysis, pitchAlignedRealtime, transcript);
     });
 }

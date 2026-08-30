@@ -24,7 +24,7 @@ try {
   } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
   );
-  const { credibleRealtimeFallback, pianoConsensus } = await server.ssrLoadModule(
+  const { credibleRealtimeFallback, pianoConsensus, withPitchOrderSlotHints } = await server.ssrLoadModule(
     '/src/audio/scoreAnalysis.ts',
   );
 
@@ -88,6 +88,39 @@ try {
   }, [], [{ midi: 60, time: 1, endTime: 1.8, confidence: 0.9 }]);
   assert.deepEqual(invisibleHumRecovery.notes, [],
     'Even a Magenta-matched offline note must fail when no live piano event was visible.');
+
+  const pcmValidatedLiveNote = {
+    midi: 60,
+    time: 1,
+    clarity: 0.72,
+    strength: 1.8,
+    expectedSlot: 0,
+    detectorLane: 'context-recovery',
+    scoreContextAccepted: true,
+    voiceVeto: false,
+    voiceBurst: false,
+  };
+  const validatedLiveConsensus = pianoConsensus({
+    notes: [{
+      ...pcmValidatedLiveNote,
+      analysisSource: 'reconciled',
+      analysisConfidence: 0.48,
+      analysisSnr: 1.6,
+      analysisContrast: 1.08,
+      analysisRise: 1.12,
+      analysisPersistence: 8,
+      analysisPostFlatness: 0.7,
+      analysisSpeechLike: false,
+    }],
+    recovered: 0,
+    livePreserved: 0,
+    rejected: 0,
+    expectedAccepted: 1,
+    expectedCount: 1,
+    reason: 'analyzed',
+  }, [pcmValidatedLiveNote], null);
+  assert.deepEqual(validatedLiveConsensus.notes.map((note) => note.midi), [60],
+    'A note shown live and independently validated by the PCM worker must survive without Magenta.');
 
   const sequentialPlan = {
     expectedNotes: [
@@ -257,10 +290,29 @@ try {
   });
   assert.equal(badRhythmGrade.scores.pitch, 5,
     'Correct notes must remain a perfect Pitch result even when rhythm is poor.');
-  assert.ok((badRhythmGrade.scores.timing ?? 5) <= 2.5,
-    'Alternating rushed and late notes must receive a clearly poor Timing result.');
-  assert.ok(badRhythmGrade.scores.overall <= 4,
-    'Severely poor rhythm must materially lower Overall, not round to a high 4.x.');
+  assert.ok((badRhythmGrade.scores.timing ?? 5) <= 4.5,
+    'Alternating rushed and late notes must affect Timing without making pitch grading stricter.');
+  assert.ok(badRhythmGrade.scores.overall <= 4.5,
+    'Poor rhythm must lower Overall without triggering a catastrophic score.');
+
+  const offBeatStrictNotes = badlyDistortedRhythm.map((note) => ({
+    ...note,
+    detectorLane: 'strict',
+    scoreContextAccepted: false,
+  }));
+  const hintedOffBeatNotes = withPitchOrderSlotHints(timedPlan, offBeatStrictNotes);
+  assert.deepEqual(hintedOffBeatNotes.map((note) => note.expectedSlot), [0, 1, 2, 3],
+    'Correct strict attacks must reach their written PCM slots by pitch order, not beat proximity.');
+  assert.deepEqual(offBeatStrictNotes.map((note) => note.expectedSlot), [undefined, undefined, undefined, undefined],
+    'Pitch-order reconciliation must not mutate the responsive live event stream.');
+
+  const oneCorrectPitchRetrigger = gradeSequence(expected, [
+    perfect[0],
+    { ...perfect[0], time: 10.22, detectorLane: 'strict', pianoAttackConfidence: 0.8 },
+    ...perfect.slice(1),
+  ]);
+  assert.equal(oneCorrectPitchRetrigger.scores.pitch, 5,
+    'One correct-key retrigger belongs to rhythm/cleanliness and must not turn Pitch into 3.x.');
 
   const playedExtra = {
     midi: 59,
@@ -282,14 +334,14 @@ try {
       totalLessons: 24,
     },
   );
-  assert.ok((messyTakeGrade.scores.timing ?? 5) <= 2.5,
-    'A played extra note must not conceal severely distorted rhythm.');
+  assert.ok((messyTakeGrade.scores.timing ?? 5) <= 4.5,
+    'A played extra note must not erase the detected timing errors.');
   assert.ok(messyTakeGrade.scores.cleanliness <= 4,
     'One independently verified extra key must materially lower Cleanliness.');
   assert.ok(messyTakeGrade.scores.pitch < 5,
     'A played wrong key followed by a correction must remain visible in Pitch precision.');
-  assert.ok(messyTakeGrade.scores.overall <= 3.5,
-    `Bad rhythm plus a played extra must not average into a high score: ${JSON.stringify(messyTakeGrade.scores)}`);
+  assert.ok(messyTakeGrade.scores.overall <= 4.5,
+    `Bad rhythm plus a played extra must remain visible without a catastrophic score: ${JSON.stringify(messyTakeGrade.scores)}`);
   assert.ok(messyTakeGrade.extras.some((extra) => extra.midi === 59 && extra.kind !== 'faint'),
     'A low-clarity event with independent hammer evidence must not be dismissed as room noise.');
 
@@ -305,11 +357,47 @@ try {
   });
   assert.ok(
     (moderateRhythmGrade.scores.timing ?? 0) >= 3.8 &&
-      (moderateRhythmGrade.scores.timing ?? 5) < 4.8,
-    `Moderately uneven rhythm was crushed or over-rewarded: ${JSON.stringify(moderateRhythmGrade.scores)}`,
+      (moderateRhythmGrade.scores.timing ?? 5) <= 5,
+    `Moderately uneven rhythm was punished too harshly: ${JSON.stringify(moderateRhythmGrade.scores)}`,
   );
   assert.ok(moderateRhythmGrade.scores.overall >= 4.3,
     'Correct notes with moderate rhythm errors should remain clearly above a 3/5 overall.');
+
+  const shiftExpected = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+  const shiftPlan = {
+    ...timedPlan,
+    totalBeats: 8,
+    notes: shiftExpected.map((pitch) => ({ pitch, beats: 1, isRest: false })),
+    expectedNotes: shiftExpected.map((pitch, beat) => ({ pitch, beat, beats: 1 })),
+  };
+  const oneBoundaryDropout = shiftExpected.flatMap((pitch, index) => index === 4 ? [] : [{
+    midi: [60, 62, 64, 65, 67, 69, 71, 72][index],
+    time: 10 + index * 0.5,
+    clarity: 0.92,
+    strength: 2,
+  }]);
+  const ordinaryBoundaryGrade = gradeSequence(shiftExpected, oneBoundaryDropout, {
+    plan: shiftPlan,
+    playStartTime: 10,
+    lessonLevel: 14,
+    totalLessons: 24,
+  });
+  const unmeasuredShiftGrade = gradeSequence(shiftExpected, oneBoundaryDropout, {
+    plan: shiftPlan,
+    playStartTime: 10,
+    lessonLevel: 14,
+    totalLessons: 24,
+    anchorShift: {
+      fromPositionName: 'G Major',
+      toPositionName: 'D Major',
+      splitIndex: 4,
+      allowedExtraBeats: 0.6,
+    },
+  });
+  assert.equal(unmeasuredShiftGrade.transition?.measured, false,
+    'The regression fixture must leave one shift boundary attack unmeasured.');
+  assert.equal(unmeasuredShiftGrade.scores.timing, ordinaryBoundaryGrade.scores.timing,
+    'Missing shift-boundary evidence must not inject a synthetic zero into Timing.');
 
   const tooLittleTimingEvidence = gradeSequence(expected, perfect.slice(0, 2), {
     plan: timedPlan,

@@ -213,6 +213,8 @@ export interface Question {
   /** Structural shaping applied to this instance. */
   mode: GenerationMode;
   positionProof?: PositionProofSpec;
+  /** Ordered gates for drills that must establish more than one hand position. */
+  positionProofs?: readonly PositionProofSpec[];
   blindMemory?: BlindMemorySpec;
   anchorShift?: AnchorShiftSpec;
   spatialChord?: SpatialChordSpec;
