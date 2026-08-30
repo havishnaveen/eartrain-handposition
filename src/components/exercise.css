@@ -2254,7 +2254,7 @@
 }
 
 .et-proof__mini-score .et-staff { display: flex; justify-content: center; }
-.et-proof__mini-score .et-staff svg { width: 100%; max-width: 450px; height: auto; }
+.et-proof__mini-score .et-staff svg { width: auto; max-width: 100%; height: auto; }
 
 .et-proof__steps {
   display: flex;

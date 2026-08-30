@@ -216,34 +216,6 @@ function HandRequirement({ scope }: { scope: HandScope }) {
   );
 }
 
-function OrientationCallout({
-  notice,
-  onAcknowledge,
-}: {
-  notice: OrientationNotice;
-  onAcknowledge?: () => void;
-}) {
-  return (
-    <div className="et-orientation-gate">
-      <aside
-        className={`et-orientation-tip et-orientation-tip--${notice.kind}`}
-        role="alertdialog"
-        aria-modal="true"
-        aria-label={notice.title}
-      >
-        <span className="et-orientation-tip__pointer" aria-hidden="true" />
-        <span className="et-orientation-tip__stop" aria-hidden="true">!</span>
-        <div>
-          <strong>{notice.title}</strong>
-          <p>{notice.message}</p>
-        </div>
-        <button type="button" onClick={onAcknowledge} autoFocus>
-          {notice.buttonLabel ?? 'I understand'}
-        </button>
-      </aside>
-    </div>
-  );
-}
 
 /** Child-friendly register name for the position's first (anchor) note. */
 export function proofRegisterLabel(pitch: string): string {
@@ -305,7 +277,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       spatialAudioIssue = false,
       onReplayChord,
       orientationNotice = null,
-      onAcknowledgeOrientation,
     },
     ref,
   ) {
@@ -442,12 +413,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     ? 'Keep each found key down while you add the next.'
                   : ''}
             </p>
-            {orientationNotice ? (
-              <OrientationCallout
-                notice={orientationNotice}
-                onAcknowledge={onAcknowledgeOrientation}
-              />
-            ) : null}
+            
           </header>
 
           <div className="et-spatial__single-stage">
@@ -617,12 +583,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 showHandLabel={false}
               />
 
-              {orientationNotice ? (
-                <OrientationCallout
-                  notice={orientationNotice}
-                  onAcknowledge={onAcknowledgeOrientation}
-                />
-              ) : null}
+              
 
               {micMessage ? (
                 <p className={`et-proof__mic-message${micBlocked ? ' et-proof__mic-message--alert' : ''}`}>
@@ -693,12 +654,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
     return (
       <section className={`et-exercise et-exercise--${status} et-exercise--mode-${exerciseMode}`}>
-        {orientationNotice ? (
-          <OrientationCallout
-            notice={orientationNotice}
-            onAcknowledge={onAcknowledgeOrientation}
-          />
-        ) : null}
+        
         <span className="et-mode-chip et-mode-chip--inline">
           {exerciseMode === 'blind-memory'
             ? 'Remember it'

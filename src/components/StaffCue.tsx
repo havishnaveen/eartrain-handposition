@@ -749,14 +749,12 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     const boundsRight = Math.max(canvasWidth, box.x + box.width);
     const viewBoxWidth = boundsRight - boundsLeft + boundsPadX * 2;
     const viewBoxHeight = box.height + BOUNDS_PAD_Y * 2;
-    const scaledViewBoxWidth = viewBoxWidth / resolvedNotationScale;
-    const scaledViewBoxHeight = viewBoxHeight / resolvedNotationScale;
-    const scaledViewBoxX = boundsLeft - boundsPadX + (viewBoxWidth - scaledViewBoxWidth) / 2;
-    const scaledViewBoxY = box.y - BOUNDS_PAD_Y + (viewBoxHeight - scaledViewBoxHeight) / 2;
     svg.setAttribute(
       'viewBox',
-      `${scaledViewBoxX} ${scaledViewBoxY} ${scaledViewBoxWidth} ${scaledViewBoxHeight}`,
+      `${boundsLeft - boundsPadX} ${box.y - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
     );
+    svg.setAttribute('width', String(viewBoxWidth * resolvedNotationScale));
+    svg.setAttribute('height', String(viewBoxHeight * resolvedNotationScale));
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     // Give the SVG an intrinsic size equal to its own viewBox (1 SVG unit =
     // 1 CSS px) instead of leaving width/height unset, which the container
