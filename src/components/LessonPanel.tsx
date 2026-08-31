@@ -33,15 +33,15 @@ export function HandIcon({
   className?: string;
 }) {
   const textProps = (x: number) => ({
-    x: mirrored ? x : -x,
-    transform: mirrored ? undefined : 'scale(-1, 1)',
+    x: mirrored ? -x : x,
+    transform: mirrored ? 'scale(-1, 1)' : undefined,
   });
 
   return (
     <svg
       viewBox="-3 -3 30 30"
       className={className}
-      style={mirrored ? undefined : { transform: 'scaleX(-1)' }}
+      style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
@@ -106,7 +106,7 @@ export function LessonPanel({
             >
               <HandIcon mirrored={hand === 'left'} activeFinger={activeFinger} />
               {showHandLabel ? <span className="lp-placement__figure-label">
-                {hand === 'left' ? 'Left' : 'Right'}<br />Hand
+                {hand === 'left' ? 'LH' : 'RH'}
               </span> : null}
             </span>
           ))}

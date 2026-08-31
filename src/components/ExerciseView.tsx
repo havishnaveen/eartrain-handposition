@@ -620,7 +620,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
                 activeFinger={status === 'position-prompt' ? undefined : activeProofNote.finger}
-                showHandLabel={false}
+                showHandLabel={true}
               />
 
               {orientationNotice ? (
