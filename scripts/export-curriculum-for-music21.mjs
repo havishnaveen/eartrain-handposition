@@ -41,7 +41,7 @@ try {
             !note.duration.endsWith('r') && note.keys.length > 1).length, 0),
         proofNotes: question.positionProof?.proofNotes.length ?? 0,
         memoryPreviewSeconds: question.blindMemory?.previewSeconds ?? null,
-        shiftPreviewSeconds: question.anchorShift?.timedShift?.waitSeconds ?? null,
+        shiftMoveBeats: question.anchorShift?.timedShift?.waitBeats ?? null,
         spatialRootSupport: question.spatialChord?.rootSupport ?? null,
         spatialQuality: question.spatialChord?.quality ?? null,
         spatialLayers: question.spatialChord?.context.layers ?? null,

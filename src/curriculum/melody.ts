@@ -239,7 +239,9 @@ export function applyRhythm(
 
   const rhythmRoll = rand();
   let subdivision: { size: number; beats: number } | null = null;
-  if (lessonLevel > 12 && rhythmRoll < 0.6) {
+  // Lessons 13-18 spend their challenge budget on hand movement and deep-key
+  // placement. Sixteenths return only after those maps are established.
+  if (lessonLevel > 18 && rhythmRoll < 0.6) {
     subdivision = { size: 4, beats: 0.25 };
   } else if (
     lessonLevel > 5 &&

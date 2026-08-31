@@ -44,15 +44,6 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
     const secondRef = useRef<StaffCueHandle>(null);
     const countdownRef = useRef<HTMLElement>(null);
     const countdownFillRef = useRef<HTMLElement>(null);
-    // When there is no scripted timedShift pause (e.g. Lessons 13-14, whose
-    // audio timeline deliberately keeps Position 2 always visible with zero
-    // reserved beats), the written beat clock crosses the hand-off in a
-    // single animation frame and "move" is applied and overwritten before a
-    // student can read it. This wall-clock latch — independent of the beat
-    // timeline, so grading and count-in timing are untouched — holds the
-    // indicator visible for a real minimum stretch instead.
-    const unscriptedMoveEnteredAtRef = useRef<number | null>(null);
-    const UNSCRIPTED_MOVE_MIN_MS = 700;
     const staff = cue.staves[0];
     const split = Math.min(
       Math.max(1, shift.splitIndex),
@@ -73,9 +64,9 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         firstBeats: firstDuration,
       };
     }, [cue, split, staff]);
-    const waitSeconds = Math.max(0, shift.timedShift?.waitSeconds ?? 0);
+    const waitBeats = Math.max(0, shift.timedShift?.waitBeats ?? 0);
+    const waitSeconds = waitBeats * secondsPerBeat;
     const stagedReveal = shift.timedShift?.revealSecond === true;
-    const waitBeats = waitSeconds / Math.max(0.01, secondsPerBeat);
 
     const showCountdown = useCallback((remaining: number) => {
       const safeRemaining = Math.max(0, Math.min(waitSeconds, remaining));
@@ -104,25 +95,11 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           return;
         }
         if (beat < firstBeats + waitBeats) {
-          unscriptedMoveEnteredAtRef.current = null;
           rootRef.current?.setAttribute('data-active-position', 'move');
           showCountdown(waitSeconds - (beat - firstBeats) * secondsPerBeat);
           firstRef.current?.hide();
           secondRef.current?.hide();
           return;
-        }
-        if (waitBeats === 0) {
-          const now = performance.now();
-          if (unscriptedMoveEnteredAtRef.current === null) {
-            unscriptedMoveEnteredAtRef.current = now;
-          }
-          if (now - unscriptedMoveEnteredAtRef.current < UNSCRIPTED_MOVE_MIN_MS) {
-            rootRef.current?.setAttribute('data-active-position', 'move');
-            showCountdown(0);
-            firstRef.current?.hide();
-            secondRef.current?.hide();
-            return;
-          }
         }
         rootRef.current?.setAttribute('data-active-position', 'to');
         showCountdown(0);
@@ -130,7 +107,6 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         secondRef.current?.seekToBeat(beat - firstBeats - waitBeats);
       },
       hide() {
-        unscriptedMoveEnteredAtRef.current = null;
         rootRef.current?.setAttribute('data-active-position', 'from');
         showCountdown(waitSeconds);
         firstRef.current?.hide();
@@ -149,7 +125,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         data-active-position="from"
         data-staged-reveal={stagedReveal ? 'true' : 'false'}
         aria-label={stagedReveal
-          ? `Phrase reveal. Step 1: play ${shift.fromPositionName}. Step 2: study the new phrase for ${waitSeconds} seconds while moving. Step 3: play ${shift.toPositionName}.`
+          ? `Instant hand-position switch. Play ${shift.fromPositionName}; ${shift.toPositionName} appears at the hand-off.`
           : `Hand-position switch. First play ${shift.fromPositionName}, then move and play ${shift.toPositionName}.`}
       >
         <section className="et-anchor-cue__half et-anchor-cue__half--from" aria-label={`${shift.fromPositionName} music`}>
@@ -171,7 +147,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           }
         >
           <span className="et-anchor-cue__step">2</span>
-          <b>{stagedReveal ? 'Study & move' : 'Move hand'}</b>
+          <b>{stagedReveal ? 'Shift now' : 'Move hand'}</b>
           <i className="et-anchor-cue__arrow" aria-hidden="true">→</i>
           {waitSeconds > 0 ? (
             <>

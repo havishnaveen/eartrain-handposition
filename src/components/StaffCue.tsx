@@ -12,7 +12,7 @@ const {
   StaveNote,
   Voice,
 } = Vex.Flow;
-import type { AnchorShiftSpec, CueNote, CueSpec, StaffSpec } from '../curriculum/types';
+import type { AnchorShiftSpec, CueSpec, StaffSpec } from '../curriculum/types';
 import { beatsForDuration, pitchToMidi } from '../audio/timing';
 import './staff-cue.css';
 
@@ -72,7 +72,7 @@ const STAVE_X = 12;
 const STAVE_TOP = 200;
 const STAVE_GAP = 122;
 const BOUNDS_PAD_X = 42;
-const BOUNDS_PAD_Y = 28;
+const BOUNDS_PAD_Y = 12;
 const SCRUB_OVERHANG = 26;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -126,17 +126,64 @@ interface SystemLayout {
   bottom: number;
 }
 
+/** Print meter only when the learner is actually reading a measure. */
+export function shouldShowTimeSignature(cue: CueSpec): boolean {
+  if (!cue.timeSignature) return false;
+  if (cue.showTimeSignature !== undefined) return cue.showTimeSignature;
+  const beatsPerBar = beatsPerBarOf(cue);
+  if (beatsPerBar <= 0) return false;
+  const soundedOnsets = new Set<string>();
+  let totalBeats = 0;
+  cue.staves.forEach((staff) => {
+    let beat = 0;
+    staff.notes.forEach((note) => {
+      if (!note.duration.endsWith('r')) soundedOnsets.add(beat.toFixed(4));
+      beat += beatsForDuration(note.duration);
+    });
+    totalBeats = Math.max(totalBeats, beat);
+  });
+  return soundedOnsets.size >= 4 && totalBeats >= beatsPerBar - 1e-6;
+}
+
 function headWidth(cue: CueSpec, compact: boolean): number {
   const accidentals = cue.keySignature ? (KEY_ACCIDENTALS[cue.keySignature] ?? 0) : 0;
   const scale = compact ? 0.8 : 1;
   return CLEF_WIDTH * scale + accidentals * ACCIDENTAL_WIDTH * scale +
-    (cue.timeSignature ? TIME_SIG_WIDTH * scale : 0);
+    (shouldShowTimeSignature(cue) ? TIME_SIG_WIDTH * scale : 0);
 }
 
 function beatsPerBarOf(cue: CueSpec): number {
   if (!cue.timeSignature) return 0; // 0 disables barlines
   const top = Number(cue.timeSignature.split('/')[0]);
   return Number.isFinite(top) && top > 0 ? top : 0;
+}
+
+/** Wrap only between complete notes, using written beats rather than count. */
+export function splitNotesIntoSystems<T extends { duration: string }>(
+  notes: readonly T[],
+  beatsPerSystem: number,
+): T[][] {
+  if (!Number.isFinite(beatsPerSystem) || beatsPerSystem <= 0) return [[...notes]];
+  const systems: T[][] = [];
+  let current: T[] = [];
+  let currentBeats = 0;
+  notes.forEach((note) => {
+    const noteBeats = beatsForDuration(note.duration);
+    if (current.length > 0 && currentBeats + noteBeats > beatsPerSystem + 1e-6) {
+      systems.push(current);
+      current = [];
+      currentBeats = 0;
+    }
+    current.push(note);
+    currentBeats += noteBeats;
+    if (currentBeats >= beatsPerSystem - 1e-6) {
+      systems.push(current);
+      current = [];
+      currentBeats = 0;
+    }
+  });
+  if (current.length > 0) systems.push(current);
+  return systems.length > 0 ? systems : [[]];
 }
 
 /** Prefer bass when a treble phrase would spend most of its time on ledger lines. */
@@ -223,10 +270,12 @@ function distributeNotesByTime(
   notes: InstanceType<typeof StaveNote>[],
   durations: string[],
   timelineWidth: number,
+  beatsPerBar: number,
+  sharedStartX?: number,
 ): { startX: number; endX: number; totalBeats: number } | null {
   if (notes.length === 0) return null;
   const contexts = notes.map((note) => note.getTickContext());
-  const firstX = contexts[0].getX();
+  const firstX = sharedStartX ?? contexts[0].getX();
   const totalBeats = durations.reduce((sum, duration) => sum + beatsForDuration(duration), 0);
   // TickContext X is VOICE-LOCAL before draw. `timelineWidth` is deliberately
   // local too; passing the stave's absolute right edge here mixed coordinate
@@ -237,8 +286,16 @@ function distributeNotesByTime(
 
   let beat = 0;
   contexts.forEach((context, index) => {
-    context.setX(timelineXForBeat(firstX, endX, totalBeats, beat));
-    beat += beatsForDuration(durations[index]);
+    const duration = durations[index];
+    const noteBeats = beatsForDuration(duration);
+    // A whole-measure rest is a measure symbol, not an attack at beat one.
+    // Engrave it in the visual center while retaining its real onset in the
+    // timing plan and scrubber timeline.
+    const displayBeat = duration.endsWith('r') && Math.abs(noteBeats - beatsPerBar) < 1e-6
+      ? beat + noteBeats / 2
+      : beat;
+    context.setX(timelineXForBeat(firstX, endX, totalBeats, displayBeat));
+    beat += noteBeats;
   });
 
   return { startX: firstX, endX, totalBeats };
@@ -338,6 +395,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     trailRef.current = null;
 
     const beatsPerBar = beatsPerBarOf(cue);
+    const showTimeSignature = shouldShowTimeSignature(cue);
     const perBeat = compact ? 25 : PER_BEAT;
     const minPerNote = compact ? 25 : MIN_PER_NOTE;
     const perBarline = compact ? 22 : PER_BARLINE;
@@ -379,24 +437,13 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     const canvasWidth = staveWidth + STAVE_X * 2;
 
     // A piece longer than `measuresPerSystem` measures wraps onto additional
-    // stacked systems instead of staying on one ever-widening line. Splitting
-    // is by note COUNT, not measured beats: every current producer of
-    // `measuresPerSystem` (twoHandStandardQuestion's extended phrases) writes
-    // only quarter notes, so one note is exactly one beat and a plain count
-    // split lands precisely on measure boundaries. A future duration-mixed
-    // producer of this field would need a beat-aware split instead.
-    const notesPerSystem = cue.measuresPerSystem
+    // stacked systems instead of staying on one ever-widening line. Written
+    // beats keep mixed eighth/quarter/half-note phrases on measure boundaries.
+    const systemBeats = cue.measuresPerSystem
       ? cue.measuresPerSystem * Math.max(1, beatsPerBar)
       : Infinity;
-    const sliceIntoSystems = (notes: readonly CueNote[]): CueNote[][] => {
-      if (!Number.isFinite(notesPerSystem) || notesPerSystem <= 0) return [notes.slice()];
-      const chunks: CueNote[][] = [];
-      for (let i = 0; i < notes.length; i += notesPerSystem) {
-        chunks.push(notes.slice(i, i + notesPerSystem));
-      }
-      return chunks.length > 0 ? chunks : [[]];
-    };
-    const systemsByStaff = cue.staves.map((staff) => sliceIntoSystems(staff.notes));
+    const systemsByStaff = cue.staves.map((staff) =>
+      splitNotesIntoSystems(staff.notes, systemBeats));
     const systemCount = Math.max(1, ...systemsByStaff.map((chunks) => chunks.length));
     const staffCountPerSystem = Math.max(1, cue.staves.length);
     // Extra clearance below one system's last staff before the next
@@ -421,10 +468,9 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     for (let systemIndex = 0; systemIndex < systemCount; systemIndex += 1) {
       const drawnStavesInSystem: any[] = [];
       const systemBarlines: { x: number; top: number; bottom: number }[] = [];
-      // Exact because every system but a possibly-shorter last one holds
-      // precisely `notesPerSystem` notes, and one note is one beat here —
-      // see the comment on `notesPerSystem` above.
-      const systemStartBeat = systemIndex * (Number.isFinite(notesPerSystem) ? notesPerSystem : 0);
+      const systemStartBeat = systemIndex * (Number.isFinite(systemBeats) ? systemBeats : 0);
+      let sharedNoteStartX: number | null = null;
+      let sharedTimelineStartX: number | undefined;
 
       cue.staves.forEach((staffSpec: StaffSpec, staffIndex: number) => {
         const notesForSystem = systemsByStaff[staffIndex][systemIndex] ?? [];
@@ -443,7 +489,16 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         // signature is conventionally shown only once, at the very start.
         stave.addClef(resolvedClef);
         if (cue.keySignature) stave.addKeySignature(cue.keySignature);
-        if (cue.timeSignature && systemIndex === 0) stave.addTimeSignature(cue.timeSignature);
+        if (showTimeSignature && cue.timeSignature && systemIndex === 0) {
+          stave.addTimeSignature(cue.timeSignature);
+        }
+
+        // Treble and bass clefs have different intrinsic widths. A grand staff
+        // still needs one shared rhythmic origin, otherwise the lower voice's
+        // second measure can appear inside the upper voice's first measure.
+        const ownNoteStartX = stave.getNoteStartX();
+        if (sharedNoteStartX === null) sharedNoteStartX = ownNoteStartX;
+        else stave.setNoteStartX(sharedNoteStartX);
 
         stave.setBegBarType(Vex.Flow.Barline.type.SINGLE);
         stave.setEndBarType(Vex.Flow.Barline.type.END);
@@ -535,7 +590,12 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           staveNotes,
           notesForSystem.map((note) => note.duration),
           formatWidth,
+          beatsPerBar,
+          sharedTimelineStartX,
         );
+        if (timeline && sharedTimelineStartX === undefined) {
+          sharedTimelineStartX = timeline.startX;
+        }
         voice.draw(context, stave);
         beams.forEach((beam) => beam.setContext(context).draw());
 
@@ -558,14 +618,19 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           const top = stave.getYForLine(0);
           const bottom = stave.getYForLine(4);
           marks.forEach((index) => {
-            const after = staveNotes[index];
-            const before = staveNotes[index - 1];
-            if (!after || !before) return;
-            // The next note begins exactly on the measure boundary. Leave a
-            // small engraving gap before it without changing its timed X.
-            const previousX = before.getAbsoluteX();
-            const nextX = after.getAbsoluteX();
-            const x = nextX - Math.min(10, Math.max(4, (nextX - previousX) * 0.16));
+            const firstNote = staveNotes[0];
+            if (!firstNote || !timeline) return;
+            const boundaryBeat = notesForSystem.slice(0, index).reduce(
+              (sum, note) => sum + beatsForDuration(note.duration),
+              0,
+            );
+            const localToAbsolute = firstNote.getAbsoluteX() - firstNote.getTickContext().getX();
+            const x = localToAbsolute + timelineXForBeat(
+              timeline.startX,
+              timeline.endX,
+              timeline.totalBeats,
+              boundaryBeat,
+            ) - 12;
             systemBarlines.push({ x, top, bottom });
           });
         }
@@ -577,8 +642,11 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           const points: ScrubPoint[] = [];
           let beat = 0;
           staveNotes.forEach((note, i) => {
-            points.push({ beat, x: note.getAbsoluteX() });
-            beat += beatsForDuration(notesForSystem[i].duration);
+            const duration = notesForSystem[i].duration;
+            // Rest glyphs may be centered in their measure, but the playback
+            // line follows sounded attacks and the written beat grid.
+            if (!duration.endsWith('r')) points.push({ beat, x: note.getAbsoluteX() });
+            beat += beatsForDuration(duration);
           });
           const totalBeats = timeline?.totalBeats ?? Math.max(beat, points.length);
           const scrubberBounds = scrubberBoundsFromOnsets(
@@ -747,11 +815,20 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // also covers stroke width and sub-pixel rounding at the right edge.
     const boundsLeft = Math.min(0, box.x);
     const boundsRight = Math.max(canvasWidth, box.x + box.width);
+    // getBBox can omit text extents while the webfont is still resolving.
+    // Reserve deterministic annotation gutters above RH numbers and below LH
+    // numbers so a late font swap can never cut off a fingering.
+    const designedTop = STAVE_TOP - 35;
+    const designedBottom = STAVE_TOP +
+      (systemCount - 1) * systemHeight +
+      (staffCountPerSystem - 1) * STAVE_GAP + 128;
+    const boundsTop = Math.min(box.y, designedTop);
+    const boundsBottom = Math.max(box.y + box.height, designedBottom);
     const viewBoxWidth = boundsRight - boundsLeft + boundsPadX * 2;
-    const viewBoxHeight = box.height + BOUNDS_PAD_Y * 2;
+    const viewBoxHeight = boundsBottom - boundsTop + BOUNDS_PAD_Y * 2;
     svg.setAttribute(
       'viewBox',
-      `${boundsLeft - boundsPadX} ${box.y - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
+      `${boundsLeft - boundsPadX} ${boundsTop - BOUNDS_PAD_Y} ${viewBoxWidth} ${viewBoxHeight}`,
     );
     svg.setAttribute('width', String(viewBoxWidth * resolvedNotationScale));
     svg.setAttribute('height', String(viewBoxHeight * resolvedNotationScale));

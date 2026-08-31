@@ -16,7 +16,7 @@ import {
   type CapturedPcm,
   type ScoreAnalysisResult,
 } from './scoreAnalysis';
-import { warmPianoTranscriber } from './magentaPianoTranscription';
+import { warmBasicPitch } from './basicPitchTranscription';
 import {
   getAudioContext as getPianoAudioContext,
   initAudio as initPianoAudio,
@@ -2404,7 +2404,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const prepare = useCallback(async (): Promise<boolean> => {
     // Model loading is intentionally parallel with microphone preparation;
     // it must never delay the Start button or the audio worklets.
-    void warmPianoTranscriber();
+    void warmBasicPitch();
     const ctx = await ensureGraph();
     return Boolean(ctx && workletRef.current && chordWorkletRef.current && mountedRef.current);
   }, [ensureGraph]);
@@ -2413,7 +2413,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     async (target: PositionProofTarget): Promise<boolean> => {
       // The short position check gives the larger piano model useful warm-up
       // time before the real graded performance begins.
-      void warmPianoTranscriber();
+      void warmBasicPitch();
       const runToken = ++runTokenRef.current;
       const targetMidi = target.proofNotes.map((note) => pitchToMidi(note.pitch));
       if (targetMidi.some((midi) => midi === null)) return false;
@@ -2902,10 +2902,13 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             ? beatPosition - timedShift.waitBeats
             : beatPosition;
           const beatInBar = Math.floor(writtenBeatPosition) % currentPlan.beatsPerBar;
-          const key = moving ? 'move' : `p${Math.floor(writtenBeatPosition)}`;
+          const moveBeat = timedShift
+            ? Math.floor(beatPosition - timedShift.startBeat) + 1
+            : 0;
+          const key = moving ? `move${moveBeat}` : `p${Math.floor(writtenBeatPosition)}`;
           if (key !== lastBeatKeyRef.current) {
             lastBeatKeyRef.current = key;
-            safeSet(setBeatLabel, moving ? 'SHIFT HAND' : String(beatInBar + 1));
+            safeSet(setBeatLabel, moving ? `SHIFT ${moveBeat}` : String(beatInBar + 1));
           }
 
           if (now >= recordEndRef.current) {

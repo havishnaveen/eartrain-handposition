@@ -21,14 +21,6 @@ for (const required of [
 for (const asset of html.matchAll(/(?:src|href)="\/(assets\/[^"?]+|eartrain-favicon\.svg)/g)) {
   if (!existsSync(new URL(asset[1], dist))) throw new Error(`Built asset is missing: /${asset[1]}`);
 }
-for (const vendor of [
-  'vendor/magenta/tf.min.js',
-  'vendor/magenta/transcription.js',
-  'audio/magenta-transcriber-worker.js',
-]) {
-  if (!existsSync(new URL(vendor, dist))) throw new Error(`Piano transcription vendor is missing: /${vendor}`);
-}
-
 const sourceRoot = new URL('../src/', import.meta.url);
 const analysisCss = readFileSync(new URL('components/exercise.css', sourceRoot), 'utf8');
 
@@ -36,11 +28,17 @@ const scoreAnalysis = readFileSync(new URL('audio/scoreAnalysis.ts', sourceRoot)
 if (!scoreAnalysis.includes('const ANALYSIS_TIMEOUT_MS = 2_000')) {
   throw new Error('Whole-take grading timeout must remain bounded at two seconds.');
 }
-if (/basicPitch|BasicPitch/.test(scoreAnalysis)) {
-  throw new Error('Blocking model inference returned to the grading path.');
+if (scoreAnalysis.includes("from '@spotify/basic-pitch'")) {
+  throw new Error('Spotify model inference returned to the browser UI thread.');
 }
-if (!scoreAnalysis.includes('pianoConsensus') || !scoreAnalysis.includes('magenta-piano-consensus')) {
-  throw new Error('Offline recovered notes are not protected by piano-model consensus.');
+if (!scoreAnalysis.includes('spotifyPianoConsensus') ||
+    !scoreAnalysis.includes('spotify-basic-pitch-consensus')) {
+  throw new Error('Offline recovered notes are not protected by Spotify/PCM consensus.');
+}
+const spotifyWorker = readFileSync(new URL('audio/basicPitchTranscriber.worker.ts', sourceRoot), 'utf8');
+if (!spotifyWorker.includes("from '@spotify/basic-pitch'") ||
+    !spotifyWorker.includes('transcription-progress')) {
+  throw new Error('Spotify Basic Pitch must remain isolated in its progress-reporting worker.');
 }
 
 const exerciseReport = readFileSync(new URL('components/ExerciseReport.tsx', sourceRoot), 'utf8');
@@ -49,11 +47,12 @@ if (!exerciseReport.includes('const AUTO_ADVANCE_MS = 15000')) {
 }
 const staffCue = readFileSync(new URL('components/StaffCue.tsx', sourceRoot), 'utf8');
 for (const engravingGuard of [
-  'glyph_font_scale: resolvedNoteGlyphScale',
+  "svg.setAttribute('width', String(viewBoxWidth * resolvedNotationScale))",
+  "svg.setAttribute('height', String(viewBoxHeight * resolvedNotationScale))",
   "svg.style.removeProperty('height')",
 ]) {
   if (!staffCue.includes(engravingGuard)) {
-    throw new Error(`Professional fingering placement regressed: ${engravingGuard}`);
+    throw new Error(`Proportional staff scaling regressed: ${engravingGuard}`);
   }
 }
 const staffCueCss = readFileSync(new URL('components/staff-cue.css', sourceRoot), 'utf8');
@@ -74,14 +73,14 @@ const exerciseView = readFileSync(new URL('components/ExerciseView.tsx', sourceR
 if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
   throw new Error('Spatial chord rendering can bypass the universal position gate.');
 }
-if (!exerciseView.includes("beatLabel === 'SHIFT HAND'")) {
+if (!exerciseView.includes("beatLabel.startsWith('SHIFT')")) {
   throw new Error('The hand-shift cue regressed to an oversized generic beat label.');
 }
 if (!exerciseView.includes("status !== 'position-prompt' ? ' et-proof__layout--active' : ''") ||
     !exerciseView.includes('<div className="et-proof__identity">')) {
   throw new Error('The hand tile must stay centered before Start and remain beside the task afterward.');
 }
-if (!exerciseView.includes('notationScale={1.28}')) {
+if (!exerciseView.includes('notationScale={2.3}')) {
   throw new Error('The complete Prove It engraving is no longer proportionally enlarged.');
 }
 for (const layoutGuard of [

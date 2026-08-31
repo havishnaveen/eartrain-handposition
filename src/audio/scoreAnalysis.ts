@@ -1,9 +1,9 @@
 import type { DetectedNote, DrillPlan } from './timing';
 import { alignPitchSequences, pitchToMidi } from './timing';
 import {
-  transcribePianoCapture,
-  type PianoTranscriptNote,
-} from './magentaPianoTranscription';
+  transcribeWithBasicPitch,
+  type SpotifyPianoNote,
+} from './basicPitchTranscription';
 
 export interface CapturedPcm {
   id: number;
@@ -130,10 +130,10 @@ export function withPitchOrderSlotHints(
   });
 }
 
-export function pianoConsensus(
+export function spotifyPianoConsensus(
   result: ScoreAnalysisResult,
   realtime: readonly DetectedNote[],
-  transcript: readonly PianoTranscriptNote[] | null,
+  transcript: readonly SpotifyPianoNote[] | null,
 ): ScoreAnalysisResult {
   const strictRealtime = credibleRealtimeFallback(realtime);
   const hasRealtimeMatch = (note: DetectedNote) => strictRealtime.some((live) =>
@@ -160,10 +160,10 @@ export function pianoConsensus(
     const live = hasRealtimeMatch(note);
     const model = hasTranscriptMatch(note);
     if (note.analysisSource === 'offline-recovered') {
-      // This is the exact path that previously let an invisible hum earn
-      // 4.4/5. Magenta's own demo can transcribe voice, so a model match is
-      // not permission to manufacture a note the live piano lane never saw.
-      return false;
+      // A score-aware FFT candidate still needs two independent facts before
+      // it can earn credit: physical hammer/string evidence from the PCM
+      // worker and the same pitch/onset from Spotify Basic Pitch.
+      return model && hasStrongPianoAttack(note);
     }
     if (
       note.analysisSource === 'reconciled' ||
@@ -182,6 +182,20 @@ export function pianoConsensus(
       return live || (model && hasStrongPianoAttack(note));
     }
     return live;
+  }).map((note) => {
+    if (note.analysisSource !== 'offline-recovered' || !transcript) return note;
+    const modelNote = transcript
+      .filter((candidate) => candidate.midi === note.midi)
+      .sort((a, b) => Math.abs(a.time - note.time) - Math.abs(b.time - note.time))[0];
+    if (!modelNote || Math.abs(modelNote.time - note.time) > 0.3) return note;
+    // Two independent analyzers observed the same hammer. Averaging their
+    // onset estimates reduces frame-quantization bias without snapping a
+    // recovered note to the written score (which would fake good rhythm).
+    return {
+      ...note,
+      time: (note.time + modelNote.time) / 2,
+      endTime: Math.max((note.time + modelNote.time) / 2, modelNote.endTime),
+    };
   });
   const expectedSlots = new Set(
     notes.flatMap((note) => note.expectedSlot === undefined ? [] : [note.expectedSlot]),
@@ -193,7 +207,7 @@ export function pianoConsensus(
     recovered,
     rejected: result.rejected + Math.max(0, result.notes.length - notes.length),
     expectedAccepted: expectedSlots.size,
-    reason: `${result.reason}+${transcript === null ? 'strict-piano-only' : 'magenta-piano-consensus'}`,
+    reason: `${result.reason}+${transcript === null ? 'strict-piano-only' : 'spotify-basic-pitch-consensus'}`,
   };
 }
 
@@ -225,8 +239,10 @@ export function analyzeCapturedTake(
 
   const samples = combineChunks(capture.chunks);
   const requestId = `${capture.id}:${Date.now()}:${samples.length}`;
-  const transcriptPromise = transcribePianoCapture(capture).then((transcript) => {
-    onProgress?.(84);
+  const transcriptPromise = transcribeWithBasicPitch(capture, (progress) => {
+    onProgress?.(68 + progress * 20);
+  }).then((transcript) => {
+    onProgress?.(88);
     return transcript;
   });
 
@@ -311,6 +327,6 @@ export function analyzeCapturedTake(
   return Promise.all([trackedWorker, transcriptPromise])
     .then(([analysis, transcript]) => {
       onProgress?.(92);
-      return pianoConsensus(analysis, pitchAlignedRealtime, transcript);
+      return spotifyPianoConsensus(analysis, pitchAlignedRealtime, transcript);
     });
 }

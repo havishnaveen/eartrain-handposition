@@ -57,6 +57,7 @@ try {
     shiftRegionFromOnsets,
     splitNotesIntoSystems,
     recommendedClefForStaff,
+    shouldShowTimeSignature,
   } = await server.ssrLoadModule(
     '/src/components/StaffCue.tsx',
   );
@@ -86,6 +87,19 @@ try {
     hand: 'right',
     notes: ['c/4', 'e/4', 'g/4'].map((key) => ({ keys: [key], duration: 'q' })),
   }), 'treble', 'Ordinary middle-register right-hand notation must remain in treble clef.');
+  assert.equal(shouldShowTimeSignature({
+    timeSignature: '4/4',
+    staves: [{ clef: 'treble', hand: 'right', notes: [
+      { keys: ['c/4'], duration: 'q' },
+      { keys: ['e/4'], duration: 'q' },
+      { keys: ['g/4'], duration: 'h' },
+    ] }],
+  }), false, 'One-to-three-event cues must not print a decorative time signature.');
+  assert.equal(shouldShowTimeSignature({
+    timeSignature: '4/4',
+    staves: [{ clef: 'treble', hand: 'right', notes: ['c/4', 'd/4', 'e/4', 'f/4']
+      .map((key) => ({ keys: [key], duration: 'q' })) }],
+  }), true, 'A complete four-beat reading measure must retain its time signature.');
 
   const modes = ['reinforce', 'normal', 'stretch'];
   const difficulties = [0, 0.25, 0.5, 0.75, 1];
@@ -178,6 +192,7 @@ try {
     assert.deepEqual(lesson.coreProblems, blueprint.coreProblems);
     assert.deepEqual(lesson.problemTags, blueprint.problemTags);
     assert.deepEqual(lesson.drillPurposes, blueprint.drillPurposes);
+    assert.equal(blueprint.materialOrder, 'easy-to-hard');
     assert.equal(lesson.primaryProblem, lesson.coreProblems[0]);
     assert.equal(lesson.drillPurposes.length, 4,
       `Lesson ${lesson.index} must explain all four fixed drill slots.`);
@@ -204,6 +219,34 @@ try {
       'normal',
       index + 1,
     ));
+
+  const openingQuestions = baseQuestionsFor(1);
+  assert.deepEqual(
+    openingQuestions[0].expectedSequence,
+    ['C4', 'D4', 'E4', 'F4', 'G4'],
+    'Lesson 1 must begin with C-D-E-F-G before angular five-finger phrases.',
+  );
+  const cDegree = new Map([
+    ['C4', 0], ['D4', 1], ['E4', 2], ['F4', 3], ['G4', 4],
+  ]);
+  const openingLoads = openingQuestions.map((question) => {
+    const contour = question.expectedSequence.map((pitch) => cDegree.get(pitch));
+    assert.ok(contour.every((degree) => degree !== undefined));
+    let load = contour.length;
+    let previousDirection = 0;
+    for (let index = 1; index < contour.length; index++) {
+      const interval = contour[index] - contour[index - 1];
+      load += Math.max(0, Math.abs(interval) - 1) * 2;
+      const direction = Math.sign(interval);
+      if (direction && previousDirection && direction !== previousDirection) load += 0.5;
+      if (direction) previousDirection = direction;
+    }
+    return load;
+  });
+  openingLoads.slice(1).forEach((load, index) => {
+    assert.ok(load >= openingLoads[index],
+      `Lesson 1 material became easier at drill ${index + 2}.`);
+  });
   const clefLesson = baseQuestionsFor(4);
   for (const question of [clefLesson[0], clefLesson[3]]) {
     assert.equal(question.exerciseMode, 'standard');
@@ -301,24 +344,21 @@ try {
             assert.ok(staffBeatTotals.every((beats) => (
               Math.abs(beats / plan.beatsPerBar - Math.round(beats / plan.beatsPerBar)) < 1e-8
             )), `Lesson ${concept.index}, drill ${questionNumber} must fill complete measures.`);
-            const timedWaitBeats = (question.anchorShift?.timedShift?.waitSeconds ?? 0) /
-              plan.secondsPerBeat;
+            const timedWaitBeats = question.anchorShift?.timedShift?.waitBeats ?? 0;
             assert.ok(Math.abs(plan.totalBeats - totalBeats - timedWaitBeats) < 1e-8,
               `Lesson ${concept.index}, drill ${questionNumber} timeline must include its exact shift pause.`);
 
             if (question.exerciseMode === 'anchor-shift') {
-              const stagedReveal = concept.index >= 15;
-              const expectedWaitSeconds = concept.index === 15 ? 5 : concept.index === 16 ? 3.5 : 2;
-              if (!stagedReveal) {
-                assert.equal(question.anchorShift?.timedShift, undefined,
-                  `Lesson ${concept.index} must preserve the original always-visible switch.`);
-                assert.equal(plan.timedShift, undefined);
+              const stagedReveal = concept.index >= 18;
+              const expectedWaitBeats = concept.index <= 14 ? 2 : concept.index <= 16 ? 1 : 0;
+              assert.equal(question.anchorShift?.timedShift?.waitBeats, expectedWaitBeats,
+                `Lesson ${concept.index} must use its progressive beat-aligned move window.`);
+              assert.equal(question.anchorShift?.timedShift?.revealSecond, stagedReveal ? true : undefined);
+              assert.equal(plan.timedShift?.waitBeats ?? 0, expectedWaitBeats);
+              if (expectedWaitBeats > 0) {
+                assert.equal(plan.timedShift?.waitSeconds, expectedWaitBeats * plan.secondsPerBeat);
               } else {
-                assert.equal(question.anchorShift?.timedShift?.waitSeconds, expectedWaitSeconds,
-                  `Lesson ${concept.index} must use its progressive phrase-reveal window.`);
-                assert.equal(question.anchorShift?.timedShift?.revealSecond, true);
-                assert.equal(plan.timedShift?.waitSeconds, expectedWaitSeconds);
-                assert.ok(question.instruction.includes('newly revealed'));
+                assert.equal(plan.timedShift, undefined);
               }
               const splitIndex = question.anchorShift.splitIndex;
               const writtenSplitBeat = staff.notes.slice(0, splitIndex).reduce(
@@ -494,10 +534,8 @@ try {
               );
               assert.equal(offlineOnlyGrade.matched, perfect.length,
                 'Offline recovery should retain partial credit for a supported quiet note.');
-              if (question.exerciseMode !== 'blind-memory') {
-                assert.ok(offlineOnlyGrade.scores.pitch < 5 && offlineOnlyGrade.scores.overall < 5,
-                  `A note missed by the live detector incorrectly produced 5.0 in Lesson ${concept.index}.`);
-              }
+              assert.equal(offlineOnlyGrade.scores.pitch, 5,
+                `A consensus-verified quiet note lost Pitch credit in Lesson ${concept.index}.`);
 
               const humanPerfect = perfect.map((note, index) => {
                 const attackJitter = (index % 2 === 0 ? -0.12 : 0.12) * plan.secondsPerBeat;
@@ -1103,8 +1141,9 @@ try {
         'A perfect hand-position switch must retain full mastery credit.');
       assert.equal(grade.transition?.score, 5,
         'The planned movement window must not count as extra transition delay.');
-      const waitSeconds = fullRoute.current.anchorShift.timedShift?.waitSeconds;
-      if (waitSeconds) {
+      const waitBeats = fullRoute.current.anchorShift.timedShift?.waitBeats ?? 0;
+      if (waitBeats > 0) {
+        const waitSeconds = waitBeats * currentPlan.secondsPerBeat;
         const splitIndex = fullRoute.current.anchorShift.splitIndex;
         const unpausedTake = performed.map((note, index) => (
           index >= splitIndex ? { ...note, time: note.time - waitSeconds } : note

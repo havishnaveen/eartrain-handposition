@@ -12,6 +12,12 @@ open with Prove It as a quick placement diagnostic, then provide supported
 reading and finish with a second check. That opening check identifies the help
 the learner needs; it is not a claim that the position was already taught.
 
+Inside each fixed four-drill lesson, melodic material is assigned from simple
+to complex. A straight five-finger C-D-E-F-G pattern precedes longer,
+direction-changing or skipping figures. The reviewed drill modes remain in
+their original slots; only the material within those slots follows this
+difficulty order.
+
 Difficulty uses a challenge budget, not simultaneous escalation on every axis.
 Lessons 1-5 establish quarter-note pulse; Lessons 6-12 add eighth-note
 subdivision. Lessons 13-18 retain that rhythm vocabulary while movement and
@@ -19,6 +25,11 @@ deep-key placement become the new challenge. Lesson 17 is deliberately a
 one-hand, five-event bridge with one closing chord before Lesson 18 adds the
 timed B-to-F-sharp move. From Lesson 19 onward, polyphony and independent chord
 hearing are the new load.
+
+Hand-shift travel is beat-aligned: Lessons 13-14 provide two visible move
+beats, Lessons 15-16 provide one, and Lesson 18 removes the pause entirely.
+Both phrases stay visible while movement time is being learned; only the final
+instantaneous transfer withholds the destination until the hand-off.
 
 Key-signature copy must describe the five keys actually played. A G-position
 pentachord is G-A-B-C-D (the signature is introduced visually, but F-sharp is
@@ -44,7 +55,7 @@ too room-dependent for a reliable entry exercise.
 | 11-12 | E-major orientation, then longer phrases | four-sharp position, subdivision, two-hand stability |
 | 13-16 | One fixed fifth-shift per lesson, right hand then left hand | exact position pair, dominant/non-dominant hand shift, landing in time |
 | 17 | B and F-sharp maps before movement | five/six-sharp placement and finger mapping |
-| 18 | B-to-F-sharp shift | advanced exact-pair landing with a two-second reveal |
+| 18 | B-to-F-sharp shift | advanced exact-pair landing with an instantaneous destination reveal |
 | 19-20 | Supplied anchor to complete 1-3-5 chord | chord anchor, shell, reading, simultaneous chord attack |
 | 21 | Major/minor middle-tone contrast | chord-quality hearing and spacing |
 | 22 | Match the bottom note from an isolated broken example | chord-by-ear, anchor matching, shape transfer |

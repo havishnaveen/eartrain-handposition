@@ -177,7 +177,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: LH, positions: [C], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: false,
     tempoEasy: 15, tempoHard: 13.8,
-    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.07,
+    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.12,
   },
   {
     id: 'c04-two-hand-white-keys', index: 4, phase: 0, phaseLabel: 'Two-hand foundations',
@@ -187,41 +187,41 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [C, G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: false, tempoEasy: 14, tempoHard: 12.5,
-    drills: ['standard', 'prove-it', 'blind-memory', 'standard'], difficultyBase: 0.12,
+    drills: ['standard', 'prove-it', 'blind-memory', 'standard'], difficultyBase: 0.16,
   },
   {
     id: 'c05-g-major-orientation', index: 5, phase: 1, phaseLabel: 'One sharp',
-    title: 'G major: one sharp', focus: 'Meet F-sharp in an otherwise familiar five-finger shape.',
+    title: 'G major: one sharp', focus: 'Read the one-sharp signature while placing G-A-B-C-D on familiar white keys.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
     tempoEasy: 14.5, tempoHard: 13,
-    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.17,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.20,
   },
   {
     id: 'c06-g-major-phrases', index: 6, phase: 1, phaseLabel: 'One sharp',
-    title: 'Sing in G major', focus: 'Use one sharp inside complete tonal phrases.',
+    title: 'Sing in G major', focus: 'Keep the G-position tonic map stable through complete tonal phrases.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 14, tempoHard: 12.4,
-    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.22,
+    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.24,
   },
   {
     id: 'c07-d-major-orientation', index: 7, phase: 1, phaseLabel: 'Two sharps',
-    title: 'D major: two sharps', focus: 'Add C-sharp while keeping the phrase stepwise.',
+    title: 'D major: two sharps', focus: 'Make F-sharp physical inside D-E-F-sharp-G-A while reading the two-sharp signature.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: true,
     tempoEasy: 14, tempoHard: 12.8,
-    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.27,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.28,
   },
   {
     id: 'c08-d-major-phrases', index: 8, phase: 1, phaseLabel: 'Two sharps',
-    title: 'Shape D-major melodies', focus: 'Combine two sharps with turns, repeats, and gentle skips.',
+    title: 'Shape D-major melodies', focus: 'Keep F-sharp secure through turns, repeats, and gentle skips in D position.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: BASS,
@@ -231,43 +231,43 @@ const LESSONS: readonly LessonRecipe[] = [
   },
   {
     id: 'c09-a-major-orientation', index: 9, phase: 2, phaseLabel: 'Three sharps',
-    title: 'A major: three sharps', focus: 'Add G-sharp after G- and D-major feel secure.',
+    title: 'A major: three sharps', focus: 'Transfer black-key awareness to C-sharp inside the A five-finger map.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
     showKeySignature: true, tempoEasy: 13.8, tempoHard: 12.4,
-    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.37,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.36,
   },
   {
     id: 'c10-a-major-phrases', index: 10, phase: 2, phaseLabel: 'Three sharps',
-    title: 'Flow through A major', focus: 'Keep three sharps stable through a longer phrase.',
+    title: 'Flow through A major', focus: 'Keep the A-position C-sharp stable through a longer phrase.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13.2, tempoHard: 11.8,
-    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.42,
+    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.40,
   },
   {
     id: 'c11-e-major-orientation', index: 11, phase: 2, phaseLabel: 'Four sharps',
-    title: 'E major: four sharps', focus: 'Add D-sharp with a calm, compact melodic path.',
+    title: 'E major: four sharps', focus: 'Coordinate F-sharp and G-sharp inside a calm, compact E-position path.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
     showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
-    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.47,
+    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.44,
   },
   {
     id: 'c12-e-major-phrases', index: 12, phase: 2, phaseLabel: 'Four sharps',
-    title: 'Color E-major phrases', focus: 'Read four sharps through repeated ideas and skips.',
+    title: 'Color E-major phrases', focus: 'Keep both black keys secure through repeated ideas and skips in E position.',
     instruction: 'Find the pattern. Then play it from memory.',
     exerciseMode: 'blind-memory',
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13, tempoHard: 11.5,
-    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.52,
+    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.48,
   },
   {
     id: 'c13-shift-c-to-g', index: 13, phase: 3, phaseLabel: 'Anchor and shift',
@@ -276,7 +276,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [C, G],
     rightOctaves: TREBLE, leftOctaves: [3], contours: MUSICAL_GENTLE_SKIPS,
     meters: [4], showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
-    drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.40,
+    drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.52,
     shiftPairs: [[C, G]],
   },
   {
@@ -286,7 +286,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [G, D],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: MUSICAL_GENTLE_SKIPS,
     meters: [4], showKeySignature: true, tempoEasy: 13, tempoHard: 11.5,
-    drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.47,
+    drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.56,
     shiftPairs: [[G, D]],
     dualShiftProof: true,
   },
@@ -297,7 +297,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [D, A],
     rightOctaves: TREBLE, leftOctaves: [3], contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.2,
-    drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.54,
+    drills: ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.60,
     shiftPairs: [[D, A]],
   },
   {
@@ -307,7 +307,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [A, E],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.3, tempoHard: 10.7,
-    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.60,
+    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.64,
     shiftPairs: [[A, E]],
   },
   {
@@ -319,7 +319,7 @@ const LESSONS: readonly LessonRecipe[] = [
     positions: [B, B, FS, FS], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4],
     showKeySignature: true, tempoEasy: 15, tempoHard: 14,
-    drills: ['prove-it', 'prove-it', 'prove-it', 'chord-reading'], difficultyBase: 0.50,
+    drills: ['prove-it', 'prove-it', 'prove-it', 'chord-reading'], difficultyBase: 0.68,
   },
   {
     id: 'c18-shift-b-to-fsharp', index: 18, phase: 5, phaseLabel: 'Five and six sharps',
@@ -328,7 +328,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [B, FS],
     rightOctaves: [4], leftOctaves: [3], contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.2,
-    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.62,
+    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.72,
     shiftPairs: [[B, FS]],
   },
   {
@@ -338,7 +338,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D],
     rightOctaves: [4], leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 14, tempoHard: 13,
-    drills: ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'], difficultyBase: 0.58,
+    drills: ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'], difficultyBase: 0.76,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D], qualities: ['major'], rootSupport: 'shown',
       layers: [], progressionLength: 1, targetRepeats: 2, rootSearchSeconds: 9,
@@ -352,10 +352,10 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A],
     rightOctaves: [4], leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 13.5, tempoHard: 12.5,
-    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.64,
+    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.80,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A], qualities: ['major'], rootSupport: 'shown',
-      layers: ['pad'], progressionLength: 2, targetRepeats: 2, rootSearchSeconds: 8.5,
+      layers: [], progressionLength: 1, targetRepeats: 2, rootSearchSeconds: 8.5,
       shapeSearchSeconds: 10.5, maxWrongGuesses: 4,
     },
   },
@@ -366,52 +366,52 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A],
     rightOctaves: TREBLE, leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 13, tempoHard: 12,
-    drills: ['spatial-chord', 'chord-reading', 'chord-reading', 'spatial-chord'], difficultyBase: 0.70,
+    drills: ['spatial-chord', 'chord-reading', 'chord-reading', 'spatial-chord'], difficultyBase: 0.84,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A], qualities: ['major', 'minor'], rootSupport: 'shown',
-      layers: ['pad', 'bass'], progressionLength: 2, targetRepeats: 2,
+      layers: [], progressionLength: 1, targetRepeats: 2,
       rootSearchSeconds: 8, shapeSearchSeconds: 10, maxWrongGuesses: 4,
     },
   },
   {
     id: 'c22-match-anchor-in-texture', index: 22, phase: 6, phaseLabel: 'Chord shapes by touch',
-    title: 'Match an anchor in texture', focus: 'Match an isolated reference note, then rebuild the chord in 1-3-5 order.',
+    title: 'Match an isolated anchor', focus: 'Find the bottom note from the broken example, then rebuild the chord in 1-3-5 order.',
     instruction: 'Match the anchor. Build the same shape.',
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [D, A, E, B],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.8,
-    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.76,
+    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.88,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [D, A, E, B], qualities: ['major', 'minor'], rootSupport: 'matched',
-      layers: ['pad', 'bass', 'pulse'], progressionLength: 3, targetRepeats: 2,
+      layers: [], progressionLength: 1, targetRepeats: 2,
       rootSearchSeconds: 8, shapeSearchSeconds: 9.5, maxWrongGuesses: 3,
     },
   },
   {
     id: 'c23-separate-background-piano', index: 23, phase: 7, phaseLabel: 'Background harmony',
-    title: 'Separate the background piano', focus: 'Track the centered piano through a mix, match its anchor, and rebuild by shape.',
+    title: 'Retain the heard shape', focus: 'Keep all three chord tones after the blocked and broken examples, then rebuild them together.',
     instruction: 'Hear the piano. Match. Build.',
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A, E],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12.4, tempoHard: 11.2,
-    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.84,
+    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.92,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A, E], qualities: ['major', 'minor'], rootSupport: 'matched',
-      layers: ['pad', 'bass', 'pulse', 'strings'], progressionLength: 3, targetRepeats: 2,
+      layers: [], progressionLength: 1, targetRepeats: 2,
       rootSearchSeconds: 7.5, shapeSearchSeconds: 9, maxWrongGuesses: 3,
     },
   },
   {
     id: 'c24-carry-shape-through-song', index: 24, phase: 7, phaseLabel: 'Background harmony',
-    title: 'Carry the shape through a song', focus: 'Retain the piano target through four chords and rebuild it without chord-name guessing.',
+    title: 'Transfer the heard shape', focus: 'Rebuild major and minor shapes across the widest root and register range without visual note clues.',
     instruction: 'Follow the piano. Match. Build.',
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [D, A, E, B, FS],
     rightOctaves: [4, 5], leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12, tempoHard: 10.8,
-    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.90,
+    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.96,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [D, A, E, B, FS], qualities: ['major', 'minor'], rootSupport: 'matched',
-      layers: ['pad', 'bass', 'pulse', 'strings'], progressionLength: 4, targetRepeats: 1,
+      layers: [], progressionLength: 1, targetRepeats: 2,
       rootSearchSeconds: 7.2, shapeSearchSeconds: 8.8, maxWrongGuesses: 3,
     },
   },
@@ -595,6 +595,7 @@ export const CURRICULUM_BLUEPRINT = LESSONS.map((lesson) => {
     coreProblems: [...intervention.coreProblems],
     problemTags: interventionProblems(intervention),
     drillPurposes: [...intervention.drillPurposes] as [string, string, string, string],
+    materialOrder: 'easy-to-hard' as const,
     positionProofSequence: lesson.dualShiftProof
       ? (lesson.shiftPairs?.[0] ?? []).map((position) => `${position.id} Major`)
       : [],
@@ -623,6 +624,38 @@ function variedPick<T>(
   const stride = ordered.length % 3 !== 0 ? 3 : ordered.length % 2 !== 0 ? 2 : 1;
   const tierOffset = Math.floor(clamp01(difficulty) * Math.min(3, ordered.length - 1));
   return ordered[positiveModulo(ordinal * stride + tierOffset, ordered.length)];
+}
+
+/**
+ * Rank written finger patterns by the work required from the eye and hand.
+ * Length adds reading load, skips add more than steps, and each reversal adds
+ * a smaller coordination cost.
+ */
+export function melodicDifficulty(contour: Contour): number {
+  let difficulty = contour.length;
+  let previousDirection = 0;
+  for (let index = 1; index < contour.length; index++) {
+    const interval = contour[index] - contour[index - 1];
+    difficulty += Math.max(0, Math.abs(interval) - 1) * 2;
+    const direction = Math.sign(interval);
+    if (direction && previousDirection && direction !== previousDirection) difficulty += 0.5;
+    if (direction) previousDirection = direction;
+  }
+  return difficulty;
+}
+
+function difficultyOrderedContour(
+  contours: readonly Contour[],
+  localRep: number,
+): Contour {
+  const ranked = contours
+    .map((contour, sourceIndex) => ({ contour, sourceIndex }))
+    .sort((a, b) => (
+      melodicDifficulty(a.contour) - melodicDifficulty(b.contour) ||
+      a.sourceIndex - b.sourceIndex
+    ));
+  const progress = clamp01(localRep / Math.max(1, BASE_QUESTIONS - 1));
+  return ranked[Math.round(progress * (ranked.length - 1))]?.contour ?? contours[0];
 }
 
 function cyclePick<T>(items: readonly T[], ordinal: number): T {
@@ -1168,10 +1201,13 @@ function questionFor(
 ): Question {
   const localRep = positiveModulo(questionNumber - 1, lesson.drills.length);
   const drillKind = cyclePick(lesson.drills, localRep);
-  const fixedDifficulty = clamp01(lesson.difficultyBase + localRep * 0.035);
+  const fixedDifficulty = clamp01(lesson.difficultyBase + localRep * 0.012);
   const modeDifficulty = fixedDifficulty;
   const materialIndex = lesson.index * BASE_QUESTIONS + localRep;
   const rand = makeRandom(20260826 + lesson.index * 4099 + localRep * 131);
+  const rhythmLevel = lesson.index >= 13 && lesson.index <= 18 && localRep === 0
+    ? 5
+    : lesson.index;
 
   // Local question number, not global ordinal, guarantees a fixed hand order
   // even after an earlier lesson grows remedial repeats.
@@ -1180,7 +1216,7 @@ function questionFor(
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
 
   if (drillKind === 'chord-reading') {
-    return chordalStandardQuestion(
+    return withPositionProof(chordalStandardQuestion(
       lesson,
       ordinal,
       localRep + 1,
@@ -1188,7 +1224,7 @@ function questionFor(
       mode,
       modeDifficulty,
       hand,
-    );
+    ), hand);
   }
 
   if (
@@ -1196,7 +1232,7 @@ function questionFor(
     lesson.spatialChord &&
     (lesson.exerciseMode === 'spatial-chord' || lesson.spatialChord.questionNumbers.length > 0)
   ) {
-    return spatialChordQuestion(
+    return withPositionProof(spatialChordQuestion(
       lesson,
       lesson.spatialChord,
       ordinal,
@@ -1204,7 +1240,7 @@ function questionFor(
       fixedDifficulty,
       mode,
       hand,
-    );
+    ), hand);
   }
 
   if (drillKind === 'anchor-shift' && lesson.shiftPairs?.length) {
@@ -1234,8 +1270,8 @@ function questionFor(
     // gradually, never jumping straight to a dense six-note landing.
     const landingLength = lesson.index <= 13 ? 3 : lesson.index <= 15 ? 4 : 5;
     const landingPool = fullLandingPool.map((contour) => contour.slice(0, landingLength));
-    const opening = variedPick(openingPool, modeDifficulty, materialIndex + lesson.index);
-    const landing = variedPick(landingPool, modeDifficulty, materialIndex * 2 + lesson.index);
+    const opening = difficultyOrderedContour(openingPool, localRep);
+    const landing = difficultyOrderedContour(landingPool, localRep);
     const splitIndex = opening.length;
     const degrees = [...opening, ...landing];
     const notes: CueNote[] = degrees.map((degree, index) => {
@@ -1258,10 +1294,14 @@ function questionFor(
       0.42,
       1.1 - (lesson.index - 13) * 0.12 - modeDifficulty * 0.18,
     );
-    const waitSeconds = lesson.index === 15 ? 5 : lesson.index === 16 ? 3.5 : 2;
-    const stagedReveal = lesson.index >= 15;
+    // Early movement drills provide two counted beats, then one, before the
+    // advanced B-to-F-sharp transfer becomes instantaneous. Musical beats are
+    // the source of truth—fractional seconds previously shifted the second
+    // phrase off the click grid and made its first note appear to be skipped.
+    const waitBeats = lesson.index <= 14 ? 2 : lesson.index <= 16 ? 1 : 0;
+    const stagedReveal = lesson.index >= 18;
 
-    const shiftQuestion = withPositionProof({
+    const shiftQuestion: Question = {
       id: `${lesson.id}#${ordinal}`,
       conceptId: lesson.id,
       exerciseMode: 'anchor-shift',
@@ -1270,7 +1310,9 @@ function questionFor(
       // alternating hands across a lesson must not mislabel the current rep.
       handScope: hand,
       instruction: stagedReveal
-        ? `Play ${fromName}. Then study the newly revealed ${toName} phrase for ${waitSeconds} seconds before playing it.`
+        ? `Play ${fromName}, move immediately, then continue in ${toName}.`
+        : waitBeats > 0
+          ? `Play ${fromName}. Use the ${waitBeats}-beat move window, then continue in ${toName}.`
         : lesson.instruction,
       cue: {
         // No key signature: a hand-position shift crosses two different
@@ -1291,7 +1333,7 @@ function questionFor(
             notes,
             4,
             rand,
-            lesson.index,
+            rhythmLevel,
             [splitIndex - 1, splitIndex],
           ),
         }],
@@ -1306,11 +1348,14 @@ function questionFor(
         toPositionName: toName,
         splitIndex,
         allowedExtraBeats,
-        ...(stagedReveal
-          ? { timedShift: { waitSeconds, revealSecond: true } }
+        ...((waitBeats > 0 || stagedReveal)
+          ? { timedShift: { waitBeats, ...(stagedReveal ? { revealSecond: true } : {}) } }
           : {}),
       },
-    }, hand);
+      // A movement drill may orient the departure hand, but it must never
+      // synthesize one impossible proof shape from both sides of the shift.
+      positionProof: positionProofForPosition(from, hand),
+    };
     if (!lesson.dualShiftProof) return shiftQuestion;
 
     const positionProofs = [
@@ -1340,10 +1385,9 @@ function questionFor(
       : 'standard';
 
   const memoryPool = lesson.index >= 9 ? MEMORY_LONG_PATTERNS : MEMORY_SHORT_PATTERNS;
-  const contour = variedPick(
+  const contour = difficultyOrderedContour(
     exerciseMode === 'blind-memory' ? memoryPool : lesson.contours,
-    modeDifficulty,
-    materialIndex + lesson.index,
+    localRep,
   );
   const memoryPreviewSeconds = contour.length >= 10
     ? LONG_MEMORY_PREVIEW_SECONDS
@@ -1406,7 +1450,7 @@ function questionFor(
     anchor: index === 0,
   }));
 
-  return {
+  return withPositionProof({
     id: `${lesson.id}#${ordinal}`,
     conceptId: lesson.id,
     exerciseMode,
@@ -1417,7 +1461,7 @@ function questionFor(
     cue: {
       keySignature: lesson.showKeySignature ? position.template.keySignature : 'C',
       timeSignature: `${beatsPerBar}/4`,
-      staves: [{ clef, hand, notes: applyRhythm(notes, beatsPerBar, rand, lesson.index) }],
+      staves: [{ clef, hand, notes: applyRhythm(notes, beatsPerBar, rand, rhythmLevel) }],
     },
     expectedSequence: contour.map((degree) => position.sci[degree]),
     tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),
@@ -1454,7 +1498,7 @@ function questionFor(
     ...(exerciseMode === 'blind-memory'
       ? { blindMemory: { previewSeconds: memoryPreviewSeconds, hideStyle: 'vanish' as const } }
       : {}),
-  };
+  }, hand);
 }
 
 export const PROGRESSIVE_CONCEPTS: LessonDefinition[] = LESSONS.map((lesson) => {

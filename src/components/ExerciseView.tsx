@@ -152,7 +152,12 @@ function PerformanceAnalysis({ progress }: { progress: number }) {
           aria-valuemax={100}
           aria-valuenow={percent}
         >
-          <i style={{ transform: `scaleX(${percent / 100})` }} />
+          <span className="et-analysis__progress-track">
+            <i
+              className="et-analysis__progress-fill"
+              style={{ transform: `scaleX(${percent / 100})` }}
+            />
+          </span>
           <strong>{percent}%</strong>
         </div>
       </div>
@@ -587,6 +592,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const proofCue: CueSpec = {
         keySignature: 'C',
         timeSignature: '4/4',
+        showTimeSignature: false,
         staves: [{
           clef: proofHand === 'right' ? 'treble' : 'bass',
           hand: proofHand,
@@ -677,7 +683,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     const memoryWaiting = isBlindMemory && status === 'prompt';
     const hideUntilStart = status === 'prompt' && exerciseMode !== 'standard';
     const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
-    const shiftWaitSeconds = anchorShift?.timedShift?.waitSeconds;
+    const shiftWaitBeats = anchorShift?.timedShift?.waitBeats ?? 0;
     const isChordReading = exerciseMode === 'standard' && /stacked chord/i.test(instruction);
     const memoryDigit = Math.max(0, Math.ceil(memorySecondsRemaining));
     const showPieceProgress = status === 'listening';
@@ -773,8 +779,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 exerciseMode === 'blind-memory'
                   ? `You will have ${memoryPreviewSeconds} seconds to look.`
                   : exerciseMode === 'anchor-shift'
-                    ? shiftWaitSeconds
-                      ? `A ${shiftWaitSeconds}-second move timer appears during the exercise.`
+                    ? shiftWaitBeats > 0
+                      ? `A ${shiftWaitBeats}-beat move window appears during the exercise.`
                       : 'Move when the arrow lights up.'
                     : 'Listen to the two-measure count in. Then play.'
               )}
@@ -819,7 +825,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <div className="et-record">
               <span
                 key={`beat-${beatLabel}`}
-                className={`et-record__beat${beatLabel === 'SHIFT HAND' ? ' et-record__beat--shift' : ''}`}
+                className={`et-record__beat${beatLabel.startsWith('SHIFT') ? ' et-record__beat--shift' : ''}`}
               >
                 {beatLabel}
               </span>

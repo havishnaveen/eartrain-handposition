@@ -33,6 +33,12 @@ export interface CueSpec {
   keySignature?: string;
   timeSignature?: string;
   /**
+   * Engraving-only override. The timing engine may still use `timeSignature`
+   * for count-in and bar math while compact one-to-three-event cues omit the
+   * redundant printed fraction.
+   */
+  showTimeSignature?: boolean;
+  /**
    * When set, a piece longer than this many measures wraps onto additional
    * stacked systems (each a fresh copy of every staff in `staves`) instead
    * of staying on one ever-widening line. Undefined keeps today's single
@@ -186,7 +192,8 @@ export interface AnchorShiftSpec {
   allowedExtraBeats: number;
   /** Optional silent movement window inserted between the two notation panels. */
   timedShift?: {
-    waitSeconds: number;
+    /** Exact silent movement window on the musical grid. */
+    waitBeats: number;
     /** Hide Position 2 until its observation window begins. */
     revealSecond?: boolean;
   };

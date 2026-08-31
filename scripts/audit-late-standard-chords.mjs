@@ -117,9 +117,9 @@ try {
   }
 
   const switchExpectations = new Map([
-    [14, { landingNotes: 4, waitSeconds: 0 }],
-    [15, { landingNotes: 4, waitSeconds: 5 }],
-    [18, { landingNotes: 5, waitSeconds: 2 }],
+    [14, { landingNotes: 4, waitBeats: 2 }],
+    [15, { landingNotes: 4, waitBeats: 1 }],
+    [18, { landingNotes: 5, waitBeats: 0 }],
   ]);
   for (const [lessonIndex, expected] of switchExpectations) {
     const lesson = PROGRESSIVE_CONCEPTS[lessonIndex - 1];
@@ -137,9 +137,9 @@ try {
       `Lesson ${lessonIndex} must use its gradual destination-phrase length.`,
     );
     assert.equal(
-      question.anchorShift.timedShift?.waitSeconds ?? 0,
-      expected.waitSeconds,
-      `Lesson ${lessonIndex} must use its gradual reveal time.`,
+      question.anchorShift.timedShift?.waitBeats ?? 0,
+      expected.waitBeats,
+      `Lesson ${lessonIndex} must use its gradual beat-aligned move window.`,
     );
   }
 

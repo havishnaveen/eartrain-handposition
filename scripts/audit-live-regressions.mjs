@@ -24,7 +24,7 @@ try {
   } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
   );
-  const { credibleRealtimeFallback, pianoConsensus, withPitchOrderSlotHints } = await server.ssrLoadModule(
+  const { credibleRealtimeFallback, spotifyPianoConsensus, withPitchOrderSlotHints } = await server.ssrLoadModule(
     '/src/audio/scoreAnalysis.ts',
   );
 
@@ -63,7 +63,7 @@ try {
   }]), [],
   'If PCM analysis fails, score-context-only recovery must not become a graded note.');
 
-  const invisibleHumRecovery = pianoConsensus({
+  const corroboratedRecovery = spotifyPianoConsensus({
     notes: [{
       midi: 60,
       time: 1,
@@ -86,8 +86,18 @@ try {
     expectedCount: 1,
     reason: 'analyzed',
   }, [], [{ midi: 60, time: 1, endTime: 1.8, confidence: 0.9 }]);
-  assert.deepEqual(invisibleHumRecovery.notes, [],
-    'Even a Magenta-matched offline note must fail when no live piano event was visible.');
+  assert.equal(corroboratedRecovery.notes.length, 1,
+    'Spotify plus independent PCM hammer evidence must recover a correct missed live onset.');
+  const uncorroboratedRecovery = spotifyPianoConsensus({
+    ...corroboratedRecovery,
+    notes: corroboratedRecovery.notes.map((note) => ({
+      ...note,
+      analysisRise: 1.01,
+      analysisPersistence: 2,
+    })),
+  }, [], [{ midi: 60, time: 1, endTime: 1.8, confidence: 0.9 }]);
+  assert.deepEqual(uncorroboratedRecovery.notes, [],
+    'Spotify may not manufacture score credit without independent PCM hammer evidence.');
 
   const pcmValidatedLiveNote = {
     midi: 60,
@@ -100,7 +110,7 @@ try {
     voiceVeto: false,
     voiceBurst: false,
   };
-  const validatedLiveConsensus = pianoConsensus({
+  const validatedLiveConsensus = spotifyPianoConsensus({
     notes: [{
       ...pcmValidatedLiveNote,
       analysisSource: 'reconciled',
@@ -295,6 +305,29 @@ try {
   assert.ok(badRhythmGrade.scores.overall <= 4.5,
     'Poor rhythm must lower Overall without triggering a catastrophic score.');
 
+  const grosslyDistortedRhythm = perfect.map((note, index) => ({
+    ...note,
+    time: [10, 11.05, 11.1, 12.15][index],
+  }));
+  const grossRhythmGrade = gradeSequence(expected, grosslyDistortedRhythm, {
+    plan: timedPlan,
+    playStartTime: 10,
+    lessonLevel: 12,
+    totalLessons: 24,
+  });
+  assert.equal(grossRhythmGrade.scores.pitch, 5,
+    'Gross rhythm errors must never lower correct Pitch credit.');
+  assert.ok((grossRhythmGrade.scores.timing ?? 5) <= 2,
+    `A severely broken pulse must not receive Timing 5: ${JSON.stringify(grossRhythmGrade.scores)}`);
+
+  const correctedWrongPitch = gradeSequence(expected, [
+    perfect[0],
+    { ...perfect[1], midi: 63, time: 10.32, detectorLane: 'strict', pianoAttackConfidence: 0.9 },
+    ...perfect.slice(1),
+  ]);
+  assert.ok(correctedWrongPitch.scores.pitch <= 4.2,
+    `A confidently played wrong pitch must remain visible in Pitch: ${JSON.stringify(correctedWrongPitch.scores)}`);
+
   const offBeatStrictNotes = badlyDistortedRhythm.map((note) => ({
     ...note,
     detectorLane: 'strict',
@@ -416,8 +449,8 @@ try {
       }
     : note);
   const recoveredGrade = gradeSequence(expected, pcmRecovered);
-  assert.ok(recoveredGrade.scores.overall >= 4.5 && recoveredGrade.scores.overall < 5,
-    'A strongly PCM-supported soft note should retain high credit without manufacturing 5.0.');
+  assert.equal(recoveredGrade.scores.pitch, 5,
+    'Spotify plus independent PCM hammer evidence must receive full pitch credit.');
 
   console.log('Live regression audit passed: detector isolation, honest misses, PCM recovery, and played-extra grading.');
 } finally {

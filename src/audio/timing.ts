@@ -726,10 +726,12 @@ function buildRhythm(
     sorted.length % 2
       ? sorted[middle]
       : (sorted[middle - 1] + sorted[middle]) / 2;
-  const forgivenOffset = Math.max(
-    -profile.startOffsetAllowance,
-    Math.min(profile.startOffsetAllowance, medianDeviation),
-  );
+  // Microphone pipelines report a stable hardware offset that varies wildly
+  // across tablets, Bluetooth routes, and browsers. Subtract the complete
+  // median phase offset: rhythm is the spacing between attacks, not the
+  // device's input latency. Non-uniform rushing/dragging remains in both the
+  // residual onsets and the interval errors below.
+  const forgivenOffset = medianDeviation;
   const adjusted = deviations.map((deviation) => deviation - forgivenOffset);
 
   // Absolute onsets catch playing the whole phrase late or early. Duration is
@@ -779,11 +781,12 @@ function buildRhythm(
   // credible acoustic release is allowed to grade written note length.
   const durationErrors = releaseErrors;
 
-  const meanOnsetError =
-    adjusted.reduce((sum, deviation) => sum + Math.abs(deviation), 0) / adjusted.length;
+  const meanOnsetError = Math.sqrt(
+    adjusted.reduce((sum, deviation) => sum + deviation * deviation, 0) / adjusted.length,
+  );
   const meanIntervalError = intervalErrors.length === 0
     ? 0
-    : intervalErrors.reduce((sum, error) => sum + error, 0) / intervalErrors.length;
+    : Math.sqrt(intervalErrors.reduce((sum, error) => sum + error * error, 0) / intervalErrors.length);
   const durationZeroWindow = profile.zeroScoreWindow * 0.85;
   const durationScoringRange = Math.max(
     0.01,
@@ -1295,7 +1298,11 @@ export function gradeSequence(
     0,
     playedRepeatExtras - Math.max(1, Math.floor(expectedCount * 0.25)),
   );
-  const pitchErrorCount = hard + hesitations * 0.35 + excessiveRepeatPitchErrors;
+  // A confidently struck wrong key remains a pitch error even when the
+  // student immediately corrects it. Calling it a hesitation may soften the
+  // teaching copy and Cleanliness score, but it must not turn wrong pitches
+  // into 4.7/5 Pitch results.
+  const pitchErrorCount = hard + hesitations + excessiveRepeatPitchErrors;
 
   const playedNames = detected.map((d) => midiToName(d.midi));
   const rhythm = buildRhythm(matches, options);
@@ -1306,19 +1313,11 @@ export function gradeSequence(
 
   const clamp5 = scoreToFive;
 
-  // Pitch: proportion of the written notes actually produced, in order.
-  // Offline recovery can rescue a real quiet key, but a note that never
-  // cleared the live detector remains provisional evidence. It may earn
-  // substantial credit, but it cannot turn an incomplete live take into 5.0.
-  const offlineRecoveryPenalty = matches.reduce((penalty, { note }) => {
-    if (note.analysisSource !== 'offline-recovered') return penalty;
-    const confidence = clamp01(note.analysisConfidence ?? note.clarity ?? 0);
-    // Lossless PCM is stronger evidence than a missing live UI event. Keep a
-    // small provenance deduction so it cannot create 5.0, while avoiding the
-    // old flat penalty that severely undervalued clearly recorded soft notes.
-    return penalty + 0.1 + (1 - confidence) * 0.22;
-  }, 0);
-  const pitchEvidence = matches.length - offlineRecoveryPenalty;
+  // Pitch: proportion of written notes actually produced, in order. An
+  // offline-recovered note reaches this point only after independent PCM
+  // hammer evidence and Spotify Basic Pitch agree on pitch and onset. It is
+  // therefore real pitch evidence, not a reason to deduct a second time.
+  const pitchEvidence = matches.length;
   const pitchCoverage = expectedCount === 0 ? 0 : pitchEvidence / expectedCount;
   const pitchPrecision = pitchEvidence <= 0
     ? 0
@@ -1341,9 +1340,7 @@ export function gradeSequence(
   const earnedPitchScore = memoryPatternRecognized
     ? Math.max(4.5, exactPitchScore)
     : exactPitchScore;
-  const pitchScore = offlineRecoveryPenalty > 0
-    ? Math.min(4.9, earnedPitchScore)
-    : earnedPitchScore;
+  const pitchScore = earnedPitchScore;
 
   // Timing: a curved, lesson-aware falloff. Early readers get space to find
   // the beat; later readers are asked for more precision, without the old
@@ -1353,7 +1350,10 @@ export function gradeSequence(
     ? null
     : rhythm.evaluated < 2
       ? rhythm.meanOnsetErrorBeats
-      : rhythm.meanOnsetErrorBeats * 0.42 + rhythm.meanIntervalErrorBeats * 0.58;
+      : Math.max(
+          rhythm.meanOnsetErrorBeats * 0.35 + rhythm.meanIntervalErrorBeats * 0.65,
+          rhythm.meanIntervalErrorBeats * 0.88,
+        );
   const baseTimingScore = rhythm === null
     ? null
     : (() => {
@@ -1425,6 +1425,7 @@ export function gradeSequence(
     rhythmAttackError !== null &&
     rhythm.accuracy === 1 &&
     rhythmAttackError <= timingProfile.fullCreditOnsetWindow * 1.2 &&
+    rhythm.meanIntervalErrorBeats <= timingProfile.fullCreditOnsetWindow * 1.2 &&
     (
       rhythm.durationAccuracy === null ||
       rhythm.durationEvaluated < 2 ||
@@ -1491,10 +1492,6 @@ export function gradeSequence(
     cleanScore,
     { pitch: wPitch, timing: wTiming, cleanliness: wClean },
   );
-  // A note recovered only after the live take ended is valuable evidence,
-  // but the student-facing detector demonstrably missed it. Rounding the
-  // weighted 4.95 back to 5.0 hid that fact. Full mastery requires every
-  // written note to have cleared the responsive lane as well as the PCM pass.
   const visibleCategoryFloor = timingScore === null
     ? Math.min(pitchScore, cleanScore)
     : Math.min(pitchScore, timingScore, cleanScore);
@@ -1506,7 +1503,6 @@ export function gradeSequence(
     : Math.min(weightedOverall, visibleCategoryFloor + 0.9);
   const extraNoteCap = significantExtraCount >= 0.7 ? 4.1 : 5;
   const overall = Math.min(
-    offlineRecoveryPenalty > 0 ? 4.9 : 5,
     extraNoteCap,
     weaknessAwareOverall,
   );
@@ -1605,15 +1601,15 @@ export function gradeSequence(
 
 export function planForQuestion(question: Question, bpm: number = DEFAULT_BPM): DrillPlan {
   const plan = planFor(question.cue, question.expectedSequence, bpm);
-  const waitSeconds = Math.max(0, question.anchorShift?.timedShift?.waitSeconds ?? 0);
-  if (waitSeconds === 0 || plan.expectedNotes.length < 2) return plan;
+  const waitBeats = Math.max(0, question.anchorShift?.timedShift?.waitBeats ?? 0);
+  if (waitBeats === 0 || plan.expectedNotes.length < 2) return plan;
 
   const splitIndex = Math.min(
     Math.max(1, question.anchorShift?.splitIndex ?? 1),
     plan.expectedNotes.length - 1,
   );
   const startBeat = plan.expectedNotes[splitIndex].beat;
-  const waitBeats = waitSeconds / plan.secondsPerBeat;
+  const waitSeconds = waitBeats * plan.secondsPerBeat;
   const endBeat = startBeat + waitBeats;
 
   return {

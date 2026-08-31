@@ -649,30 +649,43 @@
 .et-analysis__checks span:nth-child(2) i { background: var(--et-orange); }
 .et-analysis__checks span:nth-child(3) i { background: #6f63d9; }
 .et-analysis__progress {
-  display: block;
-  height: 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
   margin-top: 23px;
+}
+.et-analysis__progress-track {
+  display: block;
+  height: 11px;
   border-radius: 999px;
-  background: rgba(239,106,71,.1);
+  border: 1px solid rgba(239,106,71,.22);
+  background: rgba(239,106,71,.12);
+  box-shadow: inset 0 1px 2px rgba(36,34,55,.08);
   overflow: hidden;
 }
-.et-analysis__progress i {
+.et-analysis__progress-fill {
   display: block;
-  width: 42%;
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--et-orange), #7a6ddd);
-  animation: et-analysis-progress 1.6s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(239,106,71,.28);
+  transform-origin: left center;
+  transition: transform .55s cubic-bezier(.22,.75,.24,1);
+  will-change: transform;
+}
+.et-analysis__progress strong {
+  min-width: 38px;
+  color: var(--et-ink-strong);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 @keyframes et-analysis-live { 50% { opacity: .38; transform: scale(.82); } }
 @keyframes et-analysis-note { 50% { transform: translateY(-4px); color: var(--et-orange-deep); } }
 @keyframes et-analysis-scan { to { left: 100%; } }
-@keyframes et-analysis-progress {
-  0% { transform: translateX(-105%); }
-  100% { transform: translateX(240%); }
-}
-
 /* --- Exercise ------------------------------------------------------------- */
 
 .et-exercise {
@@ -770,7 +783,9 @@
 
 .et-cue__content {
   width: 100%;
+  height: 100%;
   max-height: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1180,10 +1195,9 @@
   .et-listen__halo { animation: none; opacity: 0.35; transform: none; }
   .et-analysis__header i,
   .et-analysis__note,
-  .et-analysis__scan,
-  .et-analysis__progress i { animation: none; }
+  .et-analysis__scan { animation: none; }
   .et-analysis__scan { left: 44%; opacity: .42; }
-  .et-analysis__progress i { transform: translateX(70%); }
+  .et-analysis__progress-fill { transition: none; }
   .et-count__arc,
   .et-panel,
   .et-lesson-progress__tick,
