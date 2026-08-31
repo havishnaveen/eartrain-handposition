@@ -275,6 +275,33 @@ export function hasCredibleAcousticAttack(
   return true;
 }
 
+/**
+ * Prove It already knows the one exact pitch it is waiting for and still
+ * applies pitch-hypothesis, voice, harmonic-shadow, and ordered-note guards.
+ * Its recovery lane can therefore accept a slightly softer real hammer than
+ * normal grading without admitting ambient sound or weakening scored drills.
+ */
+export function hasCredibleProofAttack(
+  evidence: AcousticAttackEvidence,
+  lane: 'strict' | 'candidate',
+): boolean {
+  if (lane === 'strict' || evidence.referenceTransient === true) {
+    return hasCredibleAcousticAttack(evidence, lane);
+  }
+  const peakRms = Number(evidence.peakRms) || 0;
+  const gate = Math.max(0.0005, Number(evidence.gate) || 0);
+  return (
+    peakRms >= Math.max(0.0002, gate * 0.58) &&
+    (Number(evidence.pianoAttackConfidence) || 0) >= 0.27 &&
+    (Number(evidence.attackBandCoverage) || 0) >= 2 &&
+    (Number(evidence.stableFrames) || 0) >= 2 &&
+    (Number(evidence.consensus) || 0) >= 0.36 &&
+    (Number(evidence.clarity) || 0) >= 0.22 &&
+    (Number(evidence.frameAttackRatio) || 0) >= 0.95 &&
+    (Number(evidence.novelty) || 0) >= 0.12
+  );
+}
+
 function readPitchHypotheses(value: unknown): PitchHypothesis[] {
   if (!Array.isArray(value)) return [];
   return value.filter((candidate): candidate is PitchHypothesis => {
@@ -1602,7 +1629,11 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             else diagnosticsRef.current.pitchRejected += 1;
             return;
           }
-          if (!hasCredibleAcousticAttack(data, isCandidate ? 'candidate' : 'strict')) {
+          const attackLane = isCandidate ? 'candidate' : 'strict';
+          const credibleAttack = proofRef.current
+            ? hasCredibleProofAttack(data, attackLane)
+            : hasCredibleAcousticAttack(data, attackLane);
+          if (!credibleAttack) {
             logProofVeto('no-credible-physical-attack');
             if (isCandidate) diagnosticsRef.current.candidatesIgnored += 1;
             else diagnosticsRef.current.pitchRejected += 1;
@@ -1631,7 +1662,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           }
           if (
             Number.isFinite(data.consensus) &&
-            data.consensus < (quietBassProofCandidate ? 0.38 : proofCandidate ? 0.4 : isCandidate ? 0.42 : 0.5)
+            data.consensus < (quietBassProofCandidate ? 0.34 : proofCandidate ? 0.36 : isCandidate ? 0.42 : 0.5)
           ) {
             logProofVeto('consensus-too-low');
             return;
@@ -1639,7 +1670,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           if (
             isCandidate &&
             Number.isFinite(data.pianoAttackConfidence) &&
-            data.pianoAttackConfidence < (quietBassProofCandidate ? 0.27 : proofCandidate ? 0.3 : 0.4)
+            data.pianoAttackConfidence < (quietBassProofCandidate ? 0.25 : proofCandidate ? 0.27 : 0.4)
           ) {
             logProofVeto('pianoAttackConfidence-too-low');
             diagnosticsRef.current.candidatesIgnored += 1;

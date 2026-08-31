@@ -946,6 +946,25 @@ export function calculateOverallScore(
 }
 
 /**
+ * Keep a genuinely weak category visible without letting it catastrophically
+ * flatten the entire report. The weighted score still controls the result;
+ * this only softens the former weakest-category + 0.9 ceiling.
+ */
+export function capOverallByWeakestCategory(
+  weightedOverall: number,
+  pitch: number,
+  timing: number | null,
+  cleanliness: number,
+  isMemory = false,
+): number {
+  if (isMemory) return weightedOverall;
+  const visibleCategoryFloor = timing === null
+    ? Math.min(pitch, cleanliness)
+    : Math.min(pitch, timing, cleanliness);
+  return Math.min(weightedOverall, visibleCategoryFloor + 1.5);
+}
+
+/**
  * Grade supplied-anchor spatial chord construction.
  *
  * This deliberately does not reuse beat alignment: the musical task is to
@@ -1492,15 +1511,16 @@ export function gradeSequence(
     cleanScore,
     { pitch: wPitch, timing: wTiming, cleanliness: wClean },
   );
-  const visibleCategoryFloor = timingScore === null
-    ? Math.min(pitchScore, cleanScore)
-    : Math.min(pitchScore, timingScore, cleanScore);
   // On ordinary performance drills a seriously weak visible category cannot
   // be averaged away by two high ones. Memory keeps its separate pitch-led
   // rubric, where rhythm is intentionally secondary.
-  const weaknessAwareOverall = isMemory
-    ? weightedOverall
-    : Math.min(weightedOverall, visibleCategoryFloor + 0.9);
+  const weaknessAwareOverall = capOverallByWeakestCategory(
+    weightedOverall,
+    pitchScore,
+    timingScore,
+    cleanScore,
+    isMemory,
+  );
   const extraNoteCap = significantExtraCount >= 0.7 ? 4.1 : 5;
   const overall = Math.min(
     extraNoteCap,

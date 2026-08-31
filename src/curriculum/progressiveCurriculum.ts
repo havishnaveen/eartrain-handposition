@@ -725,6 +725,8 @@ function scientificToVex(pitch: string): string {
   return `${match[1].toLowerCase()}${match[2]}/${match[3]}`;
 }
 
+const POSITION_PROOF_ACCEPT_WINDOW_MS = 7000;
+
 function positionProofForPosition(position: Position, hand: Hand): PositionProofSpec {
   const displayName = position.template.id === 'F#' ? 'F-sharp' : position.template.id;
   const fingers = hand === 'right' ? ([1, 3, 5] as const) : ([5, 3, 1] as const);
@@ -736,7 +738,7 @@ function positionProofForPosition(position: Position, hand: Hand): PositionProof
       finger: fingers[index],
     })) as PositionProofSpec['proofNotes'],
     requireHeld: false,
-    acceptWindowMs: 5500,
+    acceptWindowMs: POSITION_PROOF_ACCEPT_WINDOW_MS,
   };
 }
 
@@ -796,7 +798,7 @@ function withPositionProof(question: Question, preferredHand: Hand): Question {
     hand,
     proofNotes: anchors.map((pitch, index) => ({ pitch, finger: fingers[index] })) as PositionProofSpec['proofNotes'],
     requireHeld: false,
-    acceptWindowMs: 5500,
+    acceptWindowMs: POSITION_PROOF_ACCEPT_WINDOW_MS,
   };
   return { ...question, positionProof };
 }
@@ -1491,7 +1493,7 @@ function questionFor(
             // release tracking is too room-dependent to require the child to
             // sustain earlier keys while adding the next finger.
             requireHeld: false,
-            acceptWindowMs: 5500,
+            acceptWindowMs: POSITION_PROOF_ACCEPT_WINDOW_MS,
           },
         }
       : {}),

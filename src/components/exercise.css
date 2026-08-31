@@ -672,7 +672,7 @@
   background: linear-gradient(90deg, var(--et-orange), #7a6ddd);
   box-shadow: 0 0 10px rgba(239,106,71,.28);
   transform-origin: left center;
-  transition: transform .55s cubic-bezier(.22,.75,.24,1);
+  transition: transform .1s linear;
   will-change: transform;
 }
 .et-analysis__progress strong {

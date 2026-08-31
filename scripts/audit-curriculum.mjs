@@ -28,6 +28,7 @@ try {
   const {
     advancePositionProof,
     advanceSpatialChord,
+    hasCredibleProofAttack,
     isClearSamePitchRetrigger,
     proofDetectorWarmupRemaining,
     resolveContextualPitch,
@@ -425,7 +426,7 @@ try {
               `Lesson ${concept.index}, drill ${questionNumber} needs its per-drill position gate.`);
             assert.equal(question.positionProof.requireHeld, false,
               `Lesson ${concept.index}, drill ${questionNumber} must use sequential anchor notes.`);
-            assert.equal(question.positionProof.acceptWindowMs, 5500,
+            assert.equal(question.positionProof.acceptWindowMs, 7000,
               `Lesson ${concept.index}, drill ${questionNumber} must use the gently widened proof window.`);
             if (question.exerciseMode === 'prove-it') {
               const expectedFingers = staff.hand === 'right' ? [1, 3, 5] : [5, 3, 1];
@@ -835,6 +836,17 @@ try {
   assert.deepEqual(advancePositionProof(proof, 67, 2.4), { progress: 3, complete: true });
   assert.equal(proofDetectorWarmupRemaining(1000, 1100), 160);
   assert.equal(proofDetectorWarmupRemaining(1000, 1400), 0);
+  assert.equal(hasCredibleProofAttack({
+    peakRms: 0.00031,
+    gate: 0.0005,
+    pianoAttackConfidence: 0.28,
+    attackBandCoverage: 2,
+    stableFrames: 2,
+    consensus: 0.38,
+    clarity: 0.23,
+    frameAttackRatio: 0.96,
+    novelty: 0.13,
+  }, 'candidate'), true, 'Prove It should accept a soft but stable exact-pitch hammer attack.');
 
   const sampleSpatialSpec = PROGRESSIVE_CONCEPTS[18].generate(
     54,

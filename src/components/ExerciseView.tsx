@@ -1,7 +1,9 @@
 import {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
@@ -115,7 +117,43 @@ const RecordDot = () => (
 );
 
 function PerformanceAnalysis({ progress }: { progress: number }) {
-  const percent = Math.max(0, Math.min(100, Math.round(progress)));
+  const target = Math.max(0, Math.min(100, progress));
+  const [displayedProgress, setDisplayedProgress] = useState(0);
+  const displayedRef = useRef(0);
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      displayedRef.current = target;
+      setDisplayedProgress(target);
+      return undefined;
+    }
+
+    let frame = 0;
+    let previousTime = performance.now();
+    const advance = (now: number) => {
+      const elapsed = Math.min(50, Math.max(1, now - previousTime));
+      previousTime = now;
+      const current = displayedRef.current;
+      const remaining = target - current;
+      if (remaining <= 0.05) {
+        displayedRef.current = target;
+        setDisplayedProgress(target);
+        return;
+      }
+      // Ease toward each real analysis milestone while maintaining a small
+      // minimum velocity. The percentage now flows frame-by-frame instead of
+      // visibly jumping through 8, 12, 32, 48, 92, and 100.
+      const easedStep = remaining * (1 - Math.exp(-elapsed / 145));
+      const next = Math.min(target, current + Math.max(easedStep, elapsed * 0.025));
+      displayedRef.current = next;
+      setDisplayedProgress(next);
+      frame = requestAnimationFrame(advance);
+    };
+    frame = requestAnimationFrame(advance);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+
+  const percent = Math.max(0, Math.min(100, Math.round(displayedProgress)));
   return (
     <section className="et-analysis" role="status" aria-live="polite" aria-label="Analyzing your performance">
       <div className="et-analysis__card">
@@ -155,7 +193,7 @@ function PerformanceAnalysis({ progress }: { progress: number }) {
           <span className="et-analysis__progress-track">
             <i
               className="et-analysis__progress-fill"
-              style={{ transform: `scaleX(${percent / 100})` }}
+              style={{ transform: `scaleX(${displayedProgress / 100})` }}
             />
           </span>
           <strong>{percent}%</strong>

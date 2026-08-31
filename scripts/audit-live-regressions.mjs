@@ -14,7 +14,12 @@ const server = await createServer({
 });
 
 try {
-  const { gradeSequence, gradeSpatialChord } = await server.ssrLoadModule('/src/audio/timing.ts');
+  const {
+    calculateOverallScore,
+    capOverallByWeakestCategory,
+    gradeSequence,
+    gradeSpatialChord,
+  } = await server.ssrLoadModule('/src/audio/timing.ts');
   const {
     advanceSpatialChord,
     formatDetectedNoteGroups,
@@ -53,6 +58,14 @@ try {
     referenceTransient: true,
   }, 'candidate'), true,
   'A stable piano attack coincident with a click must survive the reference-transient guard.');
+  const sampleWeightedOverall = calculateOverallScore(
+    3.1,
+    0,
+    5,
+    { pitch: 0.43, timing: 0.42, cleanliness: 0.15 },
+  );
+  assert.equal(capOverallByWeakestCategory(sampleWeightedOverall, 3.1, 0, 5), 1.5,
+    'One zero category should lower Overall substantially without collapsing it to 0.9.');
   assert.deepEqual(credibleRealtimeFallback([{
     midi: 60,
     time: 1,
