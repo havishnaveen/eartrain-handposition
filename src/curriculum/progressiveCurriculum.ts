@@ -998,6 +998,8 @@ function twoHandStandardQuestion(
     };
   });
 
+  const rightProof = positionProofForPosition(rightPosition, 'right');
+  const leftProof = positionProofForPosition(leftPosition, 'left');
   return {
     id: `${lesson.id}#${ordinal}`,
     conceptId: lesson.id,
@@ -1018,6 +1020,8 @@ function twoHandStandardQuestion(
     positionLabel: `${rightPosition.label} — both hands`,
     difficulty,
     mode,
+    positionProof: rightProof,
+    positionProofs: [rightProof, leftProof],
   };
 }
 
@@ -1351,7 +1355,11 @@ function questionFor(
         splitIndex,
         allowedExtraBeats,
         ...((waitBeats > 0 || stagedReveal)
-          ? { timedShift: { waitBeats, ...(stagedReveal ? { revealSecond: true } : {}) } }
+          ? { timedShift: {
+              waitBeats,
+              ...(waitBeats > 0 ? { leadInBeats: 1 } : {}),
+              ...(stagedReveal ? { revealSecond: true } : {}),
+            } }
           : {}),
       },
       // A movement drill may orient the departure hand, but it must never

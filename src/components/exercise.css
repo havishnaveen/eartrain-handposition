@@ -672,7 +672,9 @@
   background: linear-gradient(90deg, var(--et-orange), #7a6ddd);
   box-shadow: 0 0 10px rgba(239,106,71,.28);
   transform-origin: left center;
-  transition: transform .1s linear;
+  /* requestAnimationFrame owns every intermediate value; a second CSS
+     transition would restart each frame and create the chunky catch-up. */
+  transition: none;
   will-change: transform;
 }
 .et-analysis__progress strong {

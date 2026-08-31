@@ -73,6 +73,7 @@ const EMPTY_ORIENTATION_SEEN: OrientationSeen = {
   register: false,
   'left-hand': false,
   'both-hands': false,
+  'dual-proof': false,
 };
 
 function readOrientationSeen(): OrientationSeen {
@@ -83,6 +84,7 @@ function readOrientationSeen(): OrientationSeen {
       register: parsed?.register === true,
       'left-hand': parsed?.['left-hand'] === true,
       'both-hands': parsed?.['both-hands'] === true,
+      'dual-proof': parsed?.['dual-proof'] === true,
     };
   } catch {
     return { ...EMPTY_ORIENTATION_SEEN };
@@ -120,12 +122,20 @@ function orientationNoticesFor(question: Question): OrientationNotice[] {
 
   const actualHand = question.cue.staves[0]?.hand;
   const handScope = question.handScope ?? actualHand;
+  const hasDualProof = handScope === 'both' && positionProofsForQuestion(question).length > 1;
   if (handScope === 'left') {
     notices.push({
       kind: 'left-hand',
       title: 'Stop — switch hands',
       message: 'Use your LEFT HAND for this exercise. Put your right hand in your lap before continuing.',
       buttonLabel: 'My left hand is ready',
+    });
+  } else if (hasDualProof) {
+    notices.push({
+      kind: 'dual-proof',
+      title: 'Two hand checks — one at a time',
+      message: 'First prove the RIGHT HAND position. Then prove the LEFT HAND position. Complete both checks before the two-hand exercise begins.',
+      buttonLabel: 'I’ll check RH, then LH',
     });
   } else if (handScope === 'both') {
     notices.push({
@@ -737,7 +747,7 @@ export function PathwayRouter({
     const elapsed = Date.now() - analysisStartedAtRef.current;
     const remaining = active.exerciseMode === 'spatial-chord'
       ? 0
-      : Math.max(0, MIN_ANALYSIS_VISIBLE_MS - elapsed);
+      : Math.max(480, MIN_ANALYSIS_VISIBLE_MS - elapsed);
     if (reportTimerRef.current) window.clearTimeout(reportTimerRef.current);
     reportTimerRef.current = window.setTimeout(() => {
       reportTimerRef.current = 0;
@@ -1086,6 +1096,7 @@ export function PathwayRouter({
   const acknowledgeOrientation = useCallback(() => {
     if (!orientationNotice) return;
     markOrientationSeen(orientationNotice.kind);
+    if (orientationNotice.kind === 'dual-proof') markOrientationSeen('both-hands');
     setOrientationNotice(firstUnseenOrientationNotice(questionRef.current));
   }, [orientationNotice]);
 
@@ -1189,6 +1200,8 @@ export function PathwayRouter({
         instruction={question.instruction}
         exerciseMode={question.exerciseMode}
         positionProof={activePositionProof}
+        positionProofIndex={state.proofIndex}
+        positionProofCount={positionProofsForQuestion(question).length}
         handScope={question.handScope}
         blindMemory={question.blindMemory}
         anchorShift={question.anchorShift}

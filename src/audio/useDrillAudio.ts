@@ -8,6 +8,7 @@ import {
   frequencyToMidi,
   metronomeBeatPositions,
   midiToName,
+  PITCH_CAPTURE_LEAD_BEATS,
   pitchToMidi,
 } from './timing';
 import type { SpatialChordSpec } from '../curriculum/types';
@@ -2030,7 +2031,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           // Pitch is measured after the attack, so an onset can arrive a
           // beat late — including just after the window closed. Keep it if
           // the onset itself happened while recording.
-          if (Number(data.time) < playStartRef.current - 0.03) return;
+          const pitchLeadSeconds = (planRef.current?.secondsPerBeat ?? 0) * PITCH_CAPTURE_LEAD_BEATS;
+          if (Number(data.time) < playStartRef.current - pitchLeadSeconds - 0.03) return;
           const detectedNote: DetectedNote = {
             midi,
             time: data.time,
@@ -2777,14 +2779,16 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const t0 = ctx.currentTime + START_PAD_SEC;
       const countInBeats = plan.beatsPerBar * 2;
       const playStart = t0 + countInBeats * spb;
+      const pitchAnalysisStart = playStart - PITCH_CAPTURE_LEAD_BEATS * spb;
       playStartRef.current = playStart;
       recordEndRef.current = playStart + plan.recordSeconds;
+      const normalRecordEnd = playStart + (plan.totalBeats + 1) * spb;
       // Capture one quiet second before the downbeat and the complete tail.
       // This is raw, uncompressed microphone PCM; it is the evidence used by
       // the final score-aware pass, not by replay encoding.
       const captureSession = beginPcmCapture(
         workletRef.current!,
-        Math.max(ctx.currentTime, playStart - 1),
+        Math.max(ctx.currentTime, pitchAnalysisStart - 1),
         recordEndRef.current + 0.3,
       );
 
@@ -2809,7 +2813,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         type: 'reference-transients',
         times: clicks
           .map((click) => click.time)
-          .filter((time) => time >= playStart - DETECTOR_PREROLL_SEC),
+          .filter((time) => time >= pitchAnalysisStart - DETECTOR_PREROLL_SEC),
       });
 
       safeSet(setPhase, 'countin' as DrillPhase);
@@ -2894,7 +2898,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         const now = context.currentTime;
         const beatPosition = (now - playStartRef.current) / currentPlan.secondsPerBeat;
 
-        if (!detectorArmedRef.current && now >= playStartRef.current - DETECTOR_PREROLL_SEC) {
+        if (!detectorArmedRef.current && now >= pitchAnalysisStart - DETECTOR_PREROLL_SEC) {
           detectorArmedRef.current = true;
           workletRef.current?.port.postMessage({ type: 'listen' });
           if (generalChordTargetsRef.current.length > 0) {
@@ -2927,22 +2931,37 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           const moving = Boolean(
             timedShift &&
             beatPosition >= timedShift.startBeat &&
+            beatPosition < timedShift.moveEndBeat
+          );
+          const preparing = Boolean(
+            timedShift &&
+            beatPosition >= timedShift.moveEndBeat &&
             beatPosition < timedShift.endBeat
           );
           const writtenBeatPosition = timedShift && beatPosition >= timedShift.endBeat
-            ? beatPosition - timedShift.waitBeats
+            ? beatPosition - timedShift.totalPauseBeats
             : beatPosition;
           const beatInBar = Math.floor(writtenBeatPosition) % currentPlan.beatsPerBar;
           const moveBeat = timedShift
             ? Math.floor(beatPosition - timedShift.startBeat) + 1
             : 0;
-          const key = moving ? `move${moveBeat}` : `p${Math.floor(writtenBeatPosition)}`;
+          const prepareBeat = timedShift
+            ? Math.floor(beatPosition - timedShift.moveEndBeat) + 1
+            : 0;
+          const key = moving
+            ? `move${moveBeat}`
+            : preparing
+              ? `ready${prepareBeat}`
+              : `p${Math.floor(writtenBeatPosition)}`;
           if (key !== lastBeatKeyRef.current) {
             lastBeatKeyRef.current = key;
-            safeSet(setBeatLabel, moving ? `SHIFT ${moveBeat}` : String(beatInBar + 1));
+            safeSet(setBeatLabel,
+              moving ? `SHIFT ${moveBeat}` : preparing ? `READY ${prepareBeat}` : String(beatInBar + 1));
           }
 
-          if (now >= recordEndRef.current) {
+          const allWrittenSlotsHeard =
+            occupiedExpectedSlotsRef.current.size >= currentPlan.expectedNotes.length;
+          if (now >= recordEndRef.current || (now >= normalRecordEnd && allWrittenSlotsHeard)) {
             finishedRef.current = true;
             listeningRef.current = false;
             cbRef.current.onAnalysisStart?.();

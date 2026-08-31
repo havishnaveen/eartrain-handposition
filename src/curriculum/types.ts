@@ -194,6 +194,8 @@ export interface AnchorShiftSpec {
   timedShift?: {
     /** Exact silent movement window on the musical grid. */
     waitBeats: number;
+    /** Counted preparation after the move timer, before Position 2 begins. */
+    leadInBeats?: number;
     /** Hide Position 2 until its observation window begins. */
     revealSecond?: boolean;
   };

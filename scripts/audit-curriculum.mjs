@@ -40,6 +40,7 @@ try {
     gradeSpatialChord,
     metronomeBeatPositions,
     pitchToMidi,
+    planFor,
     planForQuestion,
     timingLeniencyForLesson,
   } = await server.ssrLoadModule('/src/audio/timing.ts');
@@ -62,6 +63,46 @@ try {
   } = await server.ssrLoadModule(
     '/src/components/StaffCue.tsx',
   );
+
+  const halfNotePlan = planFor({
+    timeSignature: '4/4',
+    staves: [{ clef: 'treble', hand: 'right', notes: [{ keys: ['c/4'], duration: 'h' }] }],
+  }, ['C4'], 75);
+  const shortHalfNote = gradeSequence(['C4'], [{
+    midi: 60,
+    time: 10,
+    endTime: 10 + halfNotePlan.secondsPerBeat,
+    durationConfidence: 0.92,
+    clarity: 0.95,
+    strength: 2,
+  }], { plan: halfNotePlan, playStartTime: 10, lessonLevel: 6, totalLessons: 24 });
+  assert.ok((shortHalfNote.scores.timing ?? 5) < 5,
+    'A quarter-note hold against a written half note must lower Timing.');
+
+  const displacedPlan = planFor({
+    timeSignature: '4/4',
+    staves: [{
+      clef: 'treble',
+      hand: 'right',
+      notes: ['c/4', 'd/4', 'e/4', 'f/4'].map((key) => ({ keys: [key], duration: 'q' })),
+    }],
+  }, ['C4', 'D4', 'E4', 'F4'], 75);
+  const displacedTake = [60, 62, 64, 65].map((midi, index) => ({
+    midi,
+    time: 10 + [0, 3, 3.2, 6.2][index] * displacedPlan.secondsPerBeat,
+    clarity: 0.95,
+    strength: 2,
+  }));
+  const displacedGrade = gradeSequence(['C4', 'D4', 'E4', 'F4'], displacedTake, {
+    plan: displacedPlan,
+    playStartTime: 10,
+    lessonLevel: 8,
+    totalLessons: 24,
+  });
+  assert.equal(displacedGrade.scores.pitch, 5,
+    'Terrible rhythm must never erase correctly detected pitches.');
+  assert.ok((displacedGrade.scores.timing ?? 5) <= 2,
+    'Multi-beat spacing errors must receive a severe Timing deduction.');
 
   const mixedRhythmSystems = splitNotesIntoSystems(
     [
@@ -324,6 +365,13 @@ try {
                 new Set(['right', 'left']),
                 `Lesson ${concept.index}, drill ${questionNumber} says both hands without both staves.`,
               );
+              if (question.exerciseMode === 'standard') {
+                assert.deepEqual(
+                  question.positionProofs?.map((proof) => proof.hand),
+                  ['right', 'left'],
+                  `Lesson ${concept.index}, drill ${questionNumber} must prove RH then LH separately.`,
+                );
+              }
             } else {
               assert.equal(question.handScope, staff.hand,
                 `Lesson ${concept.index}, drill ${questionNumber} hand label must match its staff.`);
@@ -346,7 +394,8 @@ try {
               Math.abs(beats / plan.beatsPerBar - Math.round(beats / plan.beatsPerBar)) < 1e-8
             )), `Lesson ${concept.index}, drill ${questionNumber} must fill complete measures.`);
             const timedWaitBeats = question.anchorShift?.timedShift?.waitBeats ?? 0;
-            assert.ok(Math.abs(plan.totalBeats - totalBeats - timedWaitBeats) < 1e-8,
+            const timedLeadInBeats = question.anchorShift?.timedShift?.leadInBeats ?? 0;
+            assert.ok(Math.abs(plan.totalBeats - totalBeats - timedWaitBeats - timedLeadInBeats) < 1e-8,
               `Lesson ${concept.index}, drill ${questionNumber} timeline must include its exact shift pause.`);
 
             if (question.exerciseMode === 'anchor-shift') {
@@ -357,7 +406,8 @@ try {
               assert.equal(question.anchorShift?.timedShift?.revealSecond, stagedReveal ? true : undefined);
               assert.equal(plan.timedShift?.waitBeats ?? 0, expectedWaitBeats);
               if (expectedWaitBeats > 0) {
-                assert.equal(plan.timedShift?.waitSeconds, expectedWaitBeats * plan.secondsPerBeat);
+                assert.equal(plan.timedShift?.leadInBeats, 1);
+                assert.equal(plan.timedShift?.waitSeconds, (expectedWaitBeats + 1) * plan.secondsPerBeat);
               } else {
                 assert.equal(plan.timedShift, undefined);
               }
@@ -373,8 +423,11 @@ try {
                 ) < 1e-8, 'The second staff must start only after the full reveal window.');
                 const clickBeats = metronomeBeatPositions(plan);
                 assert.ok(clickBeats.every((beat) => (
-                  beat < plan.timedShift.startBeat || beat >= plan.timedShift.endBeat
-                )), 'The metronome must be silent throughout the phrase-reveal window.');
+                  beat < plan.timedShift.startBeat || beat >= plan.timedShift.moveEndBeat
+                )), 'The metronome must be silent throughout the hand-movement window.');
+                assert.ok(clickBeats.some((beat) => (
+                  Math.abs(beat - plan.timedShift.moveEndBeat) < 1e-8
+                )), 'A preparation click must follow the movement timer.');
                 assert.ok(clickBeats.some((beat) => (
                   Math.abs(beat - plan.timedShift.endBeat) < 1e-8
                 )), 'The metronome must resume exactly with the second staff.');

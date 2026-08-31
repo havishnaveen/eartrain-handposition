@@ -65,6 +65,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
       };
     }, [cue, split, staff]);
     const waitBeats = Math.max(0, shift.timedShift?.waitBeats ?? 0);
+    const leadInBeats = Math.max(0, shift.timedShift?.leadInBeats ?? 0);
     const waitSeconds = waitBeats * secondsPerBeat;
     const stagedReveal = shift.timedShift?.revealSecond === true;
 
@@ -101,10 +102,18 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           secondRef.current?.hide();
           return;
         }
+        if (beat < firstBeats + waitBeats + leadInBeats) {
+          rootRef.current?.setAttribute('data-active-position', 'ready');
+          if (countdownRef.current) countdownRef.current.textContent = 'READY';
+          if (countdownFillRef.current) countdownFillRef.current.style.transform = 'scaleX(1)';
+          firstRef.current?.hide();
+          secondRef.current?.seekToBeat(-1);
+          return;
+        }
         rootRef.current?.setAttribute('data-active-position', 'to');
         showCountdown(0);
         firstRef.current?.hide();
-        secondRef.current?.seekToBeat(beat - firstBeats - waitBeats);
+        secondRef.current?.seekToBeat(beat - firstBeats - waitBeats - leadInBeats);
       },
       hide() {
         rootRef.current?.setAttribute('data-active-position', 'from');
@@ -112,7 +121,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         firstRef.current?.hide();
         secondRef.current?.hide();
       },
-    }), [firstBeats, secondsPerBeat, showCountdown, waitBeats, waitSeconds]);
+    }), [firstBeats, leadInBeats, secondsPerBeat, showCountdown, waitBeats, waitSeconds]);
 
     if (!staff) {
       return <StaffCue ref={firstRef} cue={cue} accentColor={accentColor} inkColor={inkColor} notationScale={notationScale} />;

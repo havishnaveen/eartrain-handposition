@@ -37,7 +37,7 @@ export type ExerciseStatus =
   | 'report';
 export type ExerciseOutcome = 'success' | 'failure';
 export type MicStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'unsupported' | 'error';
-export type OrientationNoticeKind = 'register' | 'left-hand' | 'both-hands';
+export type OrientationNoticeKind = 'register' | 'left-hand' | 'both-hands' | 'dual-proof';
 
 export interface OrientationNotice {
   kind: OrientationNoticeKind;
@@ -57,6 +57,8 @@ export interface ExerciseViewProps {
   instruction: string;
   exerciseMode: ExerciseMode;
   positionProof?: PositionProofSpec;
+  positionProofIndex?: number;
+  positionProofCount?: number;
   handScope?: HandScope;
   blindMemory?: BlindMemorySpec;
   anchorShift?: AnchorShiftSpec;
@@ -117,41 +119,37 @@ const RecordDot = () => (
 );
 
 function PerformanceAnalysis({ progress }: { progress: number }) {
-  const target = Math.max(0, Math.min(100, progress));
   const [displayedProgress, setDisplayedProgress] = useState(0);
   const displayedRef = useRef(0);
+  const startedAtRef = useRef(performance.now());
+  const complete = progress >= 100;
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      displayedRef.current = target;
-      setDisplayedProgress(target);
+      const value = complete ? 100 : 92;
+      displayedRef.current = value;
+      setDisplayedProgress(value);
       return undefined;
     }
 
     let frame = 0;
-    let previousTime = performance.now();
+    const completionStartedAt = performance.now();
+    const completionStart = displayedRef.current;
     const advance = (now: number) => {
-      const elapsed = Math.min(50, Math.max(1, now - previousTime));
-      previousTime = now;
-      const current = displayedRef.current;
-      const remaining = target - current;
-      if (remaining <= 0.05) {
-        displayedRef.current = target;
-        setDisplayedProgress(target);
-        return;
-      }
-      // Ease toward each real analysis milestone while maintaining a small
-      // minimum velocity. The percentage now flows frame-by-frame instead of
-      // visibly jumping through 8, 12, 32, 48, 92, and 100.
-      const easedStep = remaining * (1 - Math.exp(-elapsed / 145));
-      const next = Math.min(target, current + Math.max(easedStep, elapsed * 0.025));
+      // Real analysis milestones still report pipeline health, but they no
+      // longer become visible stop points. The bar follows one continuous
+      // clock to 92%, then completes in a single final glide.
+      const next = complete
+        ? completionStart + (100 - completionStart) * Math.min(1, (now - completionStartedAt) / 440)
+        : Math.min(92, ((now - startedAtRef.current) / 2200) * 92);
       displayedRef.current = next;
       setDisplayedProgress(next);
+      if (next >= (complete ? 100 : 92)) return;
       frame = requestAnimationFrame(advance);
     };
     frame = requestAnimationFrame(advance);
     return () => cancelAnimationFrame(frame);
-  }, [target]);
+  }, [complete]);
 
   const percent = Math.max(0, Math.min(100, Math.round(displayedProgress)));
   return (
@@ -319,6 +317,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       instruction,
       exerciseMode,
       positionProof,
+      positionProofIndex = 0,
+      positionProofCount = 1,
       blindMemory,
       anchorShift,
       spatialChord,
@@ -622,6 +622,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     ) {
       const proofHand = positionProof.hand;
       const proofNotes = positionProof.proofNotes;
+      const proofHandLabel = proofHand === 'right' ? 'RIGHT HAND' : 'LEFT HAND';
+      const proofSequenceLabel = positionProofCount > 1
+        ? `${proofHandLabel} check ${positionProofIndex + 1} of ${positionProofCount}`
+        : `${proofHandLabel} check`;
       const activeProofIndex = Math.min(proofProgress, proofNotes.length - 1);
       const activeProofNote = proofNotes[activeProofIndex];
       // Only the single note the student needs right now — echoing all three
@@ -653,8 +657,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 keyName={proofPositionTitle(positionProof?.positionName)}
                 hands={[proofHand]}
                 subtitle={status === 'position-prompt'
-                  ? 'Set the hand shape. Start when you are ready.'
-                  : 'Play each highlighted note once.'}
+                  ? `${proofSequenceLabel}. Set the hand shape, then start.`
+                  : `${proofSequenceLabel}. Play each highlighted note once.`}
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
                 activeFinger={status === 'position-prompt' ? undefined : activeProofNote.finger}
@@ -678,7 +682,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             {status !== 'position-prompt' ? <div className="et-proof__task">
               <div className="et-proof__card">
                 <div className="et-proof__eyebrow">
-                  {status === 'proof-success' ? 'DONE' : `STEP ${Math.min(proofProgress + 1, proofNotes.length)} OF ${proofNotes.length}`}
+                  {status === 'proof-success'
+                    ? `${proofHandLabel} DONE`
+                    : `${proofHandLabel} · CHECK ${positionProofIndex + 1} OF ${positionProofCount} · STEP ${Math.min(proofProgress + 1, proofNotes.length)} OF ${proofNotes.length}`}
                 </div>
                 <div className="et-proof__headline">
                   {status === 'proof-success'
@@ -818,7 +824,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   ? `You will have ${memoryPreviewSeconds} seconds to look.`
                   : exerciseMode === 'anchor-shift'
                     ? shiftWaitBeats > 0
-                      ? `A ${shiftWaitBeats}-beat move window appears during the exercise.`
+                      ? `A ${shiftWaitBeats}-beat move window is followed by one READY beat.`
                       : 'Move when the arrow lights up.'
                     : 'Listen to the two-measure count in. Then play.'
               )}

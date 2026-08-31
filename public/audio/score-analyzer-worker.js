@@ -697,6 +697,7 @@ function analyzeTake(payload) {
   const sampleRate = Number(payload.sampleRate);
   const captureStartTime = Number(payload.captureStartTime);
   const playStartTime = Number(payload.playStartTime);
+  const analysisStartTime = Number(payload.analysisStartTime);
   const secondsPerBeat = Number(payload.plan?.secondsPerBeat);
   const expectedNotes = Array.isArray(payload.plan?.expectedNotes) ? payload.plan.expectedNotes : [];
   const realtime = Array.isArray(payload.realtime) ? payload.realtime : [];
@@ -762,11 +763,12 @@ function analyzeTake(payload) {
     };
   }
 
-  analysis.rmsNoise = localNoise(analysis.rms, analysis.frameTimes, playStartTime);
+  const noiseCutoff = Number.isFinite(analysisStartTime) ? analysisStartTime : playStartTime;
+  analysis.rmsNoise = localNoise(analysis.rms, analysis.frameTimes, noiseCutoff);
 
   const noiseByMidi = new Map();
   midiValues.forEach((midi) => {
-    noiseByMidi.set(midi, localNoise(analysis.salience.get(midi), analysis.frameTimes, playStartTime));
+    noiseByMidi.set(midi, localNoise(analysis.salience.get(midi), analysis.frameTimes, noiseCutoff));
   });
   const candidateSets = expectedNotes.map((slot) => {
     const midi = Number(slot.midi);
@@ -887,7 +889,7 @@ function analyzeTake(payload) {
           midi,
           candidateFrame,
           noiseByMidi.get(midi) ?? 1e-10,
-          expectedTime,
+          NaN,
           secondsPerBeat,
         );
         if (!nearby?.physicalAttack) continue;

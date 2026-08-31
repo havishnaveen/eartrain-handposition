@@ -28,8 +28,10 @@ hearing are the new load.
 
 Hand-shift travel is beat-aligned: Lessons 13-14 provide two visible move
 beats, Lessons 15-16 provide one, and Lesson 18 removes the pause entirely.
-Both phrases stay visible while movement time is being learned; only the final
-instantaneous transfer withholds the destination until the hand-off.
+Timed moves add one audible READY beat after the movement countdown so the
+destination attack is prepared rather than sprung on the learner. Both phrases
+stay visible while movement time is being learned; only the final instantaneous
+transfer withholds the destination until the hand-off.
 
 Key-signature copy must describe the five keys actually played. A G-position
 pentachord is G-A-B-C-D (the signature is introduced visually, but F-sharp is
@@ -45,6 +47,9 @@ Do not change order or classification in only one place.
 Prove It confirms the position's three anchor notes in order. It does not ask
 the student to keep earlier notes held, because acoustic release detection is
 too room-dependent for a reliable entry exercise.
+Before a standard grand-staff exercise, Prove It runs as two explicit gates:
+RIGHT HAND first, then LEFT HAND. The first such exercise explains this sequence
+in a blocking acknowledgement rather than presenting both positions at once.
 
 | Lessons | Standalone intervention | Typical direct-referral problems |
 | --- | --- | --- |

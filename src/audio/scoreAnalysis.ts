@@ -1,3 +1,4 @@
+import { PITCH_CAPTURE_LEAD_BEATS } from './timing';
 import type { DetectedNote, DrillPlan } from './timing';
 import { alignPitchSequences, pitchToMidi } from './timing';
 import {
@@ -305,6 +306,7 @@ export function analyzeCapturedTake(
         sampleRate: capture.sampleRate,
         captureStartTime: capture.startTime,
         playStartTime,
+        analysisStartTime: playStartTime - PITCH_CAPTURE_LEAD_BEATS * plan.secondsPerBeat,
         plan: {
           secondsPerBeat: plan.secondsPerBeat,
           totalBeats: plan.totalBeats,

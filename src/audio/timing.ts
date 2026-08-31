@@ -12,6 +12,8 @@ import type {
  */
 
 export const DEFAULT_BPM = 75;
+/** Pitch evidence may be heard this far before the written downbeat. */
+export const PITCH_CAPTURE_LEAD_BEATS = 3.25;
 
 /** Beats per written duration. 'r' suffix marks a rest and times the same. */
 const DURATION_BEATS: Record<string, number> = {
@@ -72,7 +74,10 @@ export interface DrillPlan {
     splitIndex: number;
     waitSeconds: number;
     waitBeats: number;
+    leadInBeats: number;
+    totalPauseBeats: number;
     startBeat: number;
+    moveEndBeat: number;
     endBeat: number;
   };
   /**
@@ -176,7 +181,10 @@ export function planFor(
     };
   });
 
-  const tailBeats = 1;
+  // Keep enough tail to hear a genuinely late final attack. Its original
+  // timestamp is retained, so this improves Pitch evidence without granting
+  // any Timing credit.
+  const tailBeats = 3.25;
   const countInLabels = Array.from(
     { length: beatsPerBar * 2 },
     (_, i) => String((i % beatsPerBar) + 1),
@@ -199,13 +207,19 @@ export function planFor(
 
 /** Metronome beat positions, with the musical grid silent during a hand move. */
 export function metronomeBeatPositions(plan: DrillPlan): number[] {
-  const waitBeats = plan.timedShift?.waitBeats ?? 0;
-  const writtenPlayBeats = Math.ceil(plan.totalBeats - waitBeats);
-  return Array.from({ length: writtenPlayBeats }, (_, writtenBeat) => (
+  const pauseBeats = plan.timedShift?.totalPauseBeats ?? 0;
+  const writtenPlayBeats = Math.ceil(plan.totalBeats - pauseBeats);
+  const written = Array.from({ length: writtenPlayBeats }, (_, writtenBeat) => (
     plan.timedShift && writtenBeat >= plan.timedShift.startBeat
-      ? writtenBeat + waitBeats
+      ? writtenBeat + pauseBeats
       : writtenBeat
   ));
+  if (!plan.timedShift?.leadInBeats) return written;
+  const leadClicks = Array.from(
+    { length: Math.ceil(plan.timedShift.leadInBeats) },
+    (_, index) => plan.timedShift!.moveEndBeat + index,
+  );
+  return [...written, ...leadClicks].sort((a, b) => a - b);
 }
 
 /* ---------------------------------------------------------------------------
@@ -270,6 +284,10 @@ export interface DetectedNote {
   endTime?: number;
   /** Confidence of the acoustic release estimate, 0–1. */
   durationConfidence?: number;
+  /** Last frame with credible sustain energy when no clean release edge exists. */
+  lastSustainTime?: number;
+  /** Confidence that lastSustainTime represents real string energy. */
+  sustainConfidence?: number;
   /**
    * Written slot claimed by the live, score-aware detector. This is evidence
    * provenance. Final PCM may refine the event, but cannot silently remove an
@@ -501,6 +519,14 @@ export function timingLeniencyForLesson(
 
 function timingProfileForOptions(options: GradeOptions): TimingLeniencyProfile {
   const profile = timingLeniencyForLesson(options.lessonLevel, options.totalLessons);
+  if (options.anchorShift) {
+    return {
+      ...profile,
+      onBeatWindow: profile.onBeatWindow * 0.95,
+      fullCreditOnsetWindow: profile.fullCreditOnsetWindow * 0.95,
+      zeroScoreWindow: profile.zeroScoreWindow * 0.95,
+    };
+  }
   if (options.exerciseMode !== 'blind-memory') return profile;
   return {
     onBeatWindow: Math.min(0.9, profile.onBeatWindow * 1.4),
@@ -551,6 +577,7 @@ const FAINT_RATIO = 0.5;
 const HARD_EXTRA_MIN_CLARITY = 0.62;
 /** A room-dependent release estimate must be credible before it can affect a grade. */
 const MIN_GRADED_RELEASE_CONFIDENCE = 0.72;
+const MIN_SUSTAIN_BOUND_CONFIDENCE = 0.74;
 
 function medianOf(values: number[]): number {
   if (values.length === 0) return 0;
@@ -743,19 +770,29 @@ function buildRhythm(
     const planned = expectedSlots[match.expectedIndex];
     const endTime = match.note.endTime;
     const confidence = match.note.durationConfidence ?? 0;
-    if (
-      !planned ||
-      !Number.isFinite(endTime) ||
-      (endTime as number) <= match.time ||
-      confidence < MIN_GRADED_RELEASE_CONFIDENCE
-    ) continue;
-    const playedHoldBeats = ((endTime as number) - match.time) / plan.secondsPerBeat;
+    if (!planned) continue;
+    const hasRelease = Number.isFinite(endTime) &&
+      (endTime as number) > match.time &&
+      confidence >= MIN_GRADED_RELEASE_CONFIDENCE;
+    const sustainConfidence = match.note.sustainConfidence ?? 0;
+    const sustainEnd = match.note.lastSustainTime;
+    const hasShortSustainBound = !hasRelease &&
+      planned.beats >= 1.5 &&
+      Number.isFinite(sustainEnd) &&
+      (sustainEnd as number) > match.time &&
+      sustainConfidence >= MIN_SUSTAIN_BOUND_CONFIDENCE &&
+      ((sustainEnd as number) - match.time) / plan.secondsPerBeat <= planned.beats - 0.42;
+    if (!hasRelease && !hasShortSustainBound) continue;
+    const measuredEnd = hasRelease ? (endTime as number) : (sustainEnd as number);
+    const playedHoldBeats = (measuredEnd - match.time) / plan.secondsPerBeat;
     releaseErrors.push({
       error: Math.abs(playedHoldBeats - planned.beats),
       // A marginal acoustic damper estimate should not outweigh several
       // precisely placed hammer attacks. Confidence-squared gives clear
       // releases authority while gracefully discounting room-dependent ones.
-      weight: Math.max(0.16, confidence * confidence),
+      weight: hasRelease
+        ? Math.max(0.16, confidence * confidence)
+        : Math.max(0.18, sustainConfidence * sustainConfidence * 0.72),
     });
   }
 
@@ -1393,7 +1430,7 @@ export function gradeSequence(
 
         // Duration stays visible and consequential, but acoustic releases are
         // intrinsically less certain than hammer onsets in a microphone/room.
-        // It therefore contributes 18%, with confidence weighting applied in
+        // It therefore contributes 26%, with confidence weighting applied in
         // buildRhythm; grossly wrong holds still lose credit without turning
         // an otherwise expert take into a 3/5.
         const durationZeroWindow = timingProfile.zeroScoreWindow * 0.85;
@@ -1412,7 +1449,7 @@ export function gradeSequence(
           ),
           1.1,
         );
-        return clamp5(onsetScore * 0.82 + durationScore * 0.18);
+        return clamp5(onsetScore * 0.74 + durationScore * 0.26);
       })();
   const completePitch =
     matches.length === expectedCount &&
@@ -1447,7 +1484,6 @@ export function gradeSequence(
     rhythm.meanIntervalErrorBeats <= timingProfile.fullCreditOnsetWindow * 1.2 &&
     (
       rhythm.durationAccuracy === null ||
-      rhythm.durationEvaluated < 2 ||
       rhythm.durationAccuracy >= 0.7
     ) &&
     (!measuredTransition || measuredTransition.score === 5)
@@ -1622,31 +1658,37 @@ export function gradeSequence(
 export function planForQuestion(question: Question, bpm: number = DEFAULT_BPM): DrillPlan {
   const plan = planFor(question.cue, question.expectedSequence, bpm);
   const waitBeats = Math.max(0, question.anchorShift?.timedShift?.waitBeats ?? 0);
-  if (waitBeats === 0 || plan.expectedNotes.length < 2) return plan;
+  const leadInBeats = Math.max(0, question.anchorShift?.timedShift?.leadInBeats ?? 0);
+  const totalPauseBeats = waitBeats + leadInBeats;
+  if (totalPauseBeats === 0 || plan.expectedNotes.length < 2) return plan;
 
   const splitIndex = Math.min(
     Math.max(1, question.anchorShift?.splitIndex ?? 1),
     plan.expectedNotes.length - 1,
   );
   const startBeat = plan.expectedNotes[splitIndex].beat;
-  const waitSeconds = waitBeats * plan.secondsPerBeat;
-  const endBeat = startBeat + waitBeats;
+  const waitSeconds = totalPauseBeats * plan.secondsPerBeat;
+  const moveEndBeat = startBeat + waitBeats;
+  const endBeat = startBeat + totalPauseBeats;
 
   return {
     ...plan,
     notes: plan.notes.map((note) => (
-      note.beat >= startBeat ? { ...note, beat: note.beat + waitBeats } : note
+      note.beat >= startBeat ? { ...note, beat: note.beat + totalPauseBeats } : note
     )),
     expectedNotes: plan.expectedNotes.map((note, index) => (
-      index >= splitIndex ? { ...note, beat: note.beat + waitBeats } : note
+      index >= splitIndex ? { ...note, beat: note.beat + totalPauseBeats } : note
     )),
-    totalBeats: plan.totalBeats + waitBeats,
+    totalBeats: plan.totalBeats + totalPauseBeats,
     recordSeconds: plan.recordSeconds + waitSeconds,
     timedShift: {
       splitIndex,
       waitSeconds,
       waitBeats,
+      leadInBeats,
+      totalPauseBeats,
       startBeat,
+      moveEndBeat,
       endBeat,
     },
   };

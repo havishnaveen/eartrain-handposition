@@ -501,7 +501,14 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         else stave.setNoteStartX(sharedNoteStartX);
 
         stave.setBegBarType(Vex.Flow.Barline.type.SINGLE);
-        stave.setEndBarType(Vex.Flow.Barline.type.END);
+        // A grand staff receives one continuous right connector below. If
+        // each stave also draws its own END barline, the result is the broken
+        // thick-thin-thick cluster seen on every two-hand exercise.
+        stave.setEndBarType(
+          cue.staves.length > 1
+            ? Vex.Flow.Barline.type.NONE
+            : Vex.Flow.Barline.type.END,
+        );
         (stave as any).setStyle({ strokeStyle: inkColor, fillStyle: inkColor, lineWidth: 1.5 });
         stave.setContext(context).draw();
         drawnStavesInSystem.push(stave);
