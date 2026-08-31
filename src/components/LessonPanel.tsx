@@ -49,7 +49,7 @@ export function HandIcon({
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {activeFinger === 1 ? <path d="M 6.01 19.66 l -3.6 -3.6 a 2 2 0 0 1 2.83 -2.82 L 7 15 Z" fill="#ef6a47" stroke="none" /> : null}
+      {activeFinger === 1 ? <path d="M 6.01 19.66 l -3.6 -3.6 a 2 2 0 0 1 2.83 -2.82 L 6 14 Z" fill="#ef6a47" stroke="none" /> : null}
       {activeFinger === 2 ? <rect x="6" y="4" width="4" height="10.5" rx="2" fill="#ef6a47" stroke="none" /> : null}
       {activeFinger === 3 ? <rect x="10" y="2" width="4" height="8.5" rx="2" fill="#ef6a47" stroke="none" /> : null}
       {activeFinger === 4 ? <rect x="14" y="4" width="4" height="7.5" rx="2" fill="#ef6a47" stroke="none" /> : null}
@@ -58,7 +58,7 @@ export function HandIcon({
       <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0" />
       <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
       <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
-      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L6 14" />
 
       {activeFinger === 1 ? <text {...textProps(2)} y="9" fontSize="4.5" fontFamily="Inter, Roboto, sans-serif" fontWeight="800" fill="#ef6a47" stroke="none" textAnchor="middle">1</text> : null}
       {activeFinger === 2 ? <text {...textProps(8)} y="2" fontSize="4.5" fontFamily="Inter, Roboto, sans-serif" fontWeight="800" fill="#ef6a47" stroke="none" textAnchor="middle">2</text> : null}
