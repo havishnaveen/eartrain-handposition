@@ -126,7 +126,7 @@ function PerformanceAnalysis({ progress }: { progress: number }) {
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const value = complete ? 100 : 92;
+      const value = complete ? 100 : 96;
       displayedRef.current = value;
       setDisplayedProgress(value);
       return undefined;
@@ -136,16 +136,28 @@ function PerformanceAnalysis({ progress }: { progress: number }) {
     const completionStartedAt = performance.now();
     const completionStart = displayedRef.current;
     const advance = (now: number) => {
-      // Real analysis milestones still report pipeline health, but they no
-      // longer become visible stop points. The bar follows one continuous
-      // clock to 92%, then completes in a single final glide.
-      const next = complete
-        ? completionStart + (100 - completionStart) * Math.min(1, (now - completionStartedAt) / 440)
-        : Math.min(92, ((now - startedAtRef.current) / 2200) * 92);
-      displayedRef.current = next;
-      setDisplayedProgress(next);
-      if (next >= (complete ? 100 : 92)) return;
-      frame = requestAnimationFrame(advance);
+      if (complete) {
+        const elapsed = (now - completionStartedAt) / 320;
+        const t = Math.min(1, Math.max(0, elapsed));
+        const easeOut = 1 - Math.pow(1 - t, 3);
+        const next = Math.min(100, completionStart + (100 - completionStart) * easeOut);
+        displayedRef.current = next;
+        setDisplayedProgress(next);
+        if (t < 1) {
+          frame = requestAnimationFrame(advance);
+        }
+      } else {
+        const tSeconds = Math.max(0, (now - startedAtRef.current) / 1000);
+        // Multi-phase dynamic pacing: starts with a lively curve, settles into a smooth glide,
+        // and asymptotically eases towards 98% so it never hits an abrupt ceiling.
+        const phase1 = 1 - Math.exp(-tSeconds * 2.2);
+        const phase2 = 1 - Math.exp(-tSeconds * 0.4);
+        const target = phase1 * 58 + phase2 * 40;
+        const next = Math.min(98, Math.max(displayedRef.current, target));
+        displayedRef.current = next;
+        setDisplayedProgress(next);
+        frame = requestAnimationFrame(advance);
+      }
     };
     frame = requestAnimationFrame(advance);
     return () => cancelAnimationFrame(frame);
