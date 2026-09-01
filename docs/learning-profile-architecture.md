@@ -1,5 +1,10 @@
 # Learning profile architecture
 
+Curriculum v15 treats Chord by Ear as an ungraded, microphone-free spatial
+discovery: the learner hears a nearby reference, then a hidden target and its
+broken form. Move Your Hand always displays both positions; early transitions
+retain a counted move window plus a READY beat.
+
 ## What is collected now
 
 Every completed attempt is written twice, and lightweight usage events are

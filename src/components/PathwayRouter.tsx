@@ -55,7 +55,7 @@ import { learningProfileStore } from '../profiles/learningProfileStore';
 const MAX_ATTEMPTS = 2;
 const REPS_ADDED_PER_MISS = 2;
 /** Briefly acknowledge analysis without delaying an already-complete grade. */
-const MIN_ANALYSIS_VISIBLE_MS = 900;
+const MIN_ANALYSIS_VISIBLE_MS = 320;
 const ORIENTATION_STORAGE_KEY = 'eartrain.orientation-cues.v1';
 /**
  * A standalone run must be able to reach every lesson. Integrations may pass a
@@ -195,6 +195,7 @@ export type PathwayAction =
   | { type: 'CHORD_START'; questionId: string }
   | { type: 'CHORD_LISTEN'; questionId: string; now: number }
   | { type: 'CHORD_ROOT'; questionId: string }
+  | { type: 'CHORD_DISCOVERED'; questionId: string }
   | { type: 'CHORD_CANCEL'; questionId: string }
   | { type: 'MEMORY_START'; questionId: string }
   | { type: 'START'; questionId: string }
@@ -364,6 +365,37 @@ export function pathwayReducer(state: PathwayState, action: PathwayAction): Path
       return action.questionId === state.current.id && state.status === 'chord-root'
         ? { ...state, status: 'chord-build' }
         : state;
+
+    case 'CHORD_DISCOVERED':
+      if (
+        action.questionId !== state.current.id ||
+        !(['chord-root', 'chord-build'] as ExerciseStatus[]).includes(state.status)
+      ) return state;
+      return {
+        ...state,
+        status: 'chord-complete',
+        // Completion metadata only; no acoustic score is calculated or shown.
+        report: {
+          scores: { pitch: 5, timing: null, cleanliness: 5, overall: 5 },
+          passed: true,
+          matched: 0,
+          expectedCount: 0,
+          missed: 0,
+          benignExtras: 0,
+          echoExtras: 0,
+          pedalled: false,
+          hesitations: 0,
+          hardExtras: 0,
+          extras: [],
+          firstMissIndex: -1,
+          playedNames: [],
+          rhythm: null,
+          transition: null,
+          spatialChord: null,
+          detail: 'Self-directed nearby-chord discovery complete.',
+        },
+        repeatQuestion: false,
+      };
 
     case 'CHORD_CANCEL':
       return action.questionId === state.current.id && state.status === 'chord-cue'
@@ -747,7 +779,7 @@ export function PathwayRouter({
     const elapsed = Date.now() - analysisStartedAtRef.current;
     const remaining = active.exerciseMode === 'spatial-chord'
       ? 0
-      : Math.max(480, MIN_ANALYSIS_VISIBLE_MS - elapsed);
+      : Math.max(120, MIN_ANALYSIS_VISIBLE_MS - elapsed);
     if (reportTimerRef.current) window.clearTimeout(reportTimerRef.current);
     reportTimerRef.current = window.setTimeout(() => {
       reportTimerRef.current = 0;
@@ -799,6 +831,16 @@ export function PathwayRouter({
     if (!questionId || questionRef.current.id !== questionId) return;
     dispatch({ type: 'CHORD_ROOT', questionId });
   }, []);
+
+  const handleSpatialFound = useCallback(() => {
+    const active = questionRef.current;
+    if (active.exerciseMode !== 'spatial-chord') return;
+    if (state.status === 'chord-root') {
+      dispatch({ type: 'CHORD_ROOT', questionId: active.id });
+    } else if (state.status === 'chord-build') {
+      dispatch({ type: 'CHORD_DISCOVERED', questionId: active.id });
+    }
+  }, [state.status]);
 
   const audio = useDrillAudio({
     onFrame: handleFrame,
@@ -1235,6 +1277,7 @@ export function PathwayRouter({
         spatialWrongGuesses={audio.spatialWrongGuesses}
         spatialAudioIssue={audio.spatialAudioIssue}
         onReplayChord={handleReplayChord}
+        onSpatialFound={handleSpatialFound}
         orientationNotice={orientationNotice}
         onAcknowledgeOrientation={acknowledgeOrientation}
       >

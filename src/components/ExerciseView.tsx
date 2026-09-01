@@ -99,6 +99,8 @@ export interface ExerciseViewProps {
   spatialAudioIssue?: boolean;
   /** Re-plays the chord demo without leaving the current search. */
   onReplayChord?: () => void;
+  /** Advances the self-directed reference → nearby-chord discovery. */
+  onSpatialFound?: () => void;
   orientationNotice?: OrientationNotice | null;
   onAcknowledgeOrientation?: () => void;
 }
@@ -359,6 +361,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       spatialWrongGuesses = 0,
       spatialAudioIssue = false,
       onReplayChord,
+      onSpatialFound,
       orientationNotice = null,
       onAcknowledgeOrientation,
     },
@@ -420,8 +423,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const isSearching = isRootSearch || isShapeSearch;
       const rootName = proofPitchName(spatialChord.rootPitch);
       const handName = spatialChord.hand === 'right' ? 'Right Hand' : 'Left Hand';
-      const anchorIsShown = spatialChord.rootSupport === 'shown';
-      const heldAnchorLabel = anchorIsShown ? rootName : 'the bottom note';
+      const anchorIsShown = false;
       const rootFinger = spatialChord.hand === 'right' ? 1 : 5;
       const outerFinger = spatialChord.hand === 'right' ? 5 : 1;
       const orderedToneEntries = spatialChord.buildOrder.map((chordIndex, stepIndex) => ({
@@ -430,18 +432,14 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
         pitch: spatialChord.chordPitches[chordIndex],
         finger: chordIndex === 0 ? rootFinger : chordIndex === 2 ? outerFinger : 3,
       }));
-      const activeStep = isRootSearch ? 0 : isShapeSearch ? Math.min(2, spatialProgress) : -1;
+      const activeStep = isRootSearch ? 0 : isShapeSearch ? 1 : -1;
       const activeTone = activeStep >= 0 ? orderedToneEntries[activeStep] : null;
       const chordSucceeded = Boolean(report?.passed);
       const activeAction = activeStep === 0
         ? anchorIsShown
           ? `Play the given ${rootName} anchor with Finger ${rootFinger}`
           : `Match the bottom broken note with Finger ${rootFinger}`
-        : activeStep === 1
-          ? `Keep ${heldAnchorLabel}. Find the chord's middle sound with Finger 3`
-          : activeStep === 2
-            ? `Keep both keys down. Complete the sound with Finger ${outerFinger}`
-            : '';
+        : `Use the reference shape to find the nearby target chord.`;
       const activeAnswer = activeStep === 0
         ? anchorIsShown ? rootName : 'Bottom note'
         : activeStep === 1
@@ -456,13 +454,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             ? 'Compare nearby keys to the broken-chord replay'
             : 'Listen to the distance above the anchor'
           : 'Sound all three together—the brief check confirms the chord';
-      const retryMessage = activeStep === 0
-        ? anchorIsShown
-          ? `That was not the given ${rootName}. Return to the anchor.`
-          : 'That did not match the bottom broken note. Replay and compare.'
-        : activeStep === 1
-          ? 'Middle tone missed. Replay and match the second sound in 1–3–5.'
-          : 'Outside tone missed. Replay and match the final sound in 1–3–5.';
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">
@@ -471,30 +462,28 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <span className="et-mode-chip">Chord by ear</span>
             <h2>
               {status === 'prompt'
-                ? '1. Hear the chord'
+                ? '1. Hear two nearby chords'
                 : isCue
                   ? '1. Listen only'
                   : isComplete
-                    ? chordSucceeded ? 'Shape complete' : 'Let’s try once more'
+                    ? 'Discovery complete'
                   : isRootSearch
                     ? '2. Copy one note'
                     : '3. Build the hand shape'}
             </h2>
             <p>
               {status === 'prompt'
-                ? anchorIsShown
-                  ? `${rootName} is supplied. Hear the chord whole, then copy its 1–3–5 shape without seeing the other notes.`
-                  : 'Hear the chord whole, then use the broken example to find its bottom note and copy the shape.'
+                ? 'Hear a reference chord, then a nearby hidden target. Find both by shape and distance—no note names are shown.'
                 : isCue
-                  ? `First hear the chord together. Then hear its notes as 1–3–5.`
+                  ? 'First hear the reference, then the nearby target, then the target broken as 1–3–5.'
                   : isComplete
                     ? chordSucceeded
-                      ? 'You found the whole hand shape.'
-                      : 'Hear it again, then rebuild the shape.'
+                      ? 'You mapped the nearby chord by ear.'
+                      : 'Replay the comparison and explore again.'
                 : isRootSearch
-                  ? 'Play only the first note you heard.'
+                  ? 'Find the reference chord on the keyboard. No microphone is listening.'
                   : isShapeSearch
-                    ? 'Keep each found key down while you add the next.'
+                    ? 'Now find the nearby target chord you heard. Use the broken replay if needed.'
                   : ''}
             </p>
             {orientationNotice ? (
@@ -518,22 +507,22 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   className="et-spatial__listen-passes"
                   aria-label={anchorIsShown
                     ? `${rootName} is supplied; the other chord tones remain hidden`
-                    : 'All note names remain hidden; match the blocked and broken piano examples'}
+                    : 'All note names remain hidden; compare the reference and nearby target'}
                 >
                   <div className="et-spatial__listen-pass">
-                    <small>1 · Whole chord</small>
+                    <small>1 · Reference</small>
                     <span className="et-spatial__chord-dots" aria-hidden="true"><i /><i /><i /></span>
-                    <strong>One blended sound</strong>
+                    <strong>Remember this shape</strong>
                   </div>
                   <div className="et-spatial__listen-pass">
-                    <small>2 · Broken notes</small>
+                    <small>2 · Nearby target</small>
                     <span className="et-spatial__finger-shape" aria-hidden="true">1 · 3 · 5</span>
-                    <strong>Bottom · middle · top</strong>
+                    <strong>Then hear 1 · 3 · 5</strong>
                   </div>
                 </div>
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-                  <span><strong>Chord, then broken notes</strong><small>Only the target is played</small></span>
+                  <span><strong>Reference → target → broken target</strong><small>No note names or grading</small></span>
                 </div>
                 {spatialAudioIssue ? (
                   <div className="et-spatial__audio-issue" role="alert">
@@ -572,13 +561,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <strong>{activeAnswer}</strong>
                 <p>{activeAction}</p>
                 <small>{activeHint}</small>
-                <div className="et-spatial__recording" role="status">
-                  <span className="et-record__mic"><span className="et-listen__halo" /><MicIcon /></span>
-                  <div>
-                    <b>{spatialWrongGuesses > 0 ? 'Try again' : 'Listening'}</b>
-                    <small>{spatialWrongGuesses > 0 ? retryMessage : 'Play when you are ready…'}</small>
-                  </div>
-                </div>
+                <button type="button" className="et-start et-spatial__start" onClick={onSpatialFound ?? NOOP}>
+                  <span className="et-start__dot"><RecordDot /></span>
+                  {isRootSearch ? 'I found the reference' : 'I found the nearby chord'}
+                </button>
                 {spatialAudioIssue ? (
                   <div className="et-spatial__audio-issue" role="alert">
                     <span>The demo may not have played. Not sure what you heard?</span>

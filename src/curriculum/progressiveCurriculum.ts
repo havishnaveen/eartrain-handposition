@@ -1238,7 +1238,9 @@ function questionFor(
     lesson.spatialChord &&
     (lesson.exerciseMode === 'spatial-chord' || lesson.spatialChord.questionNumbers.length > 0)
   ) {
-    return withPositionProof(spatialChordQuestion(
+    // This is now a self-directed listening/spatial-discovery activity. It
+    // deliberately has neither a Prove-It gate nor acoustic grading.
+    return spatialChordQuestion(
       lesson,
       lesson.spatialChord,
       ordinal,
@@ -1246,7 +1248,7 @@ function questionFor(
       fixedDifficulty,
       mode,
       hand,
-    ), hand);
+    );
   }
 
   if (drillKind === 'anchor-shift' && lesson.shiftPairs?.length) {
@@ -1305,7 +1307,6 @@ function questionFor(
     // the source of truth—fractional seconds previously shifted the second
     // phrase off the click grid and made its first note appear to be skipped.
     const waitBeats = lesson.index <= 14 ? 2 : lesson.index <= 16 ? 1 : 0;
-    const stagedReveal = lesson.index >= 18;
 
     const shiftQuestion: Question = {
       id: `${lesson.id}#${ordinal}`,
@@ -1315,9 +1316,7 @@ function questionFor(
       // reserved for a question that genuinely presents both hands at once;
       // alternating hands across a lesson must not mislabel the current rep.
       handScope: hand,
-      instruction: stagedReveal
-        ? `Play ${fromName}, move immediately, then continue in ${toName}.`
-        : waitBeats > 0
+      instruction: waitBeats > 0
           ? `Play ${fromName}. Use the ${waitBeats}-beat move window, then continue in ${toName}.`
         : lesson.instruction,
       cue: {
@@ -1354,11 +1353,10 @@ function questionFor(
         toPositionName: toName,
         splitIndex,
         allowedExtraBeats,
-        ...((waitBeats > 0 || stagedReveal)
+        ...(waitBeats > 0
           ? { timedShift: {
               waitBeats,
               ...(waitBeats > 0 ? { leadInBeats: 1 } : {}),
-              ...(stagedReveal ? { revealSecond: true } : {}),
             } }
           : {}),
       },

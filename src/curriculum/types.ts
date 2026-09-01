@@ -197,7 +197,6 @@ export interface AnchorShiftSpec {
     /** Counted preparation after the move timer, before Position 2 begins. */
     leadInBeats?: number;
     /** Hide Position 2 until its observation window begins. */
-    revealSecond?: boolean;
   };
 }
 

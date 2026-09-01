@@ -640,10 +640,8 @@ export function buildReport(records: readonly AttemptRecord[]): InstructorReport
       };
     });
 
-  // Chord by Ear is stored as guided completion/search telemetry, not folded
-  // into the student's conventional Pitch/Timing/Cleanliness averages. Its
-  // root latency, shape latency and guesses remain in `spatialChords` for the
-  // adaptive engine and instructor dashboard.
+  // Chord by Ear is self-directed spatial discovery and is not folded into
+  // conventional Pitch/Timing/Cleanliness averages.
   const scoredRecords = records.filter((r) => r.exerciseMode !== 'spatial-chord');
   const timed = scoredRecords.filter((r) => r.scores.timing !== null);
   const meanScores: ScoreBreakdown = {

@@ -17,9 +17,22 @@ try {
   const {
     calculateOverallScore,
     capOverallByWeakestCategory,
+    alignPitchSequences,
     gradeSequence,
     gradeSpatialChord,
   } = await server.ssrLoadModule('/src/audio/timing.ts');
+
+  const oneMissAlignment = alignPitchSequences(
+    [60, 62, 64, 65, 67],
+    [60, 62, 65, 67].map((midi) => ({ midi })),
+    (midi) => midi,
+  );
+  assert.equal(oneMissAlignment.filter(({ kind }) => kind === 'miss').length, 1,
+    'One missed pitch must remain one miss after sequence re-synchronization.');
+  assert.deepEqual(
+    oneMissAlignment.filter(({ kind }) => kind === 'match').map(({ expectedIndex }) => expectedIndex),
+    [0, 1, 3, 4],
+    'Alignment must resume at the next correct pitch instead of cascading misses.');
   const {
     advanceSpatialChord,
     formatDetectedNoteGroups,
@@ -165,6 +178,17 @@ try {
     ]),
     ['Chord: C4 + E4 + G4'],
     'A detected chord must be displayed as one simultaneous chord, not random note labels.',
+  );
+  assert.deepEqual(
+    formatDetectedNoteGroups([
+      { midi: 67, time: 1, clarity: 0.9, strength: 1, peakRms: 0.02, gate: 0.01 },
+      { midi: 67, time: 1.55, clarity: 0.91, strength: 0.9, peakRms: 0.016, gate: 0.01,
+        frameAttackRatio: 1.02, novelty: 0.08 },
+      { midi: 67, time: 2.1, clarity: 0.92, strength: 1.1, peakRms: 0.023, gate: 0.01,
+        frameAttackRatio: 1.32, novelty: 0.52 },
+    ]),
+    ['G4', 'G4'],
+    'A sustain estimate must not re-log, while a new flux/envelope attack must re-arm the feed.',
   );
 
   const chordSpec = {

@@ -33,6 +33,7 @@
     "jpeg-js": "^0.4.4",
     "lucide-react": "^0.323.0",
     "nodemailer": "^9.0.6",
+    "onnxruntime-web": "^1.29.0",
     "opensheetmusicdisplay": "^2.1.0",
     "puppeteer": "^25.4.0",
     "react": "^18.2.0",

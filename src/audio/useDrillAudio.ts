@@ -181,8 +181,38 @@ function connectPianoAnalysisFrontEnd(
 
 /** Present simultaneous detections as one chord instead of random-looking notes. */
 export function formatDetectedNoteGroups(notes: readonly DetectedNote[]): string[] {
+  // Keep detector evidence intact for grading, but show a pitch again only
+  // when envelope/flux evidence proves a new hammer strike. Time alone must
+  // not turn one sustained tone into repeated live-feed entries.
+  const lastShownByMidi = new Map<number, DetectedNote>();
+  const displayNotes = [...notes]
+    .sort((a, b) => a.time - b.time)
+    .filter((note) => {
+      const previous = lastShownByMidi.get(note.midi);
+      if (previous && !isClearSamePitchRetrigger(
+        {
+          time: previous.time,
+          peakRms: previous.peakRms ?? previous.strength,
+          candidate: previous.detectorLane === 'context-recovery',
+          releasedAt: previous.endTime,
+          releaseConfidence: previous.durationConfidence,
+        },
+        {
+          time: note.time,
+          peakRms: note.peakRms ?? note.strength,
+          gate: note.gate ?? 0,
+          attackRatio: note.frameAttackRatio ?? 0,
+          frameAttackRatio: note.frameAttackRatio,
+          novelty: note.novelty,
+          candidate: note.detectorLane === 'context-recovery',
+          contextExpected: note.scoreContextAccepted,
+        },
+      )) return false;
+      lastShownByMidi.set(note.midi, note);
+      return true;
+    });
   const groups: DetectedNote[][] = [];
-  [...notes].sort((a, b) => a.time - b.time).forEach((note) => {
+  displayNotes.forEach((note) => {
     const group = groups[groups.length - 1];
     if (!group || note.time - group[0].time > 0.045) groups.push([note]);
     else group.push(note);
@@ -526,7 +556,7 @@ const DETECTOR_PREROLL_SEC = 0.22;
  * note can arrive. The worklet measures pitch during the sustain, not the
  * attack, so results trail their onsets.
  */
-const PITCH_FLUSH_MS = 380;
+const PITCH_FLUSH_MS = 220;
 /** Quiet frames needed before the first Prove It attack can be judged. */
 const PROOF_DETECTOR_WARMUP_MS = 260;
 /**
@@ -2352,7 +2382,11 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     // by design; this path never falls back to oscillators or synthetic
     // "instrument layers". Every pitched example the child hears is piano.
     await initPianoAudio();
-    const allPitches = new Set(spec.chordPitches);
+    const referencePitches = spec.chordPitches.map((pitch) => {
+      const midi = pitchToMidi(pitch);
+      return midi === null ? pitch : midiToName(midi - 2);
+    });
+    const allPitches = new Set([...referencePitches, ...spec.chordPitches]);
     const loaded = new Map<string, unknown>();
     await Promise.all([...allPitches].map(async (pitch) => {
       const parsed = splitPianoPitch(pitch);
@@ -2388,11 +2422,12 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       });
     };
 
-    // Exactly two examples: the target chord together, then the same notes
-    // broken from bottom to top. No lead-in chord, anchor replay, background
-    // harmony or decorative ending can be confused with the answer.
-    schedulePitches(spec.chordPitches, 0, 1.05, 1);
-    const brokenStart = 1.35;
+    // A visible-free spatial comparison: hear a nearby reference chord, then
+    // the target, then the target broken bottom-to-top. There is no microphone
+    // judgment; the learner explores the keyboard and confirms discovery.
+    schedulePitches(referencePitches, 0, 0.95, 0.92);
+    schedulePitches(spec.chordPitches, 1.25, 1.05, 1);
+    const brokenStart = 2.58;
     schedulePitches(spec.chordPitches, brokenStart, 0.7, 0.9, 0.52);
     const offset = brokenStart + 0.52 * spec.chordPitches.length + 0.34;
 
@@ -2543,6 +2578,24 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const runToken = ++runTokenRef.current;
       const targetMidi = target.chordPitches.map((pitch) => pitchToMidi(pitch));
       if (targetMidi.some((midi) => midi === null)) return false;
+
+      if (targetMidi.length > 0) {
+        // Chord by Ear is intentionally playback-only. Do not request the mic,
+        // arm either recognition worklet, or manufacture Pitch/Timing scores.
+        stopLoops();
+        stopSpatialPlayback();
+        safeSet(setSpatialAudioIssue, false);
+        safeSet(setPhase, 'idle' as DrillPhase);
+        await initPianoAudio();
+        const playbackContext = getPianoAudioContext();
+        if (!playbackContext || !mountedRef.current || runTokenRef.current !== runToken) return false;
+        const demoEndTime = await scheduleSpatialContext(playbackContext, target);
+        const demoWaitMs = Math.max(0, (demoEndTime - playbackContext.currentTime + 0.08) * 1000);
+        await new Promise<void>((resolve) => window.setTimeout(resolve, demoWaitMs));
+        if (!mountedRef.current || runTokenRef.current !== runToken) return false;
+        cbRef.current.onSpatialListenStart?.(playbackContext.currentTime);
+        return true;
+      }
 
       const ctx = await ensureGraph();
       const worklet = workletRef.current;
@@ -2782,7 +2835,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const pitchAnalysisStart = playStart - PITCH_CAPTURE_LEAD_BEATS * spb;
       playStartRef.current = playStart;
       recordEndRef.current = playStart + plan.recordSeconds;
-      const normalRecordEnd = playStart + (plan.totalBeats + 1) * spb;
       // Capture one quiet second before the downbeat and the complete tail.
       // This is raw, uncompressed microphone PCM; it is the evidence used by
       // the final score-aware pass, not by replay encoding.
@@ -2959,9 +3011,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               moving ? `SHIFT ${moveBeat}` : preparing ? `READY ${prepareBeat}` : String(beatInBar + 1));
           }
 
-          const allWrittenSlotsHeard =
-            occupiedExpectedSlotsRef.current.size >= currentPlan.expectedNotes.length;
-          if (now >= recordEndRef.current || (now >= normalRecordEnd && allWrittenSlotsHeard)) {
+          if (now >= recordEndRef.current) {
             finishedRef.current = true;
             listeningRef.current = false;
             cbRef.current.onAnalysisStart?.();

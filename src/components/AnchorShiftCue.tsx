@@ -67,7 +67,6 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
     const waitBeats = Math.max(0, shift.timedShift?.waitBeats ?? 0);
     const leadInBeats = Math.max(0, shift.timedShift?.leadInBeats ?? 0);
     const waitSeconds = waitBeats * secondsPerBeat;
-    const stagedReveal = shift.timedShift?.revealSecond === true;
 
     const showCountdown = useCallback((remaining: number) => {
       const safeRemaining = Math.max(0, Math.min(waitSeconds, remaining));
@@ -132,10 +131,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         ref={rootRef}
         className="et-anchor-cue"
         data-active-position="from"
-        data-staged-reveal={stagedReveal ? 'true' : 'false'}
-        aria-label={stagedReveal
-          ? `Instant hand-position switch. Play ${shift.fromPositionName}; ${shift.toPositionName} appears at the hand-off.`
-          : `Hand-position switch. First play ${shift.fromPositionName}, then move and play ${shift.toPositionName}.`}
+        aria-label={`Hand-position switch. First play ${shift.fromPositionName}, then move and play ${shift.toPositionName}. Both positions remain visible.`}
       >
         <section className="et-anchor-cue__half et-anchor-cue__half--from" aria-label={`${shift.fromPositionName} music`}>
           <header className="et-anchor-cue__label">
@@ -149,14 +145,12 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
           className="et-anchor-cue__bridge"
           aria-label={
             waitSeconds > 0
-              ? stagedReveal
-                ? `${waitSeconds}-second phrase-preview countdown`
-                : `${waitSeconds}-second move-your-hand window`
+              ? `${waitSeconds}-second move-your-hand window followed by a ready beat`
               : 'Move your hand'
           }
         >
           <span className="et-anchor-cue__step">2</span>
-          <b>{stagedReveal ? 'Shift now' : 'Move hand'}</b>
+          <b>Shift hand</b>
           <i className="et-anchor-cue__arrow" aria-hidden="true">→</i>
           {waitSeconds > 0 ? (
             <>
@@ -164,7 +158,7 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
               <span className="et-anchor-cue__countdown-track" aria-hidden="true">
                 <i ref={countdownFillRef} />
               </span>
-              <small>{stagedReveal ? 'See the new phrase' : 'Keep the beat'}</small>
+              <small>Move now · land on READY</small>
             </>
           ) : <small>Keep the beat</small>}
         </div>

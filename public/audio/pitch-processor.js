@@ -46,6 +46,10 @@
 
 const FFT_SIZE = 1024;
 const YIN_WINDOW = 2048;
+// Bass needs more waveform cycles, while the shorter window preserves hammer
+// timing and click-adjacent persistence in the middle/upper registers.
+const BASS_YIN_WINDOW = 4096;
+const BASS_LONG_WINDOW_CEILING_HZ = 190;
 /** Longer window for the emergent-spectrum analysis: 10.8Hz bins at 44.1k. */
 const PITCH_FFT = 4096;
 /** Above B4, short stiff strings need stretched-partial spectral templates. */
@@ -222,7 +226,7 @@ const YIN_THRESHOLD = 0.2;
  * real notes and removes the single worst failure mode: YIN locking onto a
  * 60Hz hum, which reports every note in the room as B1.
  */
-const MIN_FREQ = 90;
+const MIN_FREQ = 65;
 /**
  * C#6 is the curriculum ceiling (1109Hz); this leaves headroom above it
  * without opening the range to shrill artefacts.
@@ -231,7 +235,9 @@ const MAX_FREQ = 1250;
 const MIN_CLARITY = 0.38;
 
 /** High-pass cutoff applied before pitch analysis, to strip hum and rumble. */
-const HPF_HZ = 80;
+// Preserve C2-and-up fundamentals. Dedicated 50/60Hz notches upstream handle
+// mains hum without deleting the bass evidence YIN needs.
+const HPF_HZ = 50;
 
 /** Onset must fall back below this fraction of threshold before re-arming. */
 const REARM_FRACTION = 0.6;
@@ -1833,15 +1839,22 @@ class PitchProcessor extends AudioWorkletProcessor {
     /* --- Deferred pitch measurement ------------------------------------- */
     if (this.pending.length > 0) {
       let buffer = null;
+      let bassBuffer = null;
       for (const item of this.pending) {
         const age = currentTime - item.time;
         if (age < PITCH_DELAY_SEC || age > PITCH_DELAY_SEC + PITCH_WINDOW_SEC) continue;
         if (item.estimates.length >= PITCH_MAX_ESTIMATES) continue;
-        if (!buffer) {
+        const emergent = this._emergentPitch(item.pre);
+        const useBassWindow = emergent?.frequency < BASS_LONG_WINDOW_CEILING_HZ;
+        if (useBassWindow && !bassBuffer) {
+          bassBuffer = highpass(
+            this._read(BASS_YIN_WINDOW, new Float32Array(BASS_YIN_WINDOW)),
+            HPF_HZ,
+          );
+        } else if (!useBassWindow && !buffer) {
           buffer = highpass(this._read(YIN_WINDOW, new Float32Array(YIN_WINDOW)), HPF_HZ);
         }
-        const yin = this._yin(buffer);
-        const emergent = this._emergentPitch(item.pre);
+        const yin = this._yin(useBassWindow ? bassBuffer : buffer);
         if (yin) item.yinEstimates.push(yin);
         if (emergent) item.emergentEstimates.push(emergent);
         // YIN is the more precise of the two when the texture is thin enough
@@ -1857,9 +1870,12 @@ class PitchProcessor extends AudioWorkletProcessor {
             if (cents <= 60) {
               chosen = yin; // agreement: YIN is the more precise of the two
             } else if (Math.abs(cents - 1200) <= 90 || Math.abs(cents - 2400) <= 90) {
-              // Pure octave disagreement. YIN resolves octaves well and the
-              // harmonic sum is inherently octave-prone, so YIN wins here.
-              chosen = yin;
+              // On exact-octave disagreement, two independent estimators agree
+              // on pitch class. Prefer the lower candidate: this suppresses a
+              // loud second partial being reported as the note itself. YIN
+              // remains authoritative whenever it already owns that lower
+              // fundamental.
+              chosen = yin.frequency <= emergent.frequency ? yin : emergent;
             } else {
               // Wholesale disagreement means YIN has locked onto a different
               // note that is still ringing. Only the residual is looking at

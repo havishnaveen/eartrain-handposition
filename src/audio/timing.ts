@@ -181,10 +181,10 @@ export function planFor(
     };
   });
 
-  // Keep enough tail to hear a genuinely late final attack. Its original
-  // timestamp is retained, so this improves Pitch evidence without granting
-  // any Timing credit.
-  const tailBeats = 3.25;
+  // End at the written phrase boundary. The detector flush can still finish
+  // resolving the last strike, but the learner never sees or hears an extra
+  // beat after the final scheduled measure.
+  const tailBeats = 0;
   const countInLabels = Array.from(
     { length: beatsPerBar * 2 },
     (_, i) => String((i % beatsPerBar) + 1),
@@ -198,7 +198,7 @@ export function planFor(
     expectedNotes,
     totalBeats: written,
     tailBeats,
-    recordSeconds: (written + tailBeats) * secondsPerBeat,
+    recordSeconds: written * secondsPerBeat,
     countInLabels,
     countInSeconds: beatsPerBar * 2 * secondsPerBeat,
     guideNote,
@@ -770,7 +770,10 @@ function buildRhythm(
     const planned = expectedSlots[match.expectedIndex];
     const endTime = match.note.endTime;
     const confidence = match.note.durationConfidence ?? 0;
-    if (!planned) continue;
+    // Quarter notes and shorter are onset events here. Acoustic room decay is
+    // not a reliable key-up measurement and used to turn perfect attacks into
+    // a mediocre Timing score. Longer written holds remain graded.
+    if (!planned || planned.beats <= 1) continue;
     const hasRelease = Number.isFinite(endTime) &&
       (endTime as number) > match.time &&
       confidence >= MIN_GRADED_RELEASE_CONFIDENCE;
@@ -850,7 +853,7 @@ function buildRhythm(
     : meanOnsetError * 0.42 + meanIntervalError * 0.58;
   const combinedError = durationAccuracy === null
     ? attackTimingError
-    : attackTimingError * 0.85 + meanDurationError * 0.15;
+    : attackTimingError * 0.7 + meanDurationError * 0.3;
 
   const onBeat = adjusted.filter(
     (deviation) => Math.abs(deviation) <= profile.onBeatWindow,
