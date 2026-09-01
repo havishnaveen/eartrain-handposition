@@ -1440,10 +1440,30 @@ export function gradeSequence(
           0,
           attackTimingError - timingProfile.fullCreditOnsetWindow,
         );
-        const onsetScore = 5 * Math.pow(
+        let onsetScore = 5 * Math.pow(
           Math.max(0, 1 - gradedOnsetError / onsetScoringRange),
           1.15,
         );
+        // A steady pulse can still be steadily off the beat. Its interval
+        // error is near zero, so the blended attack metric alone is too kind.
+        // Apply an absolute-phase ceiling only to that specific case; uneven
+        // human timing continues through the established interval curve.
+        if (
+          rhythm.evaluated >= 2 &&
+          rhythm.meanIntervalErrorBeats <= 0.12 &&
+          rhythm.meanOnsetErrorBeats > timingProfile.fullCreditOnsetWindow
+        ) {
+          const phaseRange = Math.max(
+            0.01,
+            0.75 - timingProfile.fullCreditOnsetWindow,
+          );
+          const phaseExcess = rhythm.meanOnsetErrorBeats - timingProfile.fullCreditOnsetWindow;
+          const phaseScore = 5 * Math.pow(
+            Math.max(0, 1 - phaseExcess / phaseRange),
+            1.2,
+          );
+          onsetScore = Math.min(onsetScore, phaseScore);
+        }
         if (rhythm.meanDurationErrorBeats === null) return clamp5(onsetScore);
 
         // Duration stays visible and consequential, but acoustic releases are

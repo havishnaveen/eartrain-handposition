@@ -91,7 +91,6 @@ export interface ExerciseViewProps {
 
   inputLevel?: number;
   detectedNotes?: string[];
-  guidedFeedback?: string | null;
   proofProgress?: 0 | 1 | 2 | 3;
   spatialProgress?: 0 | 1 | 2 | 3;
   spatialFoundMidi?: readonly number[];
@@ -357,7 +356,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       nextLabel = 'Next Drill',
       inputLevel = 0,
       detectedNotes = [],
-      guidedFeedback = null,
       proofProgress = 0,
       spatialProgress = 0,
       spatialWrongGuesses = 0,
@@ -483,7 +481,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                       ? 'You mapped the nearby chord by ear.'
                       : 'Replay the comparison and explore again.'
                   : isRootSearch
-                    ? 'Find the reference chord on the keyboard. Gentle pitch hints appear below when needed.'
+                    ? 'Find the reference chord on the keyboard.'
                   : isShapeSearch
                     ? 'Now find the nearby target chord you heard. Use the broken replay if needed.'
                   : ''}
@@ -563,9 +561,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <strong>{activeAnswer}</strong>
                 <p>{activeAction}</p>
                 <small>{activeHint}</small>
-                {guidedFeedback ? (
-                  <p className="et-guided-feedback" role="status">{guidedFeedback}</p>
-                ) : null}
                 <button type="button" className="et-start et-spatial__start" onClick={onSpatialFound ?? NOOP}>
                   <span className="et-start__dot"><RecordDot /></span>
                   {isRootSearch ? 'I found the reference' : 'I found the nearby chord'}
@@ -716,9 +711,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     );
                   })}
                 </div>
-                {guidedFeedback && status === 'proving' ? (
-                  <p className="et-guided-feedback" role="status">{guidedFeedback}</p>
-                ) : null}
               </div>
             </div> : null}
           </div>
@@ -824,17 +816,17 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <span className="et-start__dot"><RecordDot /></span>
               {startLabel}
             </button>
-            <p className={`et-panel__sub${micBlocked ? ' et-panel__sub--alert' : ''}`}>
-              {micMessage ?? (
-                exerciseMode === 'blind-memory'
-                  ? `You will have ${memoryPreviewSeconds} seconds to look.`
-                  : exerciseMode === 'anchor-shift'
-                    ? shiftWaitBeats > 0
+            {micMessage || exerciseMode === 'blind-memory' || exerciseMode === 'anchor-shift' ? (
+              <p className={`et-panel__sub${micBlocked ? ' et-panel__sub--alert' : ''}`}>
+                {micMessage ?? (
+                  exerciseMode === 'blind-memory'
+                    ? `You will have ${memoryPreviewSeconds} seconds to look.`
+                    : shiftWaitBeats > 0
                       ? `A ${shiftWaitBeats}-beat move window is followed by one READY beat.`
                       : 'Move when the arrow lights up.'
-                    : 'Listen to the two-measure count in. Then play.'
-              )}
-            </p>
+                )}
+              </p>
+            ) : null}
           </div>
 
           <div className={`et-panel${status === 'memory-preview' ? ' et-panel--on' : ''}`} aria-hidden={status !== 'memory-preview'}>
@@ -901,11 +893,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               </div>
             </div>
 
-            <span className="et-listen__label">
-              {detectedNotes.length > 0
-                ? detectedNotes.slice(-8).join('  ·  ')
-                : 'Recording — play along with the clicks'}
-            </span>
+            {detectedNotes.length > 0 ? (
+              <span className="et-listen__label">{detectedNotes.slice(-8).join('  ·  ')}</span>
+            ) : null}
           </div>
         </div>
       </section>

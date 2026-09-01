@@ -348,8 +348,8 @@ try {
     lessonLevel: 12,
     totalLessons: 24,
   });
-  assert.ok((halfBeatPhaseGrade.scores.timing ?? 5) < 5,
-    'Even spacing cannot hide a phrase played consistently halfway between beats.');
+  assert.ok((halfBeatPhaseGrade.scores.timing ?? 5) <= 4,
+    `Even spacing cannot hide a phrase played consistently halfway between beats: ${JSON.stringify(halfBeatPhaseGrade.scores)}`);
 
   const badlyDistortedRhythm = perfect.map((note, index) => ({
     ...note,
