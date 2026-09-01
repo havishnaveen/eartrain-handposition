@@ -17,7 +17,6 @@ import {
   type CapturedPcm,
   type ScoreAnalysisResult,
 } from './scoreAnalysis';
-import { warmBasicPitch } from './basicPitchTranscription';
 import {
   getAudioContext as getPianoAudioContext,
   initAudio as initPianoAudio,
@@ -1012,7 +1011,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
-    workletUrl = '/audio/pitch-processor.js?v=physical-event-v18-2026-08-26',
+    workletUrl = '/audio/pitch-processor.js?v=physical-event-v19-2026-09-01',
     chordWorkletUrl = '/audio/chord-processor.js?v=guard-tones-v5-2026-08-26',
   } = options;
 
@@ -2470,18 +2469,15 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   }, [stopLoops, stopSpatialPlayback, cancelMicRecording, cancelPcmCapture, clearProofCompletionTimer, safeSet]);
 
   const prepare = useCallback(async (): Promise<boolean> => {
-    // Model loading is intentionally parallel with microphone preparation;
-    // it must never delay the Start button or the audio worklets.
-    void warmBasicPitch();
+    // The real-time AudioWorklet owns startup. Heavy ML initialization is
+    // deferred until post-take analysis so it cannot starve mic calibration
+    // or the first hammer transients on mobile/tablet browsers.
     const ctx = await ensureGraph();
     return Boolean(ctx && workletRef.current && chordWorkletRef.current && mountedRef.current);
   }, [ensureGraph]);
 
   const beginProof = useCallback(
     async (target: PositionProofTarget): Promise<boolean> => {
-      // The short position check gives the larger piano model useful warm-up
-      // time before the real graded performance begins.
-      void warmBasicPitch();
       const runToken = ++runTokenRef.current;
       const targetMidi = target.proofNotes.map((note) => pitchToMidi(note.pitch));
       if (targetMidi.some((midi) => midi === null)) return false;

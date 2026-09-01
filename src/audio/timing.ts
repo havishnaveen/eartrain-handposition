@@ -181,6 +181,16 @@ export function planFor(
     };
   });
 
+  // Staff generation may pad the final measure with rests for notation. Those
+  // rests are layout, not another performance measure. Stop on the written
+  // end of the last playable note so no phantom 1-2-3-4 follows the phrase.
+  const performanceBeats = guideNote
+    ? written
+    : expectedNotes.reduce(
+        (end, note) => Math.max(end, note.beat + note.beats),
+        0,
+      );
+
   // End at the written phrase boundary. The detector flush can still finish
   // resolving the last strike, but the learner never sees or hears an extra
   // beat after the final scheduled measure.
@@ -196,9 +206,9 @@ export function planFor(
     beatsPerBar,
     notes,
     expectedNotes,
-    totalBeats: written,
+    totalBeats: performanceBeats,
     tailBeats,
-    recordSeconds: written * secondsPerBeat,
+    recordSeconds: performanceBeats * secondsPerBeat,
     countInLabels,
     countInSeconds: beatsPerBar * 2 * secondsPerBeat,
     guideNote,

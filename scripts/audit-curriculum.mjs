@@ -389,14 +389,15 @@ try {
               (sum, note) => sum + beatsForDuration(note.duration),
               0,
             ));
-            const totalBeats = Math.max(...staffBeatTotals);
             assert.ok(staffBeatTotals.every((beats) => (
               Math.abs(beats / plan.beatsPerBar - Math.round(beats / plan.beatsPerBar)) < 1e-8
             )), `Lesson ${concept.index}, drill ${questionNumber} must fill complete measures.`);
-            const timedWaitBeats = question.anchorShift?.timedShift?.waitBeats ?? 0;
-            const timedLeadInBeats = question.anchorShift?.timedShift?.leadInBeats ?? 0;
-            assert.ok(Math.abs(plan.totalBeats - totalBeats - timedWaitBeats - timedLeadInBeats) < 1e-8,
-              `Lesson ${concept.index}, drill ${questionNumber} timeline must include its exact shift pause.`);
+            const playableEndBeat = plan.expectedNotes.reduce(
+              (end, note) => Math.max(end, note.beat + note.beats),
+              0,
+            );
+            assert.ok(Math.abs(plan.totalBeats - playableEndBeat) < 1e-8,
+              `Lesson ${concept.index}, drill ${questionNumber} must stop at its last playable note.`);
 
             if (question.exerciseMode === 'anchor-shift') {
               const expectedWaitBeats = concept.index <= 14 ? 2 : concept.index <= 16 ? 1 : 0;
