@@ -1,6 +1,5 @@
 import {
   forwardRef,
-  useCallback,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -14,7 +13,6 @@ import './anchor-shift-cue.css';
 export interface AnchorShiftCueProps {
   cue: CueSpec;
   shift: AnchorShiftSpec;
-  secondsPerBeat: number;
   accentColor?: string;
   inkColor?: string;
   notationScale?: number;
@@ -32,7 +30,6 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
     {
       cue,
       shift,
-      secondsPerBeat,
       accentColor = '#ef6a47',
       inkColor = '#242237',
     notationScale = 1,
@@ -42,8 +39,6 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
     const rootRef = useRef<HTMLDivElement>(null);
     const firstRef = useRef<StaffCueHandle>(null);
     const secondRef = useRef<StaffCueHandle>(null);
-    const countdownRef = useRef<HTMLElement>(null);
-    const countdownFillRef = useRef<HTMLElement>(null);
     const staff = cue.staves[0];
     const split = Math.min(
       Math.max(1, shift.splitIndex),
@@ -65,62 +60,45 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
       };
     }, [cue, split, staff]);
     const waitBeats = Math.max(0, shift.timedShift?.waitBeats ?? 0);
-    const leadInBeats = Math.max(0, shift.timedShift?.leadInBeats ?? 0);
-    const waitSeconds = waitBeats * secondsPerBeat;
-
-    const showCountdown = useCallback((remaining: number) => {
-      const safeRemaining = Math.max(0, Math.min(waitSeconds, remaining));
-      if (countdownRef.current) {
-        countdownRef.current.textContent = `${safeRemaining.toFixed(1)}s`;
-      }
-      if (countdownFillRef.current) {
-        countdownFillRef.current.style.transform = `scaleX(${waitSeconds === 0 ? 1 : 1 - safeRemaining / waitSeconds})`;
-      }
-    }, [waitSeconds]);
 
     useImperativeHandle(ref, () => ({
       seekToBeat(beat: number) {
         if (beat < 0) {
           rootRef.current?.setAttribute('data-active-position', 'from');
-          showCountdown(waitSeconds);
+          rootRef.current?.style.setProperty('--et-shift-progress', '0%');
           firstRef.current?.seekToBeat(-1);
           secondRef.current?.hide();
           return;
         }
         if (beat < firstBeats) {
           rootRef.current?.setAttribute('data-active-position', 'from');
-          showCountdown(waitSeconds);
+          rootRef.current?.style.setProperty('--et-shift-progress', '0%');
           firstRef.current?.seekToBeat(beat);
           secondRef.current?.hide();
           return;
         }
         if (beat < firstBeats + waitBeats) {
           rootRef.current?.setAttribute('data-active-position', 'move');
-          showCountdown(waitSeconds - (beat - firstBeats) * secondsPerBeat);
+          rootRef.current?.style.setProperty(
+            '--et-shift-progress',
+            `${Math.max(0, Math.min(84, ((beat - firstBeats) / Math.max(1, waitBeats)) * 84))}%`,
+          );
           firstRef.current?.hide();
           secondRef.current?.hide();
           return;
         }
-        if (beat < firstBeats + waitBeats + leadInBeats) {
-          rootRef.current?.setAttribute('data-active-position', 'ready');
-          if (countdownRef.current) countdownRef.current.textContent = 'READY';
-          if (countdownFillRef.current) countdownFillRef.current.style.transform = 'scaleX(1)';
-          firstRef.current?.hide();
-          secondRef.current?.seekToBeat(-1);
-          return;
-        }
         rootRef.current?.setAttribute('data-active-position', 'to');
-        showCountdown(0);
+        rootRef.current?.style.setProperty('--et-shift-progress', '84%');
         firstRef.current?.hide();
-        secondRef.current?.seekToBeat(beat - firstBeats - waitBeats - leadInBeats);
+        secondRef.current?.seekToBeat(beat - firstBeats - waitBeats);
       },
       hide() {
         rootRef.current?.setAttribute('data-active-position', 'from');
-        showCountdown(waitSeconds);
+        rootRef.current?.style.setProperty('--et-shift-progress', '0%');
         firstRef.current?.hide();
         secondRef.current?.hide();
       },
-    }), [firstBeats, leadInBeats, secondsPerBeat, showCountdown, waitBeats, waitSeconds]);
+    }), [firstBeats, waitBeats]);
 
     if (!staff) {
       return <StaffCue ref={firstRef} cue={cue} accentColor={accentColor} inkColor={inkColor} notationScale={notationScale} />;
@@ -142,25 +120,19 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         </section>
 
         <div
-          className="et-anchor-cue__bridge"
-          aria-label={
-            waitSeconds > 0
-              ? `${waitSeconds}-second move-your-hand window followed by a ready beat`
-              : 'Move your hand'
-          }
+          className="et-anchor-cue__rest-bar"
+          aria-label="One 4/4 rest measure: shift on beats 1 and 2, settle on beats 3 and 4"
         >
-          <span className="et-anchor-cue__step">2</span>
-          <b>Shift hand</b>
-          <i className="et-anchor-cue__arrow" aria-hidden="true">→</i>
-          {waitSeconds > 0 ? (
-            <>
-              <strong ref={countdownRef} className="et-anchor-cue__countdown">{waitSeconds.toFixed(1)}s</strong>
-              <span className="et-anchor-cue__countdown-track" aria-hidden="true">
-                <i ref={countdownFillRef} />
-              </span>
-              <small>Move now · land on READY</small>
-            </>
-          ) : <small>Keep the beat</small>}
+          <b>Shift during this rest measure</b>
+          <span className="et-anchor-cue__rest-staff" aria-hidden="true">
+            <i /><i /><i /><i /><i />
+            <em />
+            <strong />
+          </span>
+          <span className="et-anchor-cue__rest-counts" aria-hidden="true">
+            <b>1<small>move</small></b><b>2<small>move</small></b>
+            <b>3<small>set</small></b><b>4<small>set</small></b>
+          </span>
         </div>
 
         <section className="et-anchor-cue__half et-anchor-cue__half--to" aria-label={`${shift.toPositionName} music`}>

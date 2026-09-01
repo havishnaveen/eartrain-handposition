@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { midiToName, pitchToMidi } from '../audio/timing';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
 import type {
   AnchorShiftSpec,
@@ -15,9 +16,10 @@ import type {
   HandScope,
   PositionProofSpec,
   SpatialChordSpec,
+  ChordQuality,
 } from '../curriculum/types';
 import ExerciseReport from './ExerciseReport';
-import LessonPanel, { HandIcon } from './LessonPanel';
+import LessonPanel from './LessonPanel';
 import StaffCue from './StaffCue';
 import './exercise.css';
 
@@ -92,15 +94,15 @@ export interface ExerciseViewProps {
   inputLevel?: number;
   detectedNotes?: string[];
   proofProgress?: 0 | 1 | 2 | 3;
-  spatialProgress?: 0 | 1 | 2 | 3;
   spatialFoundMidi?: readonly number[];
-  spatialWrongGuesses?: number;
   /** True when the chord-by-ear demo's samples failed to load over the network. */
   spatialAudioIssue?: boolean;
   /** Re-plays the chord demo without leaving the current search. */
   onReplayChord?: () => void;
   /** Advances the self-directed reference → nearby-chord discovery. */
   onSpatialFound?: () => void;
+  /** Auditions a visual-keyboard note or chord without grading it. */
+  onSpatialPreview?: (pitches: readonly string[]) => void;
   orientationNotice?: OrientationNotice | null;
   onAcknowledgeOrientation?: () => void;
 }
@@ -237,40 +239,6 @@ function proofPitchName(pitch: string): string {
   return pitch.replace(/-?\d+$/, '');
 }
 
-function HandBadge({
-  hand,
-  activeFinger,
-  showLabel = true,
-}: {
-  hand: 'right' | 'left';
-  activeFinger?: 1 | 2 | 3 | 4 | 5;
-  showLabel?: boolean;
-}) {
-  const label = hand === 'right' ? 'Right Hand' : 'Left Hand';
-  return (
-    <figure className={`et-hand-badge et-hand-badge--${hand}`} aria-label={label}>
-      <div className="et-hand-badge__tile">
-        <span className="et-hand-badge__shine" aria-hidden="true" />
-        <HandIcon
-          mirrored={hand === 'left'}
-          activeFinger={activeFinger}
-          className="et-hand-badge__icon"
-        />
-        {showLabel ? <figcaption className="et-hand-badge__label">{label}</figcaption> : null}
-      </div>
-    </figure>
-  );
-}
-
-function HandRequirement({ scope }: { scope: HandScope }) {
-  const hands = scope === 'both' ? (['left', 'right'] as const) : ([scope] as const);
-  return (
-    <div className={`et-hand-requirement et-hand-requirement--${scope}`}>
-      {hands.map((hand) => <HandBadge key={hand} hand={hand} />)}
-    </div>
-  );
-}
-
 function OrientationCallout({
   notice,
   onAcknowledge,
@@ -319,6 +287,96 @@ function proofPitchToStaffKey(pitch: string): string {
   return match ? `${match[1].toLowerCase()}${match[2]}/${match[3]}` : 'c/4';
 }
 
+const WHITE_SEMITONES = [0, 2, 4, 5, 7, 9, 11] as const;
+const BLACK_KEY_LEFT: Partial<Record<number, number>> = {
+  1: 13.4, 3: 27.7, 6: 56.3, 8: 70.6, 10: 84.9,
+};
+
+function SpatialKeyboardChallenge({
+  spec,
+  onPreview,
+  onComplete,
+  onReplay,
+}: {
+  spec: SpatialChordSpec;
+  onPreview: (pitches: readonly string[]) => void;
+  onComplete: () => void;
+  onReplay: () => void;
+}) {
+  const targetRoot = pitchToMidi(spec.rootPitch) ?? 60;
+  const octaveC = Math.floor(targetRoot / 12) * 12;
+  const [selectedRoot, setSelectedRoot] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<'correct' | 'try-again' | null>(null);
+
+  useEffect(() => {
+    setSelectedRoot(null);
+    setFeedback(null);
+  }, [spec.rootPitch, spec.quality]);
+
+  const chooseRoot = (midi: number) => {
+    setSelectedRoot(midi);
+    setFeedback(null);
+    onPreview([midiToName(midi)]);
+  };
+  const chooseQuality = (quality: ChordQuality) => {
+    if (selectedRoot === null) return;
+    const third = quality === 'major' ? 4 : 3;
+    onPreview([selectedRoot, selectedRoot + third, selectedRoot + 7].map(midiToName));
+    setFeedback(selectedRoot === targetRoot && quality === spec.quality ? 'correct' : 'try-again');
+  };
+
+  return (
+    <div className="et-ear-keyboard-card">
+      <div className="et-ear-keyboard" aria-label="Choose the root on the piano keyboard">
+        <div className="et-ear-keyboard__whites">
+          {WHITE_SEMITONES.map((semitone) => {
+            const midi = octaveC + semitone;
+            return (
+              <button
+                key={midi}
+                type="button"
+                className={selectedRoot === midi ? 'is-selected' : ''}
+                onClick={() => chooseRoot(midi)}
+                aria-label={midiToName(midi)}
+              ><span>{midiToName(midi).replace(/-?\d+$/, '')}</span></button>
+            );
+          })}
+        </div>
+        {Object.entries(BLACK_KEY_LEFT).map(([semitoneText, left]) => {
+          const midi = octaveC + Number(semitoneText);
+          return (
+            <button
+              key={midi}
+              type="button"
+              className={`et-ear-keyboard__black${selectedRoot === midi ? ' is-selected' : ''}`}
+              style={{ left: `${left}%` }}
+              onClick={() => chooseRoot(midi)}
+              aria-label={midiToName(midi)}
+            />
+          );
+        })}
+      </div>
+      <div className="et-ear-quality" aria-label="Choose the chord quality">
+        <button type="button" disabled={selectedRoot === null} onClick={() => chooseQuality('major')}>Major</button>
+        <button type="button" disabled={selectedRoot === null} onClick={() => chooseQuality('minor')}>Minor</button>
+      </div>
+      {feedback === 'correct' ? (
+        <div className="et-ear-result is-correct" role="status">
+          <strong>Yes — {spec.chordName}</strong>
+          <span>You found the root and the chord color.</span>
+          <button type="button" onClick={onComplete}>Continue</button>
+        </div>
+      ) : feedback === 'try-again' ? (
+        <div className="et-ear-result" role="status">
+          <strong>Not this one yet.</strong>
+          <span>Replay the pair, then compare the root and middle tone.</span>
+        </div>
+      ) : null}
+      <button type="button" className="et-spatial__replay" onClick={onReplay}>↻ Replay reference and target</button>
+    </div>
+  );
+}
+
 /**
  * ExerciseView owns the five visual states of one drill. Grading and report
  * return early so the instruction, active staff, and recording controls are
@@ -357,11 +415,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       inputLevel = 0,
       detectedNotes = [],
       proofProgress = 0,
-      spatialProgress = 0,
-      spatialWrongGuesses = 0,
       spatialAudioIssue = false,
       onReplayChord,
       onSpatialFound,
+      onSpatialPreview,
       orientationNotice = null,
       onAcknowledgeOrientation,
     },
@@ -417,74 +474,22 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       status === 'position-prompt' || status === 'proving' || status === 'proof-success';
     if (exerciseMode === 'spatial-chord' && spatialChord && !showingPositionGate) {
       const isCue = status === 'chord-cue';
-      const isRootSearch = status === 'chord-root';
-      const isShapeSearch = status === 'chord-build';
+      const isChoosing = status === 'chord-root' || status === 'chord-build';
       const isComplete = status === 'chord-complete';
-      const isSearching = isRootSearch || isShapeSearch;
-      const rootName = proofPitchName(spatialChord.rootPitch);
-      const handName = spatialChord.hand === 'right' ? 'Right Hand' : 'Left Hand';
-      const anchorIsShown = false;
-      const rootFinger = spatialChord.hand === 'right' ? 1 : 5;
-      const outerFinger = spatialChord.hand === 'right' ? 5 : 1;
-      const orderedToneEntries = spatialChord.buildOrder.map((chordIndex, stepIndex) => ({
-        chordIndex,
-        stepIndex,
-        pitch: spatialChord.chordPitches[chordIndex],
-        finger: chordIndex === 0 ? rootFinger : chordIndex === 2 ? outerFinger : 3,
-      }));
-      const activeStep = isRootSearch ? 0 : isShapeSearch ? 1 : -1;
-      const activeTone = activeStep >= 0 ? orderedToneEntries[activeStep] : null;
-      const chordSucceeded = Boolean(report?.passed);
-      const activeAction = activeStep === 0
-        ? anchorIsShown
-          ? `Play the given ${rootName} anchor with Finger ${rootFinger}`
-          : `Match the bottom broken note with Finger ${rootFinger}`
-        : `Use the reference shape to find the nearby target chord.`;
-      const activeAnswer = activeStep === 0
-        ? anchorIsShown ? rootName : 'Bottom note'
-        : activeStep === 1
-          ? 'Finger 3'
-          : `Finger ${outerFinger}`;
-      const activeHint = activeStep === 0
-        ? anchorIsShown
-          ? 'The anchor is supplied—this is not a perfect-pitch test'
-          : 'Use the first note of the broken example—no perfect pitch needed'
-        : activeStep === 1
-          ? spatialWrongGuesses >= 3
-            ? 'Compare nearby keys to the broken-chord replay'
-            : 'Listen to the distance above the anchor'
-          : 'Sound all three together—the brief check confirms the chord';
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">
-          <div className="et-spatial__ambient" aria-hidden="true"><i /><i /><i /></div>
           <header className="et-spatial__header">
             <span className="et-mode-chip">Chord by ear</span>
-            <h2>
-              {status === 'prompt'
-                ? '1. Hear two nearby chords'
-                : isCue
-                  ? '1. Listen only'
-                  : isComplete
-                    ? 'Discovery complete'
-                  : isRootSearch
-                    ? '2. Copy one note'
-                    : '3. Build the hand shape'}
-            </h2>
+            <h2>{isComplete ? 'Chord found' : isChoosing ? 'Find the chord on the keyboard' : 'Hear the nearby chord'}</h2>
             <p>
               {status === 'prompt'
-                ? 'Hear a reference chord, then a nearby hidden target. Find both by shape and distance—no note names are shown.'
+                ? 'Listen to a reference and a nearby target. Then choose the target root and quality.'
                 : isCue
-                  ? 'First hear the reference, then the nearby target, then the target broken as 1–3–5.'
+                  ? 'Reference, then target.'
                   : isComplete
-                    ? chordSucceeded
-                      ? 'You mapped the nearby chord by ear.'
-                      : 'Replay the comparison and explore again.'
-                  : isRootSearch
-                    ? 'Find the reference chord on the keyboard.'
-                  : isShapeSearch
-                    ? 'Now find the nearby target chord you heard. Use the broken replay if needed.'
-                  : ''}
+                    ? `${spatialChord.chordName} matched.`
+                    : 'Choose a piano key, then decide whether the chord is major or minor.'}
             </p>
             {orientationNotice ? (
               <OrientationCallout
@@ -495,34 +500,11 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           </header>
 
           <div className="et-spatial__single-stage">
-            {status === 'prompt' ? (
-              <div className="et-spatial__intro" aria-label={`${handName} chord listening exercise`}>
-                <HandRequirement scope={spatialChord.hand} />
-              </div>
-            ) : null}
-
             {isCue ? (
               <div className="et-spatial__cue-card">
-                <div
-                  className="et-spatial__listen-passes"
-                  aria-label={anchorIsShown
-                    ? `${rootName} is supplied; the other chord tones remain hidden`
-                    : 'All note names remain hidden; compare the reference and nearby target'}
-                >
-                  <div className="et-spatial__listen-pass">
-                    <small>1 · Reference</small>
-                    <span className="et-spatial__chord-dots" aria-hidden="true"><i /><i /><i /></span>
-                    <strong>Remember this shape</strong>
-                  </div>
-                  <div className="et-spatial__listen-pass">
-                    <small>2 · Nearby target</small>
-                    <span className="et-spatial__finger-shape" aria-hidden="true">1 · 3 · 5</span>
-                    <strong>Then hear 1 · 3 · 5</strong>
-                  </div>
-                </div>
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-                  <span><strong>Reference → target → broken target</strong><small>No note names or grading</small></span>
+                  <span><strong>Listen…</strong><small>Reference → target</small></span>
                 </div>
                 {spatialAudioIssue ? (
                   <div className="et-spatial__audio-issue" role="alert">
@@ -533,55 +515,19 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               </div>
             ) : null}
 
-            {isSearching && activeTone ? (
-              <div className="et-spatial__answer-card et-spatial__answer-card--ear">
-                <div className="et-spatial__anchor-strip">
-                  <span>{anchorIsShown ? 'Given anchor' : 'Match by ear'}</span>
-                  <strong>{anchorIsShown ? rootName : 'Hidden'}</strong>
-                  <small>{handName} · Finger {rootFinger}</small>
-                </div>
-                <div className="et-spatial__tones" aria-label={`Step ${activeStep + 1} of 3`}>
-                  {orderedToneEntries.map((tone, step) => {
-                    const done = step < spatialProgress;
-                    const active = step === activeStep;
-                    return (
-                      <div
-                        key={tone.chordIndex}
-                        className={`et-spatial__tone${done ? ' et-spatial__tone--found' : active ? ' et-spatial__tone--active' : ''}`}
-                      >
-                        <span className="et-spatial__step-number">{done ? '✓' : step + 1}</span>
-                        <div className="et-spatial__tone-copy">
-                          <small>Finger</small>
-                          <strong>{tone.finger}</strong>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <strong>{activeAnswer}</strong>
-                <p>{activeAction}</p>
-                <small>{activeHint}</small>
-                <button type="button" className="et-start et-spatial__start" onClick={onSpatialFound ?? NOOP}>
-                  <span className="et-start__dot"><RecordDot /></span>
-                  {isRootSearch ? 'I found the reference' : 'I found the nearby chord'}
-                </button>
-                {spatialAudioIssue ? (
-                  <div className="et-spatial__audio-issue" role="alert">
-                    <span>The demo may not have played. Not sure what you heard?</span>
-                    <button type="button" onClick={onReplayChord ?? NOOP}>Play again</button>
-                  </div>
-                ) : (
-                  <button type="button" className="et-spatial__replay" onClick={onReplayChord ?? NOOP}>
-                    ↻ Hear it again
-                  </button>
-                )}
-              </div>
+            {isChoosing ? (
+              <SpatialKeyboardChallenge
+                spec={spatialChord}
+                onPreview={onSpatialPreview ?? NOOP}
+                onComplete={onSpatialFound ?? NOOP}
+                onReplay={onReplayChord ?? NOOP}
+              />
             ) : null}
 
             {isComplete ? (
-              <div className={`et-spatial__finished${chordSucceeded ? ' is-success' : ''}`}>
-                <span aria-hidden="true">{chordSucceeded ? '✓' : '↻'}</span>
-                <p>{chordSucceeded ? `${spatialChord.chordName} is set.` : 'The shape is not finished yet.'}</p>
+              <div className="et-spatial__finished is-success">
+                <span aria-hidden="true">✓</span>
+                <p>{spatialChord.chordName}</p>
               </div>
             ) : null}
           </div>
@@ -595,7 +541,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 disabled={startBlocked}
               >
                 <span className="et-start__dot"><RecordDot /></span>
-                Hear the chord
+                Listen
               </button>
             ) : null}
             {isComplete ? (
@@ -603,11 +549,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <span className="et-start__dot"><RecordDot /></span>
                 {nextLabel}
               </button>
-            ) : null}
-            {micMessage ? (
-              <p className={`et-proof__mic-message${micBlocked ? ' et-proof__mic-message--alert' : ''}`}>
-                {micMessage}
-              </p>
             ) : null}
           </footer>
         </section>
@@ -822,7 +763,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   exerciseMode === 'blind-memory'
                     ? `You will have ${memoryPreviewSeconds} seconds to look.`
                     : shiftWaitBeats > 0
-                      ? `A ${shiftWaitBeats}-beat move window is followed by one READY beat.`
+                      ? 'Shift on 1–2, set the hand on 3–4, then play.'
                       : 'Move when the arrow lights up.'
                 )}
               </p>
@@ -867,7 +808,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <div className="et-record">
               <span
                 key={`beat-${beatLabel}`}
-                className={`et-record__beat${beatLabel.startsWith('SHIFT') ? ' et-record__beat--shift' : ''}`}
+                className="et-record__beat"
               >
                 {beatLabel}
               </span>

@@ -73,8 +73,8 @@ const exerciseView = readFileSync(new URL('components/ExerciseView.tsx', sourceR
 if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
   throw new Error('Spatial chord rendering can bypass the universal position gate.');
 }
-if (!exerciseView.includes("beatLabel.startsWith('SHIFT')")) {
-  throw new Error('The hand-shift cue regressed to an oversized generic beat label.');
+if (!exerciseView.includes('Shift on 1–2, set the hand on 3–4')) {
+  throw new Error('The hand-shift cue lost its four-beat musical instruction.');
 }
 if (!exerciseView.includes("status !== 'position-prompt' ? ' et-proof__layout--active' : ''") ||
     !exerciseView.includes('<div className="et-proof__identity">')) {

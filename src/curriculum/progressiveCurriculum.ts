@@ -30,6 +30,7 @@ import {
   fingerFor,
 } from './melody';
 import type { Contour } from './melody';
+import { beatsForDuration } from '../audio/timing';
 
 /**
  * The production curriculum's explicit difficulty envelope.
@@ -910,17 +911,11 @@ function contextualProgression(
   return voiced;
 }
 
-/**
- * A real grand-staff question: right hand and left hand trade the notes of
- * one shared contour, one note at a time, each in its own register. Every
- * beat slot has exactly one sounded note (on whichever hand's turn it is)
- * and a rest on the other staff — never two pitches at once — so the
- * existing single-pitch-at-a-time detector and timing.ts's beat-merged
- * `planFor` (see there) grade it exactly like any other exercise. This is
- * what actually makes the drill require both hands: the notation shows two
- * staves and the student must physically move between them mid-phrase,
- * even though acoustic detection only ever expects one pitch at a time.
- */
+/** A staged grand-staff etude. Early lessons trade complete phrases; the
+ * middle introduces a held bass under melody; later lessons use simultaneous
+ * motion and broken-bass support. This keeps the progression playable while
+ * making "both hands" mean genuine coordination rather than alternating
+ * isolated notes forever. */
 function twoHandStandardQuestion(
   lesson: LessonRecipe,
   rightPosition: Position,
@@ -947,56 +942,56 @@ function twoHandStandardQuestion(
 
   const rightNotes: CueNote[] = [];
   const leftNotes: CueNote[] = [];
-  const expectedSequence: string[] = [];
-
-  // Switching hands on every single note turned one melodic contour into a
-  // note-by-note ping-pong between two octave-apart registers — a leap on
-  // every attack, never a phrase either hand could actually play. Handing
-  // each hand a full bar at a time keeps the contour's own stepwise motion
-  // intact within a turn (real "hands take turns" phrasing) and confines
-  // the register jump to once per hand-off instead of every note.
   const groupSize = Math.max(1, beatsPerBar);
+  const phrase = [...contour];
+  while (phrase.length % groupSize !== 0) phrase.push(phrase[phrase.length - 1] ?? 0);
+  const texture = lesson.index <= 5 ? 'trade' : lesson.index <= 10 ? 'sustain' : lesson.index <= 15 ? 'motion' : 'broken';
 
-  contour.forEach((degree, index) => {
-    const onRight = Math.floor(index / groupSize) % 2 === 0;
-    expectedSequence.push(onRight ? rightPosition.sci[degree] : leftPosition.sci[degree]);
-    rightNotes.push(
-      onRight
+  if (texture === 'sustain') {
+    phrase.forEach((degree, index) => {
+      rightNotes.push({ keys: [rightPosition.vf[degree]], duration: 'q', finger: fingerFor(degree, 'right'), anchor: index === 0 });
+    });
+    for (let beat = 0; beat < phrase.length; beat += groupSize) {
+      const duration = groupSize === 4 ? 'w' : groupSize === 3 ? 'hd' : 'h';
+      leftNotes.push({ keys: [leftPosition.vf[beat / groupSize % 2 === 0 ? 0 : 4]], duration, finger: beat / groupSize % 2 === 0 ? 5 : 1 });
+    }
+  } else {
+    phrase.forEach((degree, index) => {
+      const tradeRight = Math.floor(index / groupSize) % 2 === 0;
+      const leftDegree = texture === 'motion'
+        ? (Math.floor(index / groupSize) % 2 === 0 ? 4 - degree : degree)
+        : texture === 'broken' ? [0, 2, 4, 2][index % 4] : degree;
+      const rightSounds = texture !== 'trade' || tradeRight;
+      const leftSounds = texture !== 'trade' || !tradeRight;
+      rightNotes.push(rightSounds
         ? { keys: [rightPosition.vf[degree]], duration: 'q', finger: fingerFor(degree, 'right'), anchor: index === 0 }
-        : { keys: [rightRestKey], duration: 'qr' },
-    );
-    leftNotes.push(
-      onRight
-        ? { keys: [leftRestKey], duration: 'qr' }
-        : { keys: [leftPosition.vf[degree]], duration: 'q', finger: fingerFor(degree, 'left') },
-    );
-  });
-
-  // Generate one shared rhythm lane, then mirror every duration onto the
-  // sounding note and the other hand's rest. This preserves real eighth/
-  // sixteenth development without letting the grand staves drift apart.
-  const handoffIndices = Array.from(
-    { length: Math.max(0, Math.ceil(contour.length / groupSize) - 1) },
-    (_, index) => (index + 1) * groupSize,
-  ).flatMap((index) => [index - 1, index]);
-  const rhythmicSlots = applyRhythm(
-    contour.map((degree) => ({ keys: [rightPosition.vf[degree]], duration: 'q' })),
-    beatsPerBar,
-    rand,
-    lesson.index,
-    handoffIndices,
-  );
-  rhythmicSlots.forEach((slot, index) => {
-    const duration = slot.duration.replace(/r$/, '');
-    rightNotes[index] = {
-      ...rightNotes[index],
-      duration: rightNotes[index].duration.endsWith('r') ? `${duration}r` : duration,
-    };
-    leftNotes[index] = {
-      ...leftNotes[index],
-      duration: leftNotes[index].duration.endsWith('r') ? `${duration}r` : duration,
-    };
-  });
+        : { keys: [rightRestKey], duration: 'qr' });
+      leftNotes.push(leftSounds
+        ? { keys: [leftPosition.vf[leftDegree]], duration: 'q', finger: fingerFor(leftDegree, 'left') }
+        : { keys: [leftRestKey], duration: 'qr' });
+    });
+  }
+  const protectedIndices: number[] = [];
+  const rhythmicRight = applyRhythm(rightNotes, beatsPerBar, rand, lesson.index, protectedIndices);
+  rhythmicRight.forEach((note, index) => { rightNotes[index] = note; });
+  if (texture !== 'sustain') {
+    rhythmicRight.forEach((note, index) => {
+      const base = note.duration.replace(/r$/, '');
+      leftNotes[index] = { ...leftNotes[index], duration: leftNotes[index].duration.endsWith('r') ? `${base}r` : base };
+    });
+  }
+  const expectedSequence = [rightNotes, leftNotes].flatMap((notes, staff) => {
+    let beat = 0;
+    return notes.flatMap((note) => {
+      const event = note.duration.endsWith('r') ? [] : [{
+        beat,
+        staff,
+        pitches: note.keys.map(vexToScientificPitch).filter((pitch): pitch is string => pitch !== null),
+      }];
+      beat += beatsForDuration(note.duration);
+      return event;
+    });
+  }).sort((a, b) => a.beat - b.beat || a.staff - b.staff).flatMap((event) => event.pitches);
 
   const rightProof = positionProofForPosition(rightPosition, 'right');
   const leftProof = positionProofForPosition(leftPosition, 'left');
@@ -1005,7 +1000,13 @@ function twoHandStandardQuestion(
     conceptId: lesson.id,
     exerciseMode: 'standard',
     handScope: 'both',
-    instruction: 'Hands take turns — right, then left. Play the phrase after the count-in.',
+    instruction: texture === 'trade'
+      ? 'Right and left hands answer each other.'
+      : texture === 'sustain'
+        ? 'Hold the bass while the right hand sings.'
+        : texture === 'motion'
+          ? 'Play both hands together in motion.'
+          : 'Keep the left-hand pattern steady under the melody.',
     cue: {
       keySignature: lesson.showKeySignature ? rightPosition.template.keySignature : 'C',
       timeSignature: `${beatsPerBar}/4`,
@@ -1302,11 +1303,10 @@ function questionFor(
       0.42,
       1.1 - (lesson.index - 13) * 0.12 - modeDifficulty * 0.18,
     );
-    // Early movement drills provide two counted beats, then one, before the
-    // advanced B-to-F-sharp transfer becomes instantaneous. Musical beats are
-    // the source of truth—fractional seconds previously shifted the second
-    // phrase off the click grid and made its first note appear to be skipped.
-    const waitBeats = lesson.index <= 14 ? 2 : lesson.index <= 16 ? 1 : 0;
+    // Every position change owns one complete 4/4 rest measure. A fixed bar
+    // preserves the metronome pulse and gives a learnable physical routine:
+    // travel on 1–2, settle on 3–4, play on the following downbeat.
+    const waitBeats = 4;
 
     const shiftQuestion: Question = {
       id: `${lesson.id}#${ordinal}`,
@@ -1316,9 +1316,7 @@ function questionFor(
       // reserved for a question that genuinely presents both hands at once;
       // alternating hands across a lesson must not mislabel the current rep.
       handScope: hand,
-      instruction: waitBeats > 0
-          ? `Play ${fromName}. Use the ${waitBeats}-beat move window, then continue in ${toName}.`
-        : lesson.instruction,
+      instruction: `Play ${fromName}, shift during the rest bar, then continue in ${toName}.`,
       cue: {
         // No key signature: a hand-position shift crosses two different
         // keys mid-phrase, and printing the destination's signature for the
@@ -1354,10 +1352,7 @@ function questionFor(
         splitIndex,
         allowedExtraBeats,
         ...(waitBeats > 0
-          ? { timedShift: {
-              waitBeats,
-              ...(waitBeats > 0 ? { leadInBeats: 1 } : {}),
-            } }
+          ? { timedShift: { waitBeats } }
           : {}),
       },
       // A movement drill may orient the departure hand, but it must never

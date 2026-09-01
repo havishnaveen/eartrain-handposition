@@ -351,6 +351,29 @@ try {
   assert.ok((halfBeatPhaseGrade.scores.timing ?? 5) <= 4,
     `Even spacing cannot hide a phrase played consistently halfway between beats: ${JSON.stringify(halfBeatPhaseGrade.scores)}`);
 
+  const eighthExpected = ['C4', 'D4', 'E4', 'F4', 'G4', 'F4', 'E4', 'D4'];
+  const eighthPlan = {
+    ...timedPlan,
+    totalBeats: 4,
+    expectedNotes: eighthExpected.map((pitch, index) => ({ pitch, beat: index * 0.5, beats: 0.5 })),
+  };
+  const rushedEighths = [60, 62, 64, 65, 67, 65, 64, 62].map((midi, index) => ({
+    midi,
+    time: 10 + index * 0.25 * timedPlan.secondsPerBeat,
+    clarity: 0.94,
+    strength: 2,
+  }));
+  const rushedEighthGrade = gradeSequence(eighthExpected, rushedEighths, {
+    plan: eighthPlan,
+    playStartTime: 10,
+    lessonLevel: 10,
+    totalLessons: 24,
+  });
+  assert.equal(rushedEighthGrade.scores.pitch, 5,
+    'Rushing a subdivision must not erase correctly detected pitches.');
+  assert.ok((rushedEighthGrade.scores.timing ?? 5) <= 4,
+    `Eighth notes played at double speed must lose Timing credit: ${JSON.stringify(rushedEighthGrade.scores)}`);
+
   const badlyDistortedRhythm = perfect.map((note, index) => ({
     ...note,
     time: [10, 10.9, 11, 11.9][index],

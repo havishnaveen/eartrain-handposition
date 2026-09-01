@@ -138,8 +138,8 @@ try {
     );
     assert.equal(
       question.anchorShift.timedShift?.waitBeats ?? 0,
-      expected.waitBeats,
-      `Lesson ${lessonIndex} must use its gradual beat-aligned move window.`,
+      4,
+      `Lesson ${lessonIndex} must use one complete 4/4 shift bar.`,
     );
   }
 

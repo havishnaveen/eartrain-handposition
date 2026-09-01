@@ -215,21 +215,9 @@ export function planFor(
   };
 }
 
-/** Metronome beat positions, with the musical grid silent during a hand move. */
+/** Metronome beats remain continuous through written music and shift rests. */
 export function metronomeBeatPositions(plan: DrillPlan): number[] {
-  const pauseBeats = plan.timedShift?.totalPauseBeats ?? 0;
-  const writtenPlayBeats = Math.ceil(plan.totalBeats - pauseBeats);
-  const written = Array.from({ length: writtenPlayBeats }, (_, writtenBeat) => (
-    plan.timedShift && writtenBeat >= plan.timedShift.startBeat
-      ? writtenBeat + pauseBeats
-      : writtenBeat
-  ));
-  if (!plan.timedShift?.leadInBeats) return written;
-  const leadClicks = Array.from(
-    { length: Math.ceil(plan.timedShift.leadInBeats) },
-    (_, index) => plan.timedShift!.moveEndBeat + index,
-  );
-  return [...written, ...leadClicks].sort((a, b) => a - b);
+  return Array.from({ length: Math.ceil(plan.totalBeats) }, (_, beat) => beat);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1417,6 +1405,18 @@ export function gradeSequence(
   // the beat; later readers are asked for more precision, without the old
   // cliff where a modest error abruptly became zero.
   const timingProfile = timingProfileForOptions(options);
+  const smallestWrittenGap = options.plan?.expectedNotes
+    .slice(1)
+    .reduce((smallest, note, index) => {
+      const gap = note.beat - (options.plan?.expectedNotes[index]?.beat ?? note.beat);
+      return gap > 0 ? Math.min(smallest, gap) : smallest;
+    }, 1) ?? 1;
+  // Timing error is measured in quarter-note beats. For subdivisions that
+  // made an eighth-note phrase played at double speed look deceptively close:
+  // a quarter-beat gap error is half of an eighth note, not a small quarter-
+  // note wobble. Normalize against the shortest written pulse, capped so
+  // detector jitter is not magnified without bound for later sixteenths.
+  const subdivisionSensitivity = Math.min(3, Math.max(1, 1 / smallestWrittenGap));
   const rhythmAttackError = rhythm === null
     ? null
     : rhythm.evaluated < 2
@@ -1431,7 +1431,14 @@ export function gradeSequence(
   const baseTimingScore = rhythm === null
     ? null
     : (() => {
-        const attackTimingError = rhythmAttackError ?? 0;
+        const rawAttackTimingError = rhythmAttackError ?? 0;
+        // Preserve the established human-performance full-credit pocket, but
+        // make errors outside it grow in subdivision units. This catches a
+        // rushed pair of eighths without punishing ordinary expressive push.
+        const attackTimingError = timingProfile.fullCreditOnsetWindow + Math.max(
+          0,
+          rawAttackTimingError - timingProfile.fullCreditOnsetWindow,
+        ) * subdivisionSensitivity;
         const onsetScoringRange = Math.max(
           0.01,
           timingProfile.zeroScoreWindow - timingProfile.fullCreditOnsetWindow,
@@ -1696,7 +1703,7 @@ export function gradeSequence(
 export function planForQuestion(question: Question, bpm: number = DEFAULT_BPM): DrillPlan {
   const plan = planFor(question.cue, question.expectedSequence, bpm);
   const waitBeats = Math.max(0, question.anchorShift?.timedShift?.waitBeats ?? 0);
-  const leadInBeats = Math.max(0, question.anchorShift?.timedShift?.leadInBeats ?? 0);
+  const leadInBeats = 0;
   const totalPauseBeats = waitBeats + leadInBeats;
   if (totalPauseBeats === 0 || plan.expectedNotes.length < 2) return plan;
 

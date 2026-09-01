@@ -835,12 +835,15 @@ export function PathwayRouter({
   const handleSpatialFound = useCallback(() => {
     const active = questionRef.current;
     if (active.exerciseMode !== 'spatial-chord') return;
-    if (state.status === 'chord-root') {
-      dispatch({ type: 'CHORD_ROOT', questionId: active.id });
-    } else if (state.status === 'chord-build') {
-      dispatch({ type: 'CHORD_DISCOVERED', questionId: active.id });
-    }
-  }, [state.status]);
+    dispatch({ type: 'CHORD_DISCOVERED', questionId: active.id });
+  }, []);
+
+  const previewSpatialChoiceRef = useRef<(pitches: readonly string[]) => Promise<boolean>>(
+    async () => false,
+  );
+  const handleSpatialPreview = useCallback((pitches: readonly string[]) => {
+    void previewSpatialChoiceRef.current(pitches);
+  }, []);
 
   const audio = useDrillAudio({
     onFrame: handleFrame,
@@ -853,6 +856,7 @@ export function PathwayRouter({
     onSpatialListenStart: handleSpatialListenStart,
     onSpatialRootFound: handleSpatialRootFound,
   });
+  previewSpatialChoiceRef.current = audio.previewSpatialChoice;
 
   const beginRef = useRef(audio.begin);
   beginRef.current = audio.begin;
@@ -1272,12 +1276,11 @@ export function PathwayRouter({
         inputLevel={audio.inputLevel}
         detectedNotes={audio.detectedNames}
         proofProgress={audio.proofProgress}
-        spatialProgress={audio.spatialProgress}
         spatialFoundMidi={audio.spatialFoundMidi}
-        spatialWrongGuesses={audio.spatialWrongGuesses}
         spatialAudioIssue={audio.spatialAudioIssue}
         onReplayChord={handleReplayChord}
         onSpatialFound={handleSpatialFound}
+        onSpatialPreview={handleSpatialPreview}
         orientationNotice={orientationNotice}
         onAcknowledgeOrientation={acknowledgeOrientation}
       >
@@ -1287,7 +1290,6 @@ export function PathwayRouter({
             cue={question.cue}
             notationScale={2.3}
             shift={question.anchorShift}
-            secondsPerBeat={60 / bpm}
             accentColor="#ef6a47"
             inkColor="#242237"
           />

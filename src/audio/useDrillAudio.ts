@@ -518,6 +518,8 @@ export interface DrillAudio {
   beginProof: (target: PositionProofTarget) => Promise<boolean>;
   /** Plays a contextual clue, then runs a bounded root-first chord search. */
   beginSpatialChord: (target: SpatialChordSpec) => Promise<boolean>;
+  /** Plays a visual-keyboard choice; never records or grades it. */
+  previewSpatialChoice: (pitches: readonly string[]) => Promise<boolean>;
   /** Cancels everything in flight without tearing down the context. */
   abort: () => void;
 }
@@ -2428,14 +2430,11 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       });
     };
 
-    // A visible-free spatial comparison: hear a nearby reference chord, then
-    // the target, then the target broken bottom-to-top. There is no microphone
-    // judgment; the learner explores the keyboard and confirms discovery.
+    // Hear a nearby reference, then the target. The learner answers directly
+    // on the visual keyboard; no microphone gate or note-by-note reveal.
     schedulePitches(referencePitches, 0, 0.95, 0.92);
     schedulePitches(spec.chordPitches, 1.25, 1.05, 1);
-    const brokenStart = 2.58;
-    schedulePitches(spec.chordPitches, brokenStart, 0.7, 0.9, 0.52);
-    const offset = brokenStart + 0.52 * spec.chordPitches.length + 0.34;
+    const offset = 2.55;
 
     // Return an equivalent end time on the microphone context's clock.
     return ctx.currentTime + 0.16 + offset;
@@ -2796,6 +2795,26 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     ],
   );
 
+  const previewSpatialChoice = useCallback(async (pitches: readonly string[]): Promise<boolean> => {
+    if (pitches.length === 0) return false;
+    await initPianoAudio();
+    const parsed = pitches.map(splitPianoPitch);
+    if (parsed.some((pitch) => pitch === null)) return false;
+    const loaded = await Promise.all(parsed.map((pitch) =>
+      pitch ? loadPianoSample(pitch.note, pitch.octave) : Promise.resolve(null),
+    ));
+    const context = getPianoAudioContext();
+    if (!context || loaded.some((sample) => !sample)) return false;
+    if (context.state === 'suspended') await context.resume().catch(() => undefined);
+    stopPianoSamples();
+    const start = context.currentTime + 0.025;
+    const volume = 0.9 / Math.sqrt(pitches.length);
+    parsed.forEach((pitch) => {
+      if (pitch) void schedulePianoSample(pitch.note, pitch.octave, 0.8, volume, start);
+    });
+    return true;
+  }, []);
+
   const begin = useCallback(
     async (plan: DrillPlan): Promise<boolean> => {
       const runToken = ++runTokenRef.current;
@@ -2988,35 +3007,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           enterPlaying();
 
           const timedShift = currentPlan.timedShift;
-          const moving = Boolean(
-            timedShift &&
-            beatPosition >= timedShift.startBeat &&
-            beatPosition < timedShift.moveEndBeat
-          );
-          const preparing = Boolean(
-            timedShift &&
-            beatPosition >= timedShift.moveEndBeat &&
-            beatPosition < timedShift.endBeat
-          );
           const writtenBeatPosition = timedShift && beatPosition >= timedShift.endBeat
             ? beatPosition - timedShift.totalPauseBeats
             : beatPosition;
           const beatInBar = Math.floor(writtenBeatPosition) % currentPlan.beatsPerBar;
-          const moveBeat = timedShift
-            ? Math.floor(beatPosition - timedShift.startBeat) + 1
-            : 0;
-          const prepareBeat = timedShift
-            ? Math.floor(beatPosition - timedShift.moveEndBeat) + 1
-            : 0;
-          const key = moving
-            ? `move${moveBeat}`
-            : preparing
-              ? `ready${prepareBeat}`
-              : `p${Math.floor(writtenBeatPosition)}`;
+          const key = `p${Math.floor(beatPosition)}`;
           if (key !== lastBeatKeyRef.current) {
             lastBeatKeyRef.current = key;
-            safeSet(setBeatLabel,
-              moving ? `SHIFT ${moveBeat}` : preparing ? `READY ${prepareBeat}` : String(beatInBar + 1));
+            safeSet(setBeatLabel, String(beatInBar + 1));
           }
 
           if (now >= recordEndRef.current) {
@@ -3139,6 +3137,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     begin,
     beginProof,
     beginSpatialChord,
+    previewSpatialChoice,
     abort,
   };
 }

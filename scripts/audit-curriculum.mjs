@@ -400,16 +400,12 @@ try {
               `Lesson ${concept.index}, drill ${questionNumber} must stop at its last playable note.`);
 
             if (question.exerciseMode === 'anchor-shift') {
-              const expectedWaitBeats = concept.index <= 14 ? 2 : concept.index <= 16 ? 1 : 0;
+              const expectedWaitBeats = 4;
               assert.equal(question.anchorShift?.timedShift?.waitBeats ?? 0, expectedWaitBeats,
                 `Lesson ${concept.index} must use its progressive beat-aligned move window.`);
               assert.equal(plan.timedShift?.waitBeats ?? 0, expectedWaitBeats);
-              if (expectedWaitBeats > 0) {
-                assert.equal(plan.timedShift?.leadInBeats, 1);
-                assert.equal(plan.timedShift?.waitSeconds, (expectedWaitBeats + 1) * plan.secondsPerBeat);
-              } else {
-                assert.equal(plan.timedShift, undefined);
-              }
+              assert.equal(plan.timedShift?.leadInBeats, 0);
+              assert.equal(plan.timedShift?.waitSeconds, expectedWaitBeats * plan.secondsPerBeat);
               const splitIndex = question.anchorShift.splitIndex;
               const writtenSplitBeat = staff.notes.slice(0, splitIndex).reduce(
                 (sum, note) => sum + beatsForDuration(note.duration),
@@ -421,12 +417,9 @@ try {
                   plan.expectedNotes[splitIndex].beat - plan.timedShift.endBeat,
                 ) < 1e-8, 'The second staff must start only after the full reveal window.');
                 const clickBeats = metronomeBeatPositions(plan);
-                assert.ok(clickBeats.every((beat) => (
-                  beat < plan.timedShift.startBeat || beat >= plan.timedShift.moveEndBeat
-                )), 'The metronome must be silent throughout the hand-movement window.');
-                assert.ok(clickBeats.some((beat) => (
-                  Math.abs(beat - plan.timedShift.moveEndBeat) < 1e-8
-                )), 'A preparation click must follow the movement timer.');
+                assert.ok([0, 1, 2, 3].every((offset) => clickBeats.some((beat) => (
+                  Math.abs(beat - (plan.timedShift.startBeat + offset)) < 1e-8
+                ))), 'The rest bar must keep a steady four-beat pulse.');
                 assert.ok(clickBeats.some((beat) => (
                   Math.abs(beat - plan.timedShift.endBeat) < 1e-8
                 )), 'The metronome must resume exactly with the second staff.');
@@ -437,13 +430,17 @@ try {
               ? staff.notes
                 .filter((note) => !note.duration.endsWith('r'))
                 .flatMap((note) => note.keys.map(toScientific))
-              : Array.from(
-                { length: Math.max(...question.cue.staves.map((cueStaff) => cueStaff.notes.length)) },
-                (_, noteIndex) => question.cue.staves.flatMap((cueStaff) => {
-                  const note = cueStaff.notes[noteIndex];
-                  return note && !note.duration.endsWith('r') ? note.keys.map(toScientific) : [];
-                }),
-              ).flat();
+              : question.cue.staves.flatMap((cueStaff, staffIndex) => {
+                let beat = 0;
+                return cueStaff.notes.flatMap((note) => {
+                  const event = !note.duration.endsWith('r')
+                    ? [{ beat, staffIndex, pitches: note.keys.map(toScientific) }]
+                    : [];
+                  beat += beatsForDuration(note.duration);
+                  return event;
+                });
+              }).sort((a, b) => a.beat - b.beat || a.staffIndex - b.staffIndex)
+                .flatMap((event) => event.pitches);
             assert.deepEqual(writtenPitches, question.expectedSequence,
               `Lesson ${concept.index}, drill ${questionNumber} notation and grading pitches diverged.`);
 

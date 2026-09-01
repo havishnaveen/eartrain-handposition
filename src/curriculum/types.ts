@@ -190,13 +190,10 @@ export interface AnchorShiftSpec {
   splitIndex: number;
   /** Extra delay beyond the written onset gap that still earns some credit. */
   allowedExtraBeats: number;
-  /** Optional silent movement window inserted between the two notation panels. */
+  /** One written rest measure inserted between the two notation panels. */
   timedShift?: {
-    /** Exact silent movement window on the musical grid. */
+    /** Exact musical rest window; normally one complete 4/4 bar. */
     waitBeats: number;
-    /** Counted preparation after the move timer, before Position 2 begins. */
-    leadInBeats?: number;
-    /** Hide Position 2 until its observation window begins. */
   };
 }
 
