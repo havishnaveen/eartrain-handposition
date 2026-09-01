@@ -495,6 +495,8 @@ export interface DrillAudio {
   isDownbeat: boolean;
   inputLevel: number;
   detectedNames: string[];
+  /** Optional coaching shown only in guided pitch-discovery modes. */
+  guidedFeedback: string | null;
   /** Number of correct position notes heard so far. */
   proofProgress: 0 | 1 | 2 | 3;
   /** Unique root/third/fifth targets locked in the spatial chord exercise. */
@@ -915,18 +917,40 @@ function splitPianoPitch(pitch: string): { note: string; octave: number } | null
   return { note: match[1], octave: Number(match[2]) };
 }
 
+function spokenPitchClass(midi: number): string {
+  return midiToName(midi).replace(/-?\d+$/, '').replace('#', ' sharp');
+}
+
+function guidedPitchMessage(playedMidi: number, targetMidi: number, revealTarget: boolean): string {
+  const played = spokenPitchClass(playedMidi);
+  const target = spokenPitchClass(targetMidi);
+  const distance = Math.abs(playedMidi - targetMidi);
+  const direction = playedMidi > targetMidi ? 'lower' : 'higher';
+  const move = distance === 1 ? `Try the neighboring key ${direction}.` : `Move ${direction} on the keyboard.`;
+  return revealTarget
+    ? `You played ${played}. ${move} Listen for ${target}.`
+    : `You played ${played}. ${move} Compare it with the broken-chord replay.`;
+}
+
+async function prepareProofSuccessChime(): Promise<void> {
+  await initPianoAudio();
+  await Promise.all([
+    loadPianoSample('E', 5),
+    loadPianoSample('G#', 5),
+    loadPianoSample('B', 5),
+  ]);
+}
+
 function playProofSuccessChime(): void {
   // Musical feedback is sampled acoustic piano too. A sine-wave "success"
   // arpeggio was one of the remaining synth sounds in the progressive path.
   void (async () => {
-    await initPianoAudio();
-    await Promise.all([
-      loadPianoSample('E', 5),
-      loadPianoSample('G#', 5),
-      loadPianoSample('B', 5),
-    ]);
+    await prepareProofSuccessChime();
     const pianoContext = getPianoAudioContext();
     if (!pianoContext) return;
+    if (pianoContext.state === 'suspended') {
+      await pianoContext.resume().catch(() => undefined);
+    }
     const start = pianoContext.currentTime + 0.02;
     void schedulePianoSample('E', 5, 0.48, 0.42, start);
     void schedulePianoSample('G#', 5, 0.48, 0.38, start + 0.075);
@@ -1021,6 +1045,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const [isDownbeat, setIsDownbeat] = useState(false);
   const [inputLevel, setInputLevel] = useState(0);
   const [detectedNames, setDetectedNames] = useState<string[]>([]);
+  const [guidedFeedback, setGuidedFeedback] = useState<string | null>(null);
   const [proofProgress, setProofProgress] = useState<0 | 1 | 2 | 3>(0);
   const [, setProofHoldFailure] = useState<ProofHoldFailure | null>(null);
   const [spatialProgress, setSpatialProgress] = useState<0 | 1 | 2 | 3>(0);
@@ -1083,6 +1108,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   }>());
   const proofMidiByDetectorRef = useRef(new Map<number, number>());
   const spatialRef = useRef<ActiveSpatialChord | null>(null);
+  const spatialFeedbackTargetsRef = useRef<number[]>([]);
   const spatialTimeoutRef = useRef(0);
   const spatialChordConfirmationTimerRef = useRef(0);
   const spatialSourcesRef = useRef(new Set<AudioScheduledSourceNode>());
@@ -1496,7 +1522,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           );
           if (expired) clearProofHolds();
 
+          const wantedBeforeStrike = proof.targetMidi[proof.nextIndex];
           const result = advancePositionProof(proof, midi, time);
+          safeSet(
+            setGuidedFeedback,
+            midi === wantedBeforeStrike
+              ? null
+              : guidedPitchMessage(midi, wantedBeforeStrike, true),
+          );
           if (proofAudioDebugRef.current) {
             // eslint-disable-next-line no-console
             console.log('[proof-audio] acceptProofNote', {
@@ -1526,6 +1559,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           safeSet(setPhase, 'idle' as DrillPhase);
           safeSet(setInputLevel, 0);
           playProofSuccessChime();
+          safeSet(setGuidedFeedback, null);
           cbRef.current.onProofSuccess?.();
           return false;
         };
@@ -1711,6 +1745,25 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           if (!Number.isFinite(primaryMidi) || primaryMidi < 21 || primaryMidi > 108) return;
           const hypotheses = readPitchHypotheses(data.hypotheses);
           let midi = primaryMidi;
+
+          const feedbackTargets = spatialFeedbackTargetsRef.current;
+          if (feedbackTargets.length > 0) {
+            // Chord by Ear listens only to coach exploration. It never writes
+            // score events, completes the exercise, or enters Prove It logic.
+            if (isCandidate || directVoiceVeto) return;
+            if (data.harmonicShadow === true && data.harmonicIndependentAttack !== true) return;
+            const nearest = feedbackTargets.reduce((best, target) =>
+              Math.abs(target - primaryMidi) < Math.abs(best - primaryMidi) ? target : best,
+            );
+            safeSet(setDetectedNames, [midiToName(primaryMidi)]);
+            safeSet(
+              setGuidedFeedback,
+              feedbackTargets.includes(primaryMidi)
+                ? 'That note belongs to the hidden chord. Keep listening for the rest of the shape.'
+                : guidedPitchMessage(primaryMidi, nearest, false),
+            );
+            return;
+          }
 
           if (spatialRef.current) {
             const active = spatialRef.current;
@@ -2445,12 +2498,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     proofHoldByMidiRef.current.clear();
     proofMidiByDetectorRef.current.clear();
     spatialRef.current = null;
+    spatialFeedbackTargetsRef.current = [];
     finishSpatialRef.current = null;
     armSpatialDeadlineRef.current = null;
     onsetByDetectorIdRef.current.clear();
     occupiedExpectedSlotsRef.current.clear();
     provisionalByExpectedSlotRef.current.clear();
     safeSet(setProofProgress, 0);
+    safeSet(setGuidedFeedback, null);
     safeSet(setProofHoldFailure, null);
     safeSet(setSpatialProgress, 0);
     safeSet(setSpatialFoundMidi, [] as number[]);
@@ -2481,6 +2536,11 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const runToken = ++runTokenRef.current;
       const targetMidi = target.proofNotes.map((note) => pitchToMidi(note.pitch));
       if (targetMidi.some((midi) => midi === null)) return false;
+
+      // Start sample loading from the same user gesture that starts Prove It.
+      // Safari may otherwise keep a newly-created playback context suspended
+      // when completion arrives asynchronously from the microphone worklet.
+      void prepareProofSuccessChime();
 
       const ctx = await ensureGraph();
       const worklet = workletRef.current;
@@ -2524,6 +2584,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       proofHoldByMidiRef.current.clear();
       proofMidiByDetectorRef.current.clear();
       spatialRef.current = null;
+      spatialFeedbackTargetsRef.current = [];
       finishSpatialRef.current = null;
       safeSet(setSpatialProgress, 0);
       safeSet(setSpatialFoundMidi, [] as number[]);
@@ -2544,6 +2605,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       detectorArmedRef.current = true;
       finishedRef.current = true;
       safeSet(setDetectedNames, [] as string[]);
+      safeSet(setGuidedFeedback, null);
       safeSet(setProofProgress, 0);
       safeSet(setProofHoldFailure, null);
       safeSet(setPhase, 'playing' as DrillPhase);
@@ -2576,19 +2638,32 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       if (targetMidi.some((midi) => midi === null)) return false;
 
       if (targetMidi.length > 0) {
-        // Chord by Ear is intentionally playback-only. Do not request the mic,
-        // arm either recognition worklet, or manufacture Pitch/Timing scores.
+        // Chord by Ear stays self-directed and ungraded, but a lightweight
+        // onset listener offers directional help after the demonstration.
+        // It never writes notes into the normal grading timeline.
+        const graphPromise = ensureGraph();
         stopLoops();
         stopSpatialPlayback();
+        spatialFeedbackTargetsRef.current = [];
+        safeSet(setGuidedFeedback, null);
+        safeSet(setDetectedNames, [] as string[]);
         safeSet(setSpatialAudioIssue, false);
         safeSet(setPhase, 'idle' as DrillPhase);
         await initPianoAudio();
+        const ctx = await graphPromise;
+        const worklet = workletRef.current;
         const playbackContext = getPianoAudioContext();
-        if (!playbackContext || !mountedRef.current || runTokenRef.current !== runToken) return false;
+        if (!ctx || !worklet || !playbackContext || !mountedRef.current || runTokenRef.current !== runToken) return false;
         const demoEndTime = await scheduleSpatialContext(playbackContext, target);
         const demoWaitMs = Math.max(0, (demoEndTime - playbackContext.currentTime + 0.08) * 1000);
         await new Promise<void>((resolve) => window.setTimeout(resolve, demoWaitMs));
         if (!mountedRef.current || runTokenRef.current !== runToken) return false;
+        spatialFeedbackTargetsRef.current = targetMidi as number[];
+        listeningRef.current = true;
+        detectorArmedRef.current = true;
+        finishedRef.current = false;
+        safeSet(setPhase, 'playing' as DrillPhase);
+        worklet.port.postMessage({ type: 'listen' });
         cbRef.current.onSpatialListenStart?.(playbackContext.currentTime);
         return true;
       }
@@ -2622,6 +2697,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       listeningRef.current = false;
       finishedRef.current = false;
       proofRef.current = null;
+      spatialFeedbackTargetsRef.current = [];
       proofHoldByMidiRef.current.clear();
       proofMidiByDetectorRef.current.clear();
       spatialRef.current = null;
@@ -2805,6 +2881,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       proofHoldByMidiRef.current.clear();
       proofMidiByDetectorRef.current.clear();
       spatialRef.current = null;
+      spatialFeedbackTargetsRef.current = [];
       finishSpatialRef.current = null;
       safeSet(setProofProgress, 0);
       safeSet(setProofHoldFailure, null);
@@ -2823,6 +2900,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       detectorArmedRef.current = false;
       finishedRef.current = false;
       safeSet(setDetectedNames, [] as string[]);
+      safeSet(setGuidedFeedback, null);
 
       const spb = plan.secondsPerBeat;
       const t0 = ctx.currentTime + START_PAD_SEC;
@@ -3116,6 +3194,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     isDownbeat,
     inputLevel,
     detectedNames,
+    guidedFeedback,
     proofProgress,
     spatialProgress,
     spatialFoundMidi,

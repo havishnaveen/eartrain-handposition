@@ -2991,6 +2991,20 @@
   box-shadow: 0 4px 12px rgba(255,0,0,0.2);
   pointer-events: none;
 }
+
+.et-guided-feedback {
+  width: min(100%, 390px);
+  margin: 12px auto 0;
+  padding: 10px 13px;
+  border: 1px solid rgba(239, 106, 71, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 247, 243, 0.94);
+  color: var(--et-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
 .et-shell--sidebar-collapsed .et-sidebar-warning {
   left: 70px;
 }

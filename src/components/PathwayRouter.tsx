@@ -1271,6 +1271,7 @@ export function PathwayRouter({
         nextLabel={state.repeatQuestion ? 'Try This Drill Again' : 'Next Drill'}
         inputLevel={audio.inputLevel}
         detectedNotes={audio.detectedNames}
+        guidedFeedback={audio.guidedFeedback}
         proofProgress={audio.proofProgress}
         spatialProgress={audio.spatialProgress}
         spatialFoundMidi={audio.spatialFoundMidi}

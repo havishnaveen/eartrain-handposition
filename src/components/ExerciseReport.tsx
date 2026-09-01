@@ -23,7 +23,7 @@ export interface ExerciseReportProps {
   nextLabel?: string;
 }
 
-const AUTO_ADVANCE_MS = 15000;
+const AUTO_ADVANCE_MS = 10000;
 const AUTO_ADVANCE_TICK_MS = 50;
 
 const CheckIcon = () => (
@@ -519,19 +519,16 @@ export function ExerciseReport({
           label="Pitch"
           value={result.scores.pitch}
           axis="pitch"
-          compact
         />
         <ScoreMeter
           label="Timing"
           value={result.scores.timing}
           axis="timing"
-          compact
         />
         <ScoreMeter
           label="Cleanliness"
           value={result.scores.cleanliness}
           axis="cleanliness"
-          compact
         />
       </div>
 

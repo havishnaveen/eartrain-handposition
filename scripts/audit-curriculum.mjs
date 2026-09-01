@@ -628,11 +628,12 @@ try {
                 latencyShifted,
                 gradeOptions,
               );
-              assert.equal(
-                latencyShiftedGrade.scores.timing,
-                5,
-                `Fixed device latency was mistaken for bad rhythm in Lesson ${concept.index}.`,
-              );
+              if (plan.expectedNotes.length >= 2) {
+                assert.ok(
+                  (latencyShiftedGrade.scores.timing ?? 5) < 5,
+                  `A half-beat phase shift incorrectly received perfect Timing in Lesson ${concept.index}.`,
+                );
+              }
 
               // A fluent human phrase is a timing category, not a laboratory
               // sequence of identical timestamps. Smooth push/pull inside the

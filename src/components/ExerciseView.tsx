@@ -91,6 +91,7 @@ export interface ExerciseViewProps {
 
   inputLevel?: number;
   detectedNotes?: string[];
+  guidedFeedback?: string | null;
   proofProgress?: 0 | 1 | 2 | 3;
   spatialProgress?: 0 | 1 | 2 | 3;
   spatialFoundMidi?: readonly number[];
@@ -356,6 +357,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       nextLabel = 'Next Drill',
       inputLevel = 0,
       detectedNotes = [],
+      guidedFeedback = null,
       proofProgress = 0,
       spatialProgress = 0,
       spatialWrongGuesses = 0,
@@ -480,8 +482,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     ? chordSucceeded
                       ? 'You mapped the nearby chord by ear.'
                       : 'Replay the comparison and explore again.'
-                : isRootSearch
-                  ? 'Find the reference chord on the keyboard. No microphone is listening.'
+                  : isRootSearch
+                    ? 'Find the reference chord on the keyboard. Gentle pitch hints appear below when needed.'
                   : isShapeSearch
                     ? 'Now find the nearby target chord you heard. Use the broken replay if needed.'
                   : ''}
@@ -561,6 +563,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <strong>{activeAnswer}</strong>
                 <p>{activeAction}</p>
                 <small>{activeHint}</small>
+                {guidedFeedback ? (
+                  <p className="et-guided-feedback" role="status">{guidedFeedback}</p>
+                ) : null}
                 <button type="button" className="et-start et-spatial__start" onClick={onSpatialFound ?? NOOP}>
                   <span className="et-start__dot"><RecordDot /></span>
                   {isRootSearch ? 'I found the reference' : 'I found the nearby chord'}
@@ -711,6 +716,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     );
                   })}
                 </div>
+                {guidedFeedback && status === 'proving' ? (
+                  <p className="et-guided-feedback" role="status">{guidedFeedback}</p>
+                ) : null}
               </div>
             </div> : null}
           </div>

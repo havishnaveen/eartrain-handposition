@@ -325,6 +325,32 @@ try {
     countInSeconds: 4,
     guideNote: false,
   };
+  const tinyPhaseError = perfect.map((note) => ({
+    ...note,
+    time: note.time + timedPlan.secondsPerBeat / 64,
+  }));
+  const tinyPhaseGrade = gradeSequence(expected, tinyPhaseError, {
+    plan: timedPlan,
+    playStartTime: 10,
+    lessonLevel: 12,
+    totalLessons: 24,
+  });
+  assert.equal(tinyPhaseGrade.scores.timing, 5,
+    'A 1/64-beat onset displacement should remain inside full timing credit.');
+
+  const halfBeatPhaseError = perfect.map((note) => ({
+    ...note,
+    time: note.time + timedPlan.secondsPerBeat / 2,
+  }));
+  const halfBeatPhaseGrade = gradeSequence(expected, halfBeatPhaseError, {
+    plan: timedPlan,
+    playStartTime: 10,
+    lessonLevel: 12,
+    totalLessons: 24,
+  });
+  assert.ok((halfBeatPhaseGrade.scores.timing ?? 5) < 5,
+    'Even spacing cannot hide a phrase played consistently halfway between beats.');
+
   const badlyDistortedRhythm = perfect.map((note, index) => ({
     ...note,
     time: [10, 10.9, 11, 11.9][index],

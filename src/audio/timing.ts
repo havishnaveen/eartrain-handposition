@@ -513,17 +513,17 @@ export function timingLeniencyForLesson(
   const linear = clamp01((Math.max(1, lessonLevel) - 1) / (safeTotal - 1));
   const progress = linear * linear * (3 - 2 * linear);
   return {
-    onBeatWindow: mix(0.72, 0.52, progress),
+    onBeatWindow: mix(0.35, 0.25, progress),
     // Speaker-to-microphone and browser input latency shifts an otherwise
     // steady phrase as a block. Grade the intervals, not that fixed hardware
     // delay; a non-uniform or genuinely late rhythm still survives below.
-    startOffsetAllowance: mix(1.15, 0.90, progress),
+    startOffsetAllowance: mix(0.055, 0.04, progress),
     // A continuous curve with no plateau penalised even a dead-centre take:
     // ordinary microphone/onset uncertainty turned 5.0 into 4.6. Preserve a
     // small, lesson-aware full-credit region, then grade the residual error.
-    fullCreditOnsetWindow: mix(0.35, 0.28, progress),
+    fullCreditOnsetWindow: mix(0.25, 0.23, progress),
     fullCreditDurationWindow: mix(0.60, 0.45, progress),
-    zeroScoreWindow: mix(1.42, 1.10, progress),
+    zeroScoreWindow: mix(1.20, 0.95, progress),
   };
 }
 
@@ -540,8 +540,8 @@ function timingProfileForOptions(options: GradeOptions): TimingLeniencyProfile {
   if (options.exerciseMode !== 'blind-memory') return profile;
   return {
     onBeatWindow: Math.min(0.9, profile.onBeatWindow * 1.4),
-    startOffsetAllowance: Math.min(1.2, profile.startOffsetAllowance * 1.3),
-    fullCreditOnsetWindow: profile.fullCreditOnsetWindow * 1.55,
+    startOffsetAllowance: Math.min(0.08, profile.startOffsetAllowance * 1.3),
+    fullCreditOnsetWindow: Math.min(0.3, profile.fullCreditOnsetWindow * 1.2),
     fullCreditDurationWindow: profile.fullCreditDurationWindow * 1.4,
     zeroScoreWindow: profile.zeroScoreWindow * 1.25,
   };
@@ -763,12 +763,14 @@ function buildRhythm(
     sorted.length % 2
       ? sorted[middle]
       : (sorted[middle - 1] + sorted[middle]) / 2;
-  // Microphone pipelines report a stable hardware offset that varies wildly
-  // across tablets, Bluetooth routes, and browsers. Subtract the complete
-  // median phase offset: rhythm is the spacing between attacks, not the
-  // device's input latency. Non-uniform rushing/dragging remains in both the
-  // residual onsets and the interval errors below.
-  const forgivenOffset = medianDeviation;
+  // Forgive only the small input/attack uncertainty allowed by the profile.
+  // Removing the entire median phase made a phrase played consistently
+  // halfway between every beat look perfect because all of its intervals were
+  // even. A stable musical displacement is still a timing error.
+  const forgivenOffset = Math.max(
+    -profile.startOffsetAllowance,
+    Math.min(profile.startOffsetAllowance, medianDeviation),
+  );
   const adjusted = deviations.map((deviation) => deviation - forgivenOffset);
 
   // Absolute onsets catch playing the whole phrase late or early. Duration is
@@ -1420,7 +1422,10 @@ export function gradeSequence(
     : rhythm.evaluated < 2
       ? rhythm.meanOnsetErrorBeats
       : Math.max(
-          rhythm.meanOnsetErrorBeats * 0.35 + rhythm.meanIntervalErrorBeats * 0.65,
+          // Absolute beat phase must remain the majority signal. Otherwise a
+          // perfectly even phrase played halfway between every click receives
+          // full credit merely because its internal spacing is consistent.
+          rhythm.meanOnsetErrorBeats * 0.7 + rhythm.meanIntervalErrorBeats * 0.3,
           rhythm.meanIntervalErrorBeats * 0.88,
         );
   const baseTimingScore = rhythm === null

@@ -42,8 +42,8 @@ if (!spotifyWorker.includes("from '@spotify/basic-pitch'") ||
 }
 
 const exerciseReport = readFileSync(new URL('components/ExerciseReport.tsx', sourceRoot), 'utf8');
-if (!exerciseReport.includes('const AUTO_ADVANCE_MS = 15000')) {
-  throw new Error('Next Drill countdown must remain at 15 seconds.');
+if (!exerciseReport.includes('const AUTO_ADVANCE_MS = 10000')) {
+  throw new Error('Next Drill countdown must remain at 10 seconds.');
 }
 const staffCue = readFileSync(new URL('components/StaffCue.tsx', sourceRoot), 'utf8');
 for (const engravingGuard of [
