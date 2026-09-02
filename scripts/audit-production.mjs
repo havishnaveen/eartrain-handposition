@@ -35,6 +35,12 @@ if (!scoreAnalysis.includes('spotifyPianoConsensus') ||
     !scoreAnalysis.includes('spotify-basic-pitch-consensus')) {
   throw new Error('Offline recovered notes are not protected by Spotify/PCM consensus.');
 }
+const physicalLaneStart = scoreAnalysis.indexOf('const workerAnalysis = new Promise<ScoreAnalysisResult>');
+const physicalLaneAwait = scoreAnalysis.indexOf('return trackedWorker');
+const mlLaneStart = scoreAnalysis.indexOf('const transcript = await transcribeWithBasicPitch');
+if (physicalLaneStart < 0 || physicalLaneAwait < physicalLaneStart || mlLaneStart < physicalLaneAwait) {
+  throw new Error('Cold ML startup can race the first-take physical grading worker.');
+}
 const spotifyWorker = readFileSync(new URL('audio/basicPitchTranscriber.worker.ts', sourceRoot), 'utf8');
 if (!spotifyWorker.includes("from '@spotify/basic-pitch'") ||
     !spotifyWorker.includes('transcription-progress')) {

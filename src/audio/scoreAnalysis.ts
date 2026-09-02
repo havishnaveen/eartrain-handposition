@@ -240,13 +240,6 @@ export function analyzeCapturedTake(
 
   const samples = combineChunks(capture.chunks);
   const requestId = `${capture.id}:${Date.now()}:${samples.length}`;
-  const transcriptPromise = transcribeWithBasicPitch(capture, (progress) => {
-    onProgress?.(68 + progress * 20);
-  }).then((transcript) => {
-    onProgress?.(88);
-    return transcript;
-  });
-
   const workerAnalysis = new Promise<ScoreAnalysisResult>((resolve) => {
     let settled = false;
     let worker: Worker | null = null;
@@ -326,8 +319,19 @@ export function analyzeCapturedTake(
     onProgress?.(68);
     return analysis;
   });
-  return Promise.all([trackedWorker, transcriptPromise])
-    .then(([analysis, transcript]) => {
+  // The physical-evidence worker is the grading authority and has a strict
+  // two-second budget. On a browser's first take, starting the much larger
+  // Spotify/ONNX worker beside it can monopolize CPU/WASM compilation long
+  // enough to force the physical pass into its fallback. The retry then works
+  // only because the model is cached. Run these lanes in order: preserve the
+  // authoritative hammer/onset evidence first, then add ML pitch consensus.
+  // This changes scheduling, not acceptance thresholds.
+  return trackedWorker
+    .then(async (analysis) => {
+      const transcript = await transcribeWithBasicPitch(capture, (progress) => {
+        onProgress?.(68 + progress * 20);
+      });
+      onProgress?.(88);
       onProgress?.(92);
       return spotifyPianoConsensus(analysis, pitchAlignedRealtime, transcript);
     });
