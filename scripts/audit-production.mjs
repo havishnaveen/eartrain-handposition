@@ -82,6 +82,17 @@ if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
 if (!exerciseView.includes('Shift on 1–2, set the hand on 3–4')) {
   throw new Error('The hand-shift cue lost its four-beat musical instruction.');
 }
+if (!exerciseView.includes('Visible reference chord') ||
+    !exerciseView.includes('Play the target on your piano') ||
+    exerciseView.includes('SpatialKeyboardChallenge')) {
+  throw new Error('Chord by Ear must show its reference and accept the target on a physical piano.');
+}
+const drillAudio = readFileSync(new URL('audio/useDrillAudio.ts', sourceRoot), 'utf8');
+if (!drillAudio.includes('void warmBasicPitch();') ||
+    !drillAudio.includes("type: 'prepare-chord'") ||
+    !drillAudio.includes("type: 'listen-chord'")) {
+  throw new Error('First-take model warmup or physical chord recognition was removed.');
+}
 if (!exerciseView.includes("status !== 'position-prompt' ? ' et-proof__layout--active' : ''") ||
     !exerciseView.includes('<div className="et-proof__identity">')) {
   throw new Error('The hand tile must stay centered before Start and remain beside the task afterward.');

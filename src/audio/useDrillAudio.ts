@@ -17,6 +17,7 @@ import {
   type CapturedPcm,
   type ScoreAnalysisResult,
 } from './scoreAnalysis';
+import { warmBasicPitch } from './basicPitchTranscription';
 import {
   getAudioContext as getPianoAudioContext,
   initAudio as initPianoAudio,
@@ -2430,8 +2431,9 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       });
     };
 
-    // Hear a nearby reference, then the target. The learner answers directly
-    // on the visual keyboard; no microphone gate or note-by-note reveal.
+    // Hear the visible reference, then the hidden target. The microphone is
+    // armed only after playback so the learner can reproduce the target on
+    // the physical piano without the demonstration leaking into detection.
     schedulePitches(referencePitches, 0, 0.95, 0.92);
     schedulePitches(spec.chordPitches, 1.25, 1.05, 1);
     const offset = 2.55;
@@ -2476,14 +2478,18 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
   const prepare = useCallback(async (): Promise<boolean> => {
     // The real-time AudioWorklet owns startup. Heavy ML initialization is
-    // deferred until post-take analysis so it cannot starve mic calibration
-    // or the first hammer transients on mobile/tablet browsers.
+    // isolated in its worker and may warm during a non-playing preview.
+    void warmBasicPitch();
     const ctx = await ensureGraph();
     return Boolean(ctx && workletRef.current && chordWorkletRef.current && mountedRef.current);
   }, [ensureGraph]);
 
   const beginProof = useCallback(
     async (target: PositionProofTarget): Promise<boolean> => {
+      // The position check gives the isolated ML worker time to initialize
+      // before the later scored performance. It never blocks proof detection
+      // and, unlike cold-starting during grading, cannot zero a valid take.
+      void warmBasicPitch();
       const runToken = ++runTokenRef.current;
       const targetMidi = target.proofNotes.map((note) => pitchToMidi(note.pitch));
       if (targetMidi.some((midi) => midi === null)) return false;
@@ -2585,24 +2591,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const runToken = ++runTokenRef.current;
       const targetMidi = target.chordPitches.map((pitch) => pitchToMidi(pitch));
       if (targetMidi.some((midi) => midi === null)) return false;
-
-      if (targetMidi.length > 0) {
-        // Chord by Ear is intentionally playback-only. Do not request the mic,
-        // arm either recognition worklet, or manufacture Pitch/Timing scores.
-        stopLoops();
-        stopSpatialPlayback();
-        safeSet(setSpatialAudioIssue, false);
-        safeSet(setPhase, 'idle' as DrillPhase);
-        await initPianoAudio();
-        const playbackContext = getPianoAudioContext();
-        if (!playbackContext || !mountedRef.current || runTokenRef.current !== runToken) return false;
-        const demoEndTime = await scheduleSpatialContext(playbackContext, target);
-        const demoWaitMs = Math.max(0, (demoEndTime - playbackContext.currentTime + 0.08) * 1000);
-        await new Promise<void>((resolve) => window.setTimeout(resolve, demoWaitMs));
-        if (!mountedRef.current || runTokenRef.current !== runToken) return false;
-        cbRef.current.onSpatialListenStart?.(playbackContext.currentTime);
-        return true;
-      }
 
       const ctx = await ensureGraph();
       const worklet = workletRef.current;

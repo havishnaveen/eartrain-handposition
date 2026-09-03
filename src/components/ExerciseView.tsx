@@ -16,7 +16,6 @@ import type {
   HandScope,
   PositionProofSpec,
   SpatialChordSpec,
-  ChordQuality,
 } from '../curriculum/types';
 import ExerciseReport from './ExerciseReport';
 import LessonPanel from './LessonPanel';
@@ -94,15 +93,12 @@ export interface ExerciseViewProps {
   inputLevel?: number;
   detectedNotes?: string[];
   proofProgress?: 0 | 1 | 2 | 3;
+  spatialProgress?: 0 | 1 | 2 | 3;
   spatialFoundMidi?: readonly number[];
   /** True when the chord-by-ear demo's samples failed to load over the network. */
   spatialAudioIssue?: boolean;
   /** Re-plays the chord demo without leaving the current search. */
   onReplayChord?: () => void;
-  /** Advances the self-directed reference → nearby-chord discovery. */
-  onSpatialFound?: () => void;
-  /** Auditions a visual-keyboard note or chord without grading it. */
-  onSpatialPreview?: (pitches: readonly string[]) => void;
   orientationNotice?: OrientationNotice | null;
   onAcknowledgeOrientation?: () => void;
 }
@@ -287,96 +283,6 @@ function proofPitchToStaffKey(pitch: string): string {
   return match ? `${match[1].toLowerCase()}${match[2]}/${match[3]}` : 'c/4';
 }
 
-const WHITE_SEMITONES = [0, 2, 4, 5, 7, 9, 11] as const;
-const BLACK_KEY_LEFT: Partial<Record<number, number>> = {
-  1: 13.4, 3: 27.7, 6: 56.3, 8: 70.6, 10: 84.9,
-};
-
-function SpatialKeyboardChallenge({
-  spec,
-  onPreview,
-  onComplete,
-  onReplay,
-}: {
-  spec: SpatialChordSpec;
-  onPreview: (pitches: readonly string[]) => void;
-  onComplete: () => void;
-  onReplay: () => void;
-}) {
-  const targetRoot = pitchToMidi(spec.rootPitch) ?? 60;
-  const octaveC = Math.floor(targetRoot / 12) * 12;
-  const [selectedRoot, setSelectedRoot] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<'correct' | 'try-again' | null>(null);
-
-  useEffect(() => {
-    setSelectedRoot(null);
-    setFeedback(null);
-  }, [spec.rootPitch, spec.quality]);
-
-  const chooseRoot = (midi: number) => {
-    setSelectedRoot(midi);
-    setFeedback(null);
-    onPreview([midiToName(midi)]);
-  };
-  const chooseQuality = (quality: ChordQuality) => {
-    if (selectedRoot === null) return;
-    const third = quality === 'major' ? 4 : 3;
-    onPreview([selectedRoot, selectedRoot + third, selectedRoot + 7].map(midiToName));
-    setFeedback(selectedRoot === targetRoot && quality === spec.quality ? 'correct' : 'try-again');
-  };
-
-  return (
-    <div className="et-ear-keyboard-card">
-      <div className="et-ear-keyboard" aria-label="Choose the root on the piano keyboard">
-        <div className="et-ear-keyboard__whites">
-          {WHITE_SEMITONES.map((semitone) => {
-            const midi = octaveC + semitone;
-            return (
-              <button
-                key={midi}
-                type="button"
-                className={selectedRoot === midi ? 'is-selected' : ''}
-                onClick={() => chooseRoot(midi)}
-                aria-label={midiToName(midi)}
-              ><span>{midiToName(midi).replace(/-?\d+$/, '')}</span></button>
-            );
-          })}
-        </div>
-        {Object.entries(BLACK_KEY_LEFT).map(([semitoneText, left]) => {
-          const midi = octaveC + Number(semitoneText);
-          return (
-            <button
-              key={midi}
-              type="button"
-              className={`et-ear-keyboard__black${selectedRoot === midi ? ' is-selected' : ''}`}
-              style={{ left: `${left}%` }}
-              onClick={() => chooseRoot(midi)}
-              aria-label={midiToName(midi)}
-            />
-          );
-        })}
-      </div>
-      <div className="et-ear-quality" aria-label="Choose the chord quality">
-        <button type="button" disabled={selectedRoot === null} onClick={() => chooseQuality('major')}>Major</button>
-        <button type="button" disabled={selectedRoot === null} onClick={() => chooseQuality('minor')}>Minor</button>
-      </div>
-      {feedback === 'correct' ? (
-        <div className="et-ear-result is-correct" role="status">
-          <strong>Yes — {spec.chordName}</strong>
-          <span>You found the root and the chord color.</span>
-          <button type="button" onClick={onComplete}>Continue</button>
-        </div>
-      ) : feedback === 'try-again' ? (
-        <div className="et-ear-result" role="status">
-          <strong>Not this one yet.</strong>
-          <span>Replay the pair, then compare the root and middle tone.</span>
-        </div>
-      ) : null}
-      <button type="button" className="et-spatial__replay" onClick={onReplay}>↻ Replay reference and target</button>
-    </div>
-  );
-}
-
 /**
  * ExerciseView owns the five visual states of one drill. Grading and report
  * return early so the instruction, active staff, and recording controls are
@@ -415,10 +321,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       inputLevel = 0,
       detectedNotes = [],
       proofProgress = 0,
+      spatialProgress = 0,
+      spatialFoundMidi = [],
       spatialAudioIssue = false,
       onReplayChord,
-      onSpatialFound,
-      onSpatialPreview,
       orientationNotice = null,
       onAcknowledgeOrientation,
     },
@@ -474,22 +380,38 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       status === 'position-prompt' || status === 'proving' || status === 'proof-success';
     if (exerciseMode === 'spatial-chord' && spatialChord && !showingPositionGate) {
       const isCue = status === 'chord-cue';
-      const isChoosing = status === 'chord-root' || status === 'chord-build';
+      const isListening = status === 'chord-root' || status === 'chord-build';
       const isComplete = status === 'chord-complete';
+      const referencePitches = spatialChord.chordPitches.map((pitch) => {
+        const midi = pitchToMidi(pitch);
+        return midi === null ? pitch : midiToName(midi - 2);
+      });
+      const referenceCue: CueSpec = {
+        keySignature: 'C',
+        showTimeSignature: false,
+        staves: [{
+          clef: spatialChord.hand === 'right' ? 'treble' : 'bass',
+          hand: spatialChord.hand,
+          notes: [{
+            keys: referencePitches.map(proofPitchToStaffKey),
+            duration: 'w',
+          }],
+        }],
+      };
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">
           <header className="et-spatial__header">
             <span className="et-mode-chip">Chord by ear</span>
-            <h2>{isComplete ? 'Chord found' : isChoosing ? 'Find the chord on the keyboard' : 'Hear the nearby chord'}</h2>
+            <h2>{isComplete ? 'Chord found' : isListening ? 'Play the hidden chord' : 'Hear the nearby chord'}</h2>
             <p>
               {status === 'prompt'
-                ? 'Listen to a reference and a nearby target. Then choose the target root and quality.'
+                ? 'Study the reference chord. You will hear it followed by a nearby hidden chord.'
                 : isCue
-                  ? 'Reference, then target.'
+                  ? 'Reference first, then the hidden target.'
                   : isComplete
                     ? `${spatialChord.chordName} matched.`
-                    : 'Choose a piano key, then decide whether the chord is major or minor.'}
+                    : 'Use the reference shape and the distance you heard. Play the target on your piano.'}
             </p>
             {orientationNotice ? (
               <OrientationCallout
@@ -500,28 +422,36 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           </header>
 
           <div className="et-spatial__single-stage">
-            {isCue ? (
-              <div className="et-spatial__cue-card">
+            <div className="et-spatial__cue-card et-spatial__reference-card">
+              <small className="et-spatial__reference-label">Visible reference chord</small>
+              <StaffCue cue={referenceCue} notationScale={2} accentColor="#ef6a47" inkColor="#242237" />
+              {isCue ? (
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-                  <span><strong>Listen…</strong><small>Reference → target</small></span>
+                  <span><strong>Listen…</strong><small>Visible reference → hidden target</small></span>
                 </div>
-                {spatialAudioIssue ? (
-                  <div className="et-spatial__audio-issue" role="alert">
-                    <span>We couldn't load the sound clearly.</span>
-                    <button type="button" onClick={onReplayChord ?? NOOP}>Play again</button>
-                  </div>
-                ) : null}
+              ) : null}
+            </div>
+
+            {isListening ? (
+              <div className="et-spatial__piano-response" role="status">
+                <div className="et-spatial__response-progress" aria-label={`${spatialProgress} of 3 target chord tones heard`}>
+                  {[0, 1, 2].map((index) => (
+                    <i key={index} className={index < spatialProgress ? 'is-heard' : ''} />
+                  ))}
+                </div>
+                <strong>{spatialProgress === 0 ? 'Play the nearby chord together' : `${spatialProgress} of 3 tones heard`}</strong>
+                <span className="et-spatial__mic-level" aria-hidden="true"><i style={{ transform: `scaleX(${level})` }} /></span>
+                {spatialFoundMidi.length > 0 ? <small>Keep the correct tones held and adjust the shape.</small> : null}
+                <button type="button" className="et-spatial__replay" onClick={onReplayChord ?? NOOP}>↻ Hear both chords again</button>
               </div>
             ) : null}
 
-            {isChoosing ? (
-              <SpatialKeyboardChallenge
-                spec={spatialChord}
-                onPreview={onSpatialPreview ?? NOOP}
-                onComplete={onSpatialFound ?? NOOP}
-                onReplay={onReplayChord ?? NOOP}
-              />
+            {spatialAudioIssue ? (
+              <div className="et-spatial__audio-issue" role="alert">
+                <span>We couldn't load the demonstration clearly.</span>
+                <button type="button" onClick={onReplayChord ?? NOOP}>Play again</button>
+              </div>
             ) : null}
 
             {isComplete ? (
@@ -541,7 +471,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 disabled={startBlocked}
               >
                 <span className="et-start__dot"><RecordDot /></span>
-                Listen
+                Hear the target
               </button>
             ) : null}
             {isComplete ? (
