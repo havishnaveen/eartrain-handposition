@@ -1,6 +1,6 @@
 import { PITCH_CAPTURE_LEAD_BEATS } from './timing';
 import type { DetectedNote, DrillPlan } from './timing';
-import { alignPitchSequences, pitchToMidi } from './timing';
+import { alignPitchSequencesWithGroups, pitchToMidi } from './timing';
 import {
   transcribeWithBasicPitch,
   type SpotifyPianoNote,
@@ -111,10 +111,14 @@ export function withPitchOrderSlotHints(
     ) return [];
     return [{ ...note, realtimeIndex }];
   });
-  const alignment = alignPitchSequences(
+  // A written chord (same-beat notes) has no melodic order, so the exact
+  // physical order two simultaneous keys were detected in must not decide
+  // which written slot each earns — see `simultaneousGroupOrder` in timing.ts.
+  const alignment = alignPitchSequencesWithGroups(
     expectedSlots.map((slot) => slot.midi),
     eligible,
     (midi) => midi,
+    (index) => plan.expectedNotes[expectedSlots[index].expectedSlot]?.beat,
   );
   const slotByRealtimeIndex = new Map<number, number>();
   alignment.forEach((operation) => {

@@ -685,7 +685,13 @@ export function alignPitchSequences(
         const next = table[expectedIndex][detectedIndex + 1];
         candidates.push({
           edits: next.edits + 1,
-          slotHintCost: next.slotHintCost,
+          // An existing detector slot hint means an earlier stage already
+          // vouched for this exact note. When discarding it as extra ties
+          // on raw edit count with matching it (the same total insertions
+          // and deletions either way — see `slotTieBreak`), prefer using
+          // the vouched note over an unhinted one, so a benign artifact
+          // that happens to share its pitch cannot stand in for it.
+          slotHintCost: next.slotHintCost + (detected[detectedIndex].expectedSlot !== undefined ? 1 : 0),
           operation: 'extra',
         });
       }
@@ -719,6 +725,159 @@ export function alignPitchSequences(
   return operations;
 }
 
+/**
+ * A written chord has no melodic order.
+ *
+ * `alignPitchSequences` is a strict, order-preserving edit distance: it is
+ * exactly right for a melody, where playing the right notes in the wrong
+ * order is a real mistake. It is wrong for notes the score writes at the
+ * same instant (a triad, a broken-chord "frame"): which key's hammer/string
+ * is detected a few milliseconds before its neighbor is a detector
+ * coin-flip, not a musical fact. Left unaddressed, a perfectly struck chord
+ * heard in a different physical order costs two misses and two wrong notes
+ * for a three-note chord, because the aligner treats the whole chord as a
+ * three-note melody it played backward.
+ *
+ * This computes a permutation of expected indices — grouped by whatever key
+ * `groupKeyOf` returns for each index (the written beat, in practice) — so
+ * that members of the same group are reordered to match the sequence they
+ * were actually detected in, before the strict aligner ever sees them.
+ * Members of different groups are never reordered relative to each other.
+ *
+ * The reordering is bounded to a small window right around each group (its
+ * own size plus a little slack for an interleaved echo or resonance hit) so
+ * a pitch that genuinely belongs to a much later note can never be
+ * reassigned into an earlier chord — this is a structural window, not a
+ * timing-quality judgment; the clock still buys, removes, and redirects
+ * nothing here. Anything that never turns up in that window keeps its
+ * written position, so a genuinely unplayed chord tone still surfaces as an
+ * ordinary miss.
+ */
+export function simultaneousGroupOrder(
+  expectedMidi: readonly number[],
+  groupKeyOf: ((expectedIndex: number) => unknown) | undefined,
+  detected: readonly Pick<DetectedNote, 'midi' | 'time' | 'strength'>[],
+  norm: (midi: number) => number,
+): number[] {
+  const order = expectedMidi.map((_, index) => index);
+  if (!groupKeyOf) return order;
+
+  const GROUP_SCAN_SLACK = 3;
+  // A same-pitch retrigger this soon after, and markedly quieter than, an
+  // attack this scan already passed is that earlier string still decaying —
+  // not a fresh chord tone. Without this, a benign echo of the PREVIOUS
+  // beat's note can steal the very slot the next chord actually needed,
+  // shoving its real, on-time attack into "extra" instead. This mirrors
+  // `isRepeat`'s own window/ratio further down, applied one layer earlier.
+  const ECHO_GAP_SEC = 0.75;
+  const ECHO_STRENGTH_RATIO = 0.72;
+  const recentAttack = new Map<number, { time: number; strength: number }>();
+  const looksLikeEcho = (note: Pick<DetectedNote, 'midi' | 'time' | 'strength'>): boolean => {
+    const prior = recentAttack.get(norm(note.midi));
+    if (!prior) return false;
+    return (
+      note.time - prior.time <= ECHO_GAP_SEC &&
+      (note.strength || 0) < prior.strength * ECHO_STRENGTH_RATIO
+    );
+  };
+  const rememberIfFresh = (note: Pick<DetectedNote, 'midi' | 'time' | 'strength'>): void => {
+    if (looksLikeEcho(note)) return;
+    recentAttack.set(norm(note.midi), { time: note.time, strength: note.strength || 0 });
+  };
+
+  let cursor = 0; // Never rewinds, so an earlier group cannot raid a later one.
+  let groupStart = 0;
+  while (groupStart < order.length) {
+    let groupEnd = groupStart + 1;
+    const key = groupKeyOf(groupStart);
+    while (groupEnd < order.length && groupKeyOf(groupEnd) === key) groupEnd += 1;
+    const size = groupEnd - groupStart;
+
+    // A single written note gets exactly the same tolerant scan as a chord:
+    // without it, one benign artifact landing right at the cursor stalls it
+    // there, and the NEXT group's window then starts too early and raids a
+    // note that was actually this one's real, still-unheard attack.
+    const remainingOriginalIndices = order.slice(groupStart, groupEnd);
+    const claimed: number[] = [];
+    let scanned = 0;
+    let probe = cursor;
+    // Only advance the cursor past a candidate once this group has actually
+    // claimed something at or before it. A group that finds nothing in its
+    // whole window is a genuine miss and must leave the cursor exactly where
+    // it was, so those detected notes stay fully available to the NEXT
+    // group instead of being silently burned against a match that never
+    // happened.
+    let cursorAfterLastClaim = cursor;
+    while (
+      probe < detected.length &&
+      claimed.length < size &&
+      scanned < size + GROUP_SCAN_SLACK
+    ) {
+      const candidate = detected[probe];
+      const pitch = norm(candidate.midi);
+      const isEcho = looksLikeEcho(candidate);
+      const pos = isEcho ? -1 : remainingOriginalIndices.findIndex(
+        (originalIndex) => expectedMidi[originalIndex] === pitch,
+      );
+      if (pos !== -1) {
+        claimed.push(remainingOriginalIndices[pos]);
+        remainingOriginalIndices.splice(pos, 1);
+        cursorAfterLastClaim = probe + 1;
+      }
+      rememberIfFresh(candidate);
+      probe += 1;
+      scanned += 1;
+    }
+    // Whatever never turned up keeps its written position at the tail —
+    // the aligner below still grades it as an ordinary potential miss.
+    claimed.push(...remainingOriginalIndices);
+    for (let i = groupStart; i < groupEnd; i += 1) {
+      order[i] = claimed[i - groupStart];
+    }
+    cursor = cursorAfterLastClaim;
+    groupStart = groupEnd;
+  }
+  return order;
+}
+
+/**
+ * `alignPitchSequences`, made tolerant of notated simultaneity.
+ *
+ * Reorders each same-instant group to the observed detection order (see
+ * `simultaneousGroupOrder`), runs the ordinary strict aligner, then maps
+ * every `expectedIndex` back to its original position — so every caller
+ * downstream keeps indexing into the original `expectedMidi`/`expected`
+ * arrays exactly as before.
+ */
+export function alignPitchSequencesWithGroups(
+  expectedMidi: readonly number[],
+  detected: readonly Pick<DetectedNote, 'midi' | 'expectedSlot' | 'time' | 'strength'>[],
+  norm: (midi: number) => number,
+  groupKeyOf?: (expectedIndex: number) => unknown,
+): PitchAlignmentOperation[] {
+  const order = simultaneousGroupOrder(expectedMidi, groupKeyOf, detected, norm);
+  const canonicalMidi = order.map((originalIndex) => expectedMidi[originalIndex]);
+  // A detector slot hint names an ORIGINAL written index. Once a group has
+  // been reordered, that original index sits at a different canonical
+  // position, so the hint must move with it — otherwise the strict aligner's
+  // tie-break compares a translated hint against an untranslated one and
+  // ends up preferring an unhinted echo over the very note the hint was
+  // written for.
+  const canonicalPositionOf = new Map<number, number>();
+  order.forEach((originalIndex, canonicalIndex) => canonicalPositionOf.set(originalIndex, canonicalIndex));
+  const remappedDetected = detected.map((note) => (
+    note.expectedSlot === undefined
+      ? note
+      : { ...note, expectedSlot: canonicalPositionOf.get(note.expectedSlot) ?? note.expectedSlot }
+  ));
+  const rawAlignment = alignPitchSequences(canonicalMidi, remappedDetected, norm);
+  return rawAlignment.map((operation) => (
+    operation.kind === 'extra'
+      ? operation
+      : { ...operation, expectedIndex: order[operation.expectedIndex] }
+  ));
+}
+
 function buildRhythm(
   matches: { expectedIndex: number; time: number; note: DetectedNote }[],
   options: GradeOptions,
@@ -731,14 +890,36 @@ function buildRhythm(
   // a rest or a compact cue representation.
   const expectedSlots = plan.expectedNotes;
   const deviations: number[] = [];
+  // Anchor & Shift's hand move is deliberately allowed to take a variable,
+  // generous amount of time — that window is graded on its own terms by
+  // `buildTransition` below. The written beat grid the click follows does
+  // not pause for the move, so a student who lands (validly, within that
+  // allowance) later or earlier than the click is now offset from the click
+  // for the *entire second phrase*, not just the landing note: every note
+  // from the landing on inherits that same one-time offset in its absolute
+  // deviation from the click, even though each is still perfectly spaced
+  // relative to the one before it. The single whole-take `forgivenOffset`
+  // below cannot absorb a shift that only starts partway through, so
+  // absolute onset deviation is measured only within each side of the
+  // shift; the boundary crossing itself, and cross-boundary spacing, stay
+  // out of this general-purpose metric entirely and are left to
+  // `buildTransition`'s own allowance.
+  const shiftLandingIndex = options.anchorShift?.splitIndex;
 
-  matches.forEach(({ expectedIndex, time }) => {
+  const pushDeviation = ({ expectedIndex, time }: { expectedIndex: number; time: number }) => {
     // Guide-note cues draw fewer notes than are played; those fall back to
     // one note per beat, which is how they are counted in anyway.
     const beat = expectedSlots[expectedIndex]?.beat ?? expectedIndex;
     const expectedTime = playStartTime + beat * plan.secondsPerBeat;
     deviations.push((time - expectedTime) / plan.secondsPerBeat);
+  };
+  matches.forEach((match) => {
+    if (shiftLandingIndex !== undefined && match.expectedIndex >= shiftLandingIndex) return;
+    pushDeviation(match);
   });
+  // A take with almost nothing matched (e.g. only the landing note itself)
+  // must still produce a numeric onset error rather than an empty-array NaN.
+  if (deviations.length === 0) matches.forEach(pushDeviation);
 
   const profile = timingProfileForOptions(options);
 
@@ -806,6 +987,12 @@ function buildRhythm(
     // failure across the hole. Pitch coverage already records the miss; only
     // adjacent, positively identified notes can bound a reliable duration.
     if (current.expectedIndex !== previous.expectedIndex + 1) continue;
+    // The gap spanning the hand-shift itself is not an ordinary reading
+    // interval — it already carries its own written pause plus a deliberate
+    // move allowance, graded by `buildTransition` against that allowance.
+    // Scoring it again here, against the same strict window used for two
+    // same-position notes, punishes one hand-shift delay twice.
+    if (current.expectedIndex === shiftLandingIndex) continue;
     const previousBeat = expectedSlots[previous.expectedIndex]?.beat ?? previous.expectedIndex;
     const currentBeat = expectedSlots[current.expectedIndex]?.beat ?? current.expectedIndex;
     const expectedGap = currentBeat - previousBeat;
@@ -1236,7 +1423,14 @@ export function gradeSequence(
   const matches: { expectedIndex: number; time: number; note: DetectedNote }[] = [];
   const accepted: DetectedNote[] = [];
 
-  const alignment = alignPitchSequences(expectedMidi, detected, norm);
+  // A written chord (same-beat notes) has no melodic order; see
+  // `simultaneousGroupOrder`. Only group by beat when the plan's expected
+  // notes correspond 1:1 with `expectedMidi` — the same assumption
+  // `buildRhythm`/`buildTransition` already make about this indexing.
+  const groupKeyOf = options.plan && options.plan.expectedNotes.length === expectedCount
+    ? (index: number) => options.plan!.expectedNotes[index]?.beat
+    : undefined;
+  const alignment = alignPitchSequencesWithGroups(expectedMidi, detected, norm, groupKeyOf);
   const expectedIndexByDetected = new Map<number, number>();
   const missedExpectedIndices: number[] = [];
   alignment.forEach((operation) => {
@@ -1553,6 +1747,17 @@ export function gradeSequence(
     return clamp5(5 * Math.max(0, 1 - relativeError / 0.65));
   })();
 
+  // A fixed 35% weight cannot let a genuinely blown hand shift fail Timing
+  // on its own — 65% of a clean phrase alone floors the blend at 3.25, which
+  // survives every downstream cushion. A transition inside (or just past)
+  // its allowance is a minor blemish and keeps the normal 35% weight; one
+  // that has fallen to the bottom of `buildTransition`'s own scale is not a
+  // blemish, it is the one thing this drill exists to check, so it takes
+  // over the category as it worsens rather than being permanently capped at
+  // just over a third of the vote.
+  const transitionWeight = measuredTransition
+    ? mix(0.35, 0.85, clamp01((3 - measuredTransition.score) / 3))
+    : 0.35;
   const timingScore =
     !hasPerformanceEvidence
       ? 0
@@ -1563,7 +1768,7 @@ export function gradeSequence(
         : baseTimingScore === null
           ? measuredTransition?.score ?? inferredPulseScore
           : measuredTransition
-            ? clamp5(baseTimingScore * 0.65 + measuredTransition.score * 0.35)
+            ? clamp5(baseTimingScore * (1 - transitionWeight) + measuredTransition.score * transitionWeight)
             : baseTimingScore;
 
   // Cleanliness: penalises only what the student actually did. Echoes and
