@@ -6,7 +6,6 @@ import {
   useState,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { midiToName, pitchToMidi } from '../audio/timing';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
 import type {
   AnchorShiftSpec,
@@ -382,10 +381,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const isCue = status === 'chord-cue';
       const isListening = status === 'chord-root' || status === 'chord-build';
       const isComplete = status === 'chord-complete';
-      const referencePitches = spatialChord.chordPitches.map((pitch) => {
-        const midi = pitchToMidi(pitch);
-        return midi === null ? pitch : midiToName(midi - 2);
-      });
       const referenceCue: CueSpec = {
         keySignature: 'C',
         showTimeSignature: false,
@@ -393,7 +388,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           clef: spatialChord.hand === 'right' ? 'treble' : 'bass',
           hand: spatialChord.hand,
           notes: [{
-            keys: referencePitches.map(proofPitchToStaffKey),
+            keys: spatialChord.referencePitches.map(proofPitchToStaffKey),
             duration: 'w',
           }],
         }],
@@ -422,16 +417,16 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           </header>
 
           <div className="et-spatial__single-stage">
-            <div className="et-spatial__cue-card et-spatial__reference-card">
-              <small className="et-spatial__reference-label">Visible reference chord</small>
-              <StaffCue cue={referenceCue} notationScale={2} accentColor="#ef6a47" inkColor="#242237" />
+            {!isComplete ? <div className="et-spatial__cue-card et-spatial__reference-card">
+              <small className="et-spatial__reference-label">Visible reference chord · {spatialChord.referenceChordName}</small>
+              <StaffCue cue={referenceCue} notationScale={2.55} accentColor="#ef6a47" inkColor="#242237" />
               {isCue ? (
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
                   <span><strong>Listen…</strong><small>Visible reference → hidden target</small></span>
                 </div>
               ) : null}
-            </div>
+            </div> : null}
 
             {isListening ? (
               <div className="et-spatial__piano-response" role="status">
@@ -441,6 +436,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   ))}
                 </div>
                 <strong>{spatialProgress === 0 ? 'Play the nearby chord together' : `${spatialProgress} of 3 tones heard`}</strong>
+                <p className="et-spatial__relationship-hint">{spatialChord.relationshipHint}</p>
                 <span className="et-spatial__mic-level" aria-hidden="true"><i style={{ transform: `scaleX(${level})` }} /></span>
                 {spatialFoundMidi.length > 0 ? <small>Keep the correct tones held and adjust the shape.</small> : null}
                 <button type="button" className="et-spatial__replay" onClick={onReplayChord ?? NOOP}>↻ Hear both chords again</button>
@@ -594,7 +590,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       isBlindMemory &&
       (status === 'prompt' || status === 'leadin' || status === 'listening');
     const memoryWaiting = isBlindMemory && status === 'prompt';
-    const hideUntilStart = status === 'prompt' && exerciseMode !== 'standard';
+    // Move Your Hand must show both positions before Start. Blind Memory has
+    // its own intentional cover; no generic nonstandard-mode hiding belongs
+    // here.
+    const hideUntilStart = false;
     const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
     const shiftWaitBeats = anchorShift?.timedShift?.waitBeats ?? 0;
     const isChordReading = exerciseMode === 'standard' && /stacked chord/i.test(instruction);

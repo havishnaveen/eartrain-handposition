@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import './exercise.css';
 
 export interface ExerciseLayoutProps {
@@ -48,38 +48,12 @@ export function ExerciseLayout({
   // focus of the page — a first-time student's attention belongs on the
   // staff, and this keeps the stage uncluttered until they ask for context.
   const [collapsed, setCollapsed] = useState(true);
-  const [clicks, setClicks] = useState<number[]>([]);
-  const [locked, setLocked] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
-
-  useEffect(() => {
-    setLocked(false);
-    setShowWarning(false);
-    setClicks([]);
-  }, [questionNumber]);
-
-  const handleToggle = () => {
-    if (locked) return;
-    const now = Date.now();
-    const recent = clicks.filter(c => now - c < 4000);
-    recent.push(now);
-    if (recent.length >= 6) {
-      setLocked(true);
-      setShowWarning(true);
-      setCollapsed(true);
-      setClicks([]);
-    } else {
-      setClicks(recent);
-      setCollapsed(c => !c);
-    }
-  };
   return (
     <div className={`et-shell et-shell--pathway${collapsed ? ' et-shell--sidebar-collapsed' : ''}`}>
       <button
         type="button"
         className="et-sidebar-toggle"
-        disabled={locked}
-        onClick={handleToggle}
+        onClick={() => setCollapsed((current) => !current)}
         aria-expanded={!collapsed}
         aria-label={collapsed ? 'Show learning pathway' : 'Hide learning pathway'}
       >
@@ -88,16 +62,7 @@ export function ExerciseLayout({
         </span>
         <span className="et-sidebar-toggle__chevron" aria-hidden="true">{collapsed ? '›' : '‹'}</span>
       </button>
-      {showWarning ? (
-        <div className="et-sidebar-warning-modal" role="alert" style={{position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          <div className="et-sidebar-warning-modal__backdrop" style={{position: 'absolute', inset: 0, backdropFilter: 'blur(10px)', backgroundColor: 'rgba(255, 255, 255, 0.4)'}} />
-          <div className="et-sidebar-warning-modal__content" style={{position: 'relative', backgroundColor: 'white', padding: '30px 40px', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.15)', textAlign: 'center'}}>
-            <h2 style={{color: '#ef6a47', margin: '0 0 16px 0', fontSize: '20px', fontWeight: 'bold'}}>Too many clicks</h2>
-            <p style={{fontSize: '16px', color: '#555', margin: '0 0 24px 0'}}>Please focus on the exercise.</p>
-            <button onClick={() => setShowWarning(false)} style={{backgroundColor: '#ef6a47', color: 'white', border: 'none', padding: '10px 24px', borderRadius: '6px', fontSize: '16px', cursor: 'pointer', fontWeight: 'bold'}}>Acknowledge</button>
-          </div>
-        </div>
-      ) : null}      <aside className="et-sidebar" aria-label="Current learning pathway" aria-hidden={collapsed}>
+      <aside className="et-sidebar" aria-label="Current learning pathway" aria-hidden={collapsed}>
         <div className="et-sidebar__inner">
           <div className="et-sidebar__brand">
             <span className="et-sidebar__mark"><NoteMark /></span>

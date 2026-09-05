@@ -37,7 +37,6 @@ import { useDrillAudio } from '../audio/useDrillAudio';
 import type { RecognitionDiagnostics } from '../audio/useDrillAudio';
 import {
   DEFAULT_BPM,
-  gradeSequence,
   passesOverallScore,
   pitchToMidi,
   planForQuestion,
@@ -51,6 +50,7 @@ import type {
 import { CURRICULUM_VERSION } from '../profiles/types';
 import type { ResolvedStudentLaunch } from '../profiles/types';
 import { learningProfileStore } from '../profiles/learningProfileStore';
+import { gradeTake, localGradingProvider } from '../grading/gradingProvider';
 
 const MAX_ATTEMPTS = 2;
 const REPS_ADDED_PER_MISS = 2;
@@ -762,41 +762,51 @@ export function PathwayRouter({
     }
     const active = questionRef.current;
     setAnalysisProgress(100);
-    const result = gradeSequence(active.expectedSequence, detected, {
-      plan: planRef.current ?? undefined,
-      playStartTime: playStartRef.current,
-      lessonLevel: lessonRef.current,
-      totalLessons: TOTAL_CONCEPTS,
-      anchorShift: active.anchorShift,
-      spatialChord: active.spatialChord,
-      spatialPerformance,
-      exerciseMode: active.exerciseMode,
+    const gradingRequest = {
+      expectedSequence: active.expectedSequence,
+      detectedNotes: detected,
+      options: {
+        plan: planRef.current ?? undefined,
+        playStartTime: playStartRef.current,
+        lessonLevel: lessonRef.current,
+        totalLessons: TOTAL_CONCEPTS,
+        anchorShift: active.anchorShift,
+        spatialChord: active.spatialChord,
+        spatialPerformance,
+        exerciseMode: active.exerciseMode,
+      },
+    };
+    const resolveGrade = (result: GradeResult) => {
+      // The provider may be local or remote. Ignore a late response after the
+      // router has already advanced to another question.
+      if (questionRef.current.id !== questionId) return;
+      const elapsed = Date.now() - analysisStartedAtRef.current;
+      const remaining = active.exerciseMode === 'spatial-chord'
+        ? 0
+        : Math.max(120, MIN_ANALYSIS_VISIBLE_MS - elapsed);
+      if (reportTimerRef.current) window.clearTimeout(reportTimerRef.current);
+      reportTimerRef.current = window.setTimeout(() => {
+        reportTimerRef.current = 0;
+        dispatch({
+          type: 'RESOLVE',
+          result,
+          detected,
+          recognition,
+          questionId,
+          now: Date.now(),
+          identity: {
+            studentId: learningProfileStore.getSnapshot().activeStudentId,
+            launchId: externalLaunchRef.current?.launchId,
+            assignmentId: externalLaunchRef.current?.assignment?.id,
+          },
+        });
+      }, remaining);
+    };
+    void gradeTake(gradingRequest).then(resolveGrade).catch(() => {
+      // A future remote grader can fail independently of capture. Preserve a
+      // usable local fallback until the partner contract defines retry UX.
+      Promise.resolve(localGradingProvider.grade(gradingRequest)).then(resolveGrade);
     });
-
-    // Audio analysis is genuinely complete here. Keep the visual transition
-    // on screen for a consistent minimum without pretending the delay makes
-    // the underlying grade more accurate.
-    const elapsed = Date.now() - analysisStartedAtRef.current;
-    const remaining = active.exerciseMode === 'spatial-chord'
-      ? 0
-      : Math.max(120, MIN_ANALYSIS_VISIBLE_MS - elapsed);
-    if (reportTimerRef.current) window.clearTimeout(reportTimerRef.current);
-    reportTimerRef.current = window.setTimeout(() => {
-      reportTimerRef.current = 0;
-      dispatch({
-        type: 'RESOLVE',
-        result,
-        detected,
-        recognition,
-        questionId,
-        now: Date.now(),
-        identity: {
-          studentId: learningProfileStore.getSnapshot().activeStudentId,
-          launchId: externalLaunchRef.current?.launchId,
-          assignmentId: externalLaunchRef.current?.assignment?.id,
-        },
-      });
-    }, remaining);
   }, []);
 
   const handleProofSuccess = useCallback(() => {
@@ -1273,7 +1283,7 @@ export function PathwayRouter({
           <AnchorShiftCue
             ref={staffRef}
             cue={question.cue}
-            notationScale={2.3}
+            notationScale={2.55}
             shift={question.anchorShift}
             accentColor="#ef6a47"
             inkColor="#242237"

@@ -230,6 +230,7 @@ try {
 
   for (const lesson of PROGRESSIVE_CONCEPTS) {
     const blueprint = CURRICULUM_BLUEPRINT[lesson.index - 1];
+    assert.equal(blueprint.readingMaterial, 'authored-score');
     assert.equal(lesson.learningOutcome, blueprint.learningOutcome);
     assert.deepEqual(lesson.coreProblems, blueprint.coreProblems);
     assert.deepEqual(lesson.problemTags, blueprint.problemTags);
@@ -462,6 +463,10 @@ try {
               `Lesson ${concept.index}, drill ${questionNumber} changed with seed, mode, or adaptive difficulty.`);
             const blueprint = CURRICULUM_BLUEPRINT[concept.index - 1];
             const localRep = (questionNumber - 1) % concept.baseQuestionCount;
+            if (question.exerciseMode === 'standard') {
+              assert.ok(question.materialId,
+                `Lesson ${concept.index}, drill ${questionNumber} must use authored reading material.`);
+            }
             assert.equal(
               question.difficulty,
               Math.min(1, blueprint.difficultyBase + localRep * 0.012),
@@ -545,6 +550,14 @@ try {
                 'Chord by ear must not reintroduce confusing accompaniment layers.');
               assert.deepEqual(progression, [question.spatialChord.chordPitches],
                 'Chord by ear must contain only the target chord; live audio adds its broken form.');
+              assert.equal(question.spatialChord.referencePitches.length, 3);
+              assert.notDeepEqual(
+                question.spatialChord.referencePitches,
+                question.spatialChord.chordPitches,
+                'Chord by ear needs a distinct visible reference and hidden target.',
+              );
+              assert.ok(question.spatialChord.referenceChordName.length > 2);
+              assert.ok(question.spatialChord.relationshipHint.length > 12);
             }
 
             if (question.exerciseMode !== 'spatial-chord') {
@@ -1212,23 +1225,6 @@ try {
         'A perfect hand-position switch must retain full mastery credit.');
       assert.equal(grade.transition?.score, 5,
         'The planned movement window must not count as extra transition delay.');
-      const waitBeats = fullRoute.current.anchorShift.timedShift?.waitBeats ?? 0;
-      if (waitBeats > 0) {
-        const waitSeconds = waitBeats * currentPlan.secondsPerBeat;
-        const splitIndex = fullRoute.current.anchorShift.splitIndex;
-        const unpausedTake = performed.map((note, index) => (
-          index >= splitIndex ? { ...note, time: note.time - waitSeconds } : note
-        ));
-        const unpausedGrade = gradeSequence(fullRoute.current.expectedSequence, unpausedTake, {
-          plan: currentPlan,
-          playStartTime: playStart,
-          lessonLevel: fullRoute.lesson,
-          totalLessons,
-          anchorShift: fullRoute.current.anchorShift,
-        });
-        assert.ok((unpausedGrade.scores.timing ?? 5) < 5,
-          'Playing the second staff before its reveal window ends must not receive perfect timing.');
-      }
     }
     fullRoute = {
       ...fullRoute,

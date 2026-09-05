@@ -12,11 +12,15 @@ open with Prove It as a quick placement diagnostic, then provide supported
 reading and finish with a second check. That opening check identifies the help
 the learner needs; it is not a claim that the position was already taught.
 
-Inside each fixed four-drill lesson, melodic material is assigned from simple
-to complex. A straight five-finger C-D-E-F-G pattern precedes longer,
-direction-changing or skipping figures. The reviewed drill modes remain in
-their original slots; only the material within those slots follows this
-difficulty order.
+Every normal-reading slot across all 24 lessons is an authored miniature in
+`authoredReading.ts`, identified by a stable `materialId`. The notes, rhythm,
+rests, hand entries, and accompaniment are reviewed score data; no seed or
+random contour chooses them. The sequence begins with one-hand steps and
+answers, then introduces call-and-response, held bass, eighth-note pairs,
+contrary/parallel motion, dotted rhythm, Alberti figures, and walking bass.
+The later scores add chord shells, blocked/broken chord changes, parallel
+cadences, Alberti support, and walking bass. Contour pools remain only for
+supported position and memory drills.
 
 Difficulty uses a challenge budget, not simultaneous escalation on every axis.
 Lessons 1-5 establish quarter-note pulse; Lessons 6-12 add eighth-note
@@ -26,12 +30,11 @@ one-hand, five-event bridge with one closing chord before Lesson 18 adds the
 timed B-to-F-sharp move. From Lesson 19 onward, polyphony and independent chord
 hearing are the new load.
 
-Hand-shift travel is beat-aligned: Lessons 13-14 provide two visible move
-beats, Lessons 15-16 provide one, and Lesson 18 removes the pause entirely.
-Timed moves add one audible READY beat after the movement countdown so the
-destination attack is prepared rather than sprung on the learner. Both phrases
-stay visible while movement time is being learned; only the final instantaneous
-transfer withholds the destination until the hand-off.
+Hand-shift travel is beat-aligned. Every shift owns one complete, steady 4/4
+rest measure: move on beats 1-2, settle on 3-4, and play on the following
+downbeat. The metronome never inserts a digital countdown or a stray READY
+beat. Both written positions remain visible before Start and throughout the
+exercise; only the cursor and active-position emphasis move.
 
 Key-signature copy must describe the five keys actually played. A G-position
 pentachord is G-A-B-C-D (the signature is introduced visually, but F-sharp is
@@ -61,10 +64,10 @@ in a blocking acknowledgement rather than presenting both positions at once.
 | 13-16 | One fixed fifth-shift per lesson, right hand then left hand | exact position pair, dominant/non-dominant hand shift, landing in time |
 | 17 | B and F-sharp maps before movement | five/six-sharp placement and finger mapping |
 | 18 | B-to-F-sharp shift | advanced exact-pair landing with an instantaneous destination reveal |
-| 19-20 | Supplied anchor to complete 1-3-5 chord | chord anchor, shell, reading, simultaneous chord attack |
-| 21 | Major/minor middle-tone contrast | chord-quality hearing and spacing |
-| 22 | Match the bottom note from an isolated broken example | chord-by-ear, anchor matching, shape transfer |
-| 23-24 | Retain and transfer blocked/broken chord shapes across wider roots and registers | independent chord hearing, major/minor contrast, simultaneous attack |
+| 19-20 | Visible known chord to a nearby same-shape target | chord anchor, shell, reading, simultaneous chord attack |
+| 21 | Same-root major/minor middle-tone contrast | chord-quality hearing and spacing |
+| 22 | Transfer the visible shape by a fifth | chord-by-ear, anchor matching, shape transfer |
+| 23-24 | Transfer nearby shapes, then change the middle tone | independent chord hearing, major/minor contrast, simultaneous attack |
 
 Routing rules:
 
@@ -78,3 +81,8 @@ the other before the shift begins.
 3. Every allowed remediation problem must be core to at least one lesson.
 4. The four `drillPurposes` must describe the displayed slots in exact order.
 5. Curriculum audits must fail if any of these contracts drift.
+
+Chord by Ear is physical-piano work. Each ear drill declares an authored,
+visible `referencePitches` chord and an intentionally related hidden target.
+The reference stays visible while the learner searches; there is no on-screen
+keyboard and no Prove-It or numeric report.

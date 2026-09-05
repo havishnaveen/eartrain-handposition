@@ -2391,10 +2391,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     // by design; this path never falls back to oscillators or synthetic
     // "instrument layers". Every pitched example the child hears is piano.
     await initPianoAudio();
-    const referencePitches = spec.chordPitches.map((pitch) => {
-      const midi = pitchToMidi(pitch);
-      return midi === null ? pitch : midiToName(midi - 2);
-    });
+    const referencePitches = spec.referencePitches;
     const allPitches = new Set([...referencePitches, ...spec.chordPitches]);
     const loaded = new Map<string, unknown>();
     await Promise.all([...allPitches].map(async (pitch) => {

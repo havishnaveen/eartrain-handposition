@@ -31,6 +31,8 @@ import {
 } from './melody';
 import type { Contour } from './melody';
 import { beatsForDuration } from '../audio/timing';
+import { authoredReadingScore } from './authoredReading';
+import type { AuthoredReadingScore } from './authoredReading';
 
 /**
  * The production curriculum's explicit difficulty envelope.
@@ -597,6 +599,7 @@ export const CURRICULUM_BLUEPRINT = LESSONS.map((lesson) => {
     problemTags: interventionProblems(intervention),
     drillPurposes: [...intervention.drillPurposes] as [string, string, string, string],
     materialOrder: 'easy-to-hard' as const,
+    readingMaterial: 'authored-score' as const,
     positionProofSequence: lesson.dualShiftProof
       ? (lesson.shiftPairs?.[0] ?? []).map((position) => `${position.id} Major`)
       : [],
@@ -810,6 +813,33 @@ function chordPitches(rootPitch: string, quality: ChordQuality): [string, string
     transposePitch(rootPitch, quality === 'major' ? 4 : 3),
     transposePitch(rootPitch, 7),
   ];
+}
+
+function authoredSpatialReference(
+  lessonIndex: number,
+  target: [string, string, string],
+  targetQuality: ChordQuality,
+): Pick<SpatialChordSpec, 'referenceChordName' | 'referencePitches' | 'relationshipHint'> {
+  const root = target[0];
+  if (lessonIndex === 21 || lessonIndex === 24) {
+    const quality: ChordQuality = targetQuality === 'major' ? 'minor' : 'major';
+    const pitches = chordPitches(root, quality);
+    return {
+      referenceChordName: `${root.replace(/-?\d+$/, '')} ${quality === 'major' ? 'Major' : 'Minor'}`,
+      referencePitches: pitches,
+      relationshipHint: 'Keep the outside notes. Listen for the middle note to move.',
+    };
+  }
+  const semitones = lessonIndex <= 20 ? -2 : lessonIndex === 22 ? -7 : 2;
+  const referenceRoot = transposePitch(root, semitones);
+  const pitches = chordPitches(referenceRoot, targetQuality);
+  return {
+    referenceChordName: `${referenceRoot.replace(/-?\d+$/, '')} ${targetQuality === 'major' ? 'Major' : 'Minor'}`,
+    referencePitches: pitches,
+    relationshipHint: Math.abs(semitones) === 2
+      ? `Move the whole hand one nearby step ${semitones < 0 ? 'up' : 'down'}.`
+      : 'Move the same chord shape by a fifth.',
+  };
 }
 
 type HarmonicRole = 'tonic' | 'supertonic' | 'subdominant' | 'dominant' | 'submediant';
@@ -1026,6 +1056,111 @@ function twoHandStandardQuestion(
   };
 }
 
+function parseAuthoredLane(
+  source: string,
+  position: Position,
+  hand: Hand,
+): CueNote[] {
+  const restKey = hand === 'right' ? 'b/4' : 'd/3';
+  return source.split(/\s+/).filter((token) => token && token !== '|').map((token) => {
+    const match = /^(r|[0-4]+)-?(w|hd|h|qd|q|8|16)$/.exec(token);
+    if (!match) throw new Error(`Invalid authored score token: ${token}`);
+    const [, degreesText, duration] = match;
+    if (degreesText === 'r') return { keys: [restKey], duration: `${duration}r` };
+    const degrees = [...degreesText].map(Number);
+    return {
+      keys: degrees.map((degree) => position.vf[degree]),
+      duration,
+      ...(degrees.length === 1
+        ? { finger: fingerFor(degrees[0], hand) }
+        : { fingers: degrees.map((degree) => fingerFor(degree, hand)) }),
+    };
+  });
+}
+
+function expectedFromAuthoredStaves(staves: Question['cue']['staves']): string[] {
+  return staves.flatMap((staff, staffIndex) => {
+    let beat = 0;
+    return staff.notes.flatMap((note) => {
+      const event = note.duration.endsWith('r') ? [] : [{
+        beat,
+        staffIndex,
+        pitches: note.keys
+          .map(vexToScientificPitch)
+          .filter((pitch): pitch is string => pitch !== null),
+      }];
+      beat += beatsForDuration(note.duration);
+      return event;
+    });
+  }).sort((a, b) => a.beat - b.beat || a.staffIndex - b.staffIndex)
+    .flatMap((event) => event.pitches);
+}
+
+function authoredStandardQuestion(
+  lesson: LessonRecipe,
+  score: AuthoredReadingScore,
+  positionTemplate: PositionTemplate,
+  ordinal: number,
+  localRep: number,
+  hand: Hand,
+  difficulty: number,
+  mode: GenerationMode,
+  modeDifficulty: number,
+): Question {
+  const rightPosition = buildPosition(
+    positionTemplate,
+    cyclePick(lesson.rightOctaves, Math.floor(localRep / lesson.positions.length)),
+  );
+  const leftPosition = buildPosition(
+    positionTemplate,
+    cyclePick(lesson.leftOctaves, Math.floor(localRep / lesson.positions.length)),
+  );
+  const staves: Question['cue']['staves'] = [];
+  if (score.solo) {
+    const soloHand = score.soloHand ?? hand;
+    const position = soloHand === 'right' ? rightPosition : leftPosition;
+    staves.push({
+      clef: soloHand === 'right' ? 'treble' : 'bass',
+      hand: soloHand,
+      notes: parseAuthoredLane(score.solo, position, soloHand),
+    });
+  } else {
+    if (score.right) staves.push({
+      clef: 'treble', hand: 'right', notes: parseAuthoredLane(score.right, rightPosition, 'right'),
+    });
+    if (score.left) staves.push({
+      clef: 'bass', hand: 'left', notes: parseAuthoredLane(score.left, leftPosition, 'left'),
+    });
+  }
+  const bothHands = staves.length === 2;
+  const rightProof = positionProofForPosition(rightPosition, 'right');
+  const leftProof = positionProofForPosition(leftPosition, 'left');
+  return {
+    id: `${lesson.id}#${ordinal}`,
+    materialId: score.id,
+    conceptId: lesson.id,
+    exerciseMode: 'standard',
+    handScope: bothHands ? 'both' : staves[0]?.hand ?? hand,
+    instruction: score.title,
+    cue: {
+      keySignature: lesson.showKeySignature ? positionTemplate.keySignature : 'C',
+      timeSignature: `${score.meter}/4`,
+      staves,
+      ...(score.measuresPerSystem ? { measuresPerSystem: score.measuresPerSystem } : {}),
+    },
+    expectedSequence: expectedFromAuthoredStaves(staves),
+    tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),
+    positionLabel: `${rightPosition.label}${bothHands ? ' — both hands' : ''}`,
+    difficulty,
+    mode,
+    positionProof: bothHands ? rightProof : positionProofForPosition(
+      staves[0]?.hand === 'left' ? leftPosition : rightPosition,
+      staves[0]?.hand ?? hand,
+    ),
+    ...(bothHands ? { positionProofs: [rightProof, leftProof] as const } : {}),
+  };
+}
+
 /**
  * Late standard reading keeps a melodic line, but adds genuine stacked
  * attacks so chord reading and the polyphonic microphone path are exercised
@@ -1158,6 +1293,7 @@ function spatialChordQuestion(
     quality,
     rootPitch: pitches[0],
     chordPitches: pitches,
+    ...authoredSpatialReference(lesson.index, pitches, quality),
     intervals: [quality === 'major' ? 4 : 3, 7],
     rootSupport: recipe.rootSupport,
     buildOrder: [0, 1, 2],
@@ -1223,6 +1359,20 @@ function questionFor(
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
 
   if (drillKind === 'chord-reading') {
+    const authoredScore = authoredReadingScore(lesson.index, localRep);
+    if (authoredScore) {
+      return authoredStandardQuestion(
+        lesson,
+        authoredScore,
+        cyclePick(lesson.positions, localRep),
+        ordinal,
+        localRep,
+        hand,
+        fixedDifficulty,
+        mode,
+        modeDifficulty,
+      );
+    }
     return withPositionProof(chordalStandardQuestion(
       lesson,
       ordinal,
@@ -1397,6 +1547,23 @@ function questionFor(
     : SHORT_MEMORY_PREVIEW_SECONDS;
   const beatsPerBar = cyclePick(lesson.meters, localRep);
 
+  const authoredScore = exerciseMode === 'standard'
+    ? authoredReadingScore(lesson.index, localRep)
+    : null;
+  if (authoredScore) {
+    return authoredStandardQuestion(
+      lesson,
+      authoredScore,
+      positionTemplate,
+      ordinal,
+      localRep,
+      hand,
+      fixedDifficulty,
+      mode,
+      modeDifficulty,
+    );
+  }
+
   // Genuine two-hand grand-staff questions begin with Lesson 4, whose entire
   // purpose is differentiating treble/bass while coordinating both hands.
   // Later standard reps use chordalStandardQuestion above. Scoped to
@@ -1465,6 +1632,9 @@ function questionFor(
       keySignature: lesson.showKeySignature ? position.template.keySignature : 'C',
       timeSignature: `${beatsPerBar}/4`,
       staves: [{ clef, hand, notes: applyRhythm(notes, beatsPerBar, rand, rhythmLevel) }],
+      ...(exerciseMode === 'blind-memory' && contour.length >= 10
+        ? { measuresPerSystem: 2 }
+        : {}),
     },
     expectedSequence: contour.map((degree) => position.sci[degree]),
     tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),

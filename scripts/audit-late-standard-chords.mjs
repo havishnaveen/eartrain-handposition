@@ -20,7 +20,7 @@ try {
   const { makeRandom, toScientific } = await server.ssrLoadModule(
     '/src/curriculum/positions.ts',
   );
-  const { planForQuestion, pitchToMidi } = await server.ssrLoadModule(
+  const { beatsForDuration, planForQuestion, pitchToMidi } = await server.ssrLoadModule(
     '/src/audio/timing.ts',
   );
   const {
@@ -70,9 +70,19 @@ try {
           'Lesson 17 must build from single notes before its final chord.');
       }
       assert.deepEqual(
-        question.cue.staves.flatMap((staff) => staff.notes)
-          .filter((note) => !note.duration.endsWith('r'))
-          .flatMap((note) => note.keys.map(toScientific)),
+        question.cue.staves.flatMap((staff, staffIndex) => {
+          let beat = 0;
+          return staff.notes.flatMap((note) => {
+            const event = note.duration.endsWith('r') ? [] : [{
+              beat,
+              staffIndex,
+              pitches: note.keys.map(toScientific),
+            }];
+            beat += beatsForDuration(note.duration);
+            return event;
+          });
+        }).sort((a, b) => a.beat - b.beat || a.staffIndex - b.staffIndex)
+          .flatMap((event) => event.pitches),
         question.expectedSequence,
         `Lesson ${lesson.index} chord notation must match grading pitches.`,
       );
@@ -84,28 +94,28 @@ try {
         const wanted = note.keys.map(toScientific).map(pitchToMidi);
         assert.ok(wanted.every((midi) => polyphonicTargetsForPlan(plan).includes(midi)));
         const group = groups.find((candidate) =>
-          candidate.slots.length === wanted.length &&
           wanted.every((midi) => candidate.slots.some((slot) => slot.midi === midi))
         );
         assert.ok(group, 'Every chord tone must be scheduled in one polyphonic score group.');
+        const completeGroup = group.slots.map((slot) => slot.midi);
         assert.equal(
-          findCompletePolyphonicGroup(plan, new Set([wanted[0]]), group.beat, new Set()),
+          findCompletePolyphonicGroup(plan, new Set([completeGroup[0]]), group.beat, new Set()),
           null,
           'One chord tone must never satisfy a written chord.',
         );
         assert.equal(
-          findCompletePolyphonicGroup(plan, new Set([wanted[0] - 1]), group.beat, new Set()),
+          findCompletePolyphonicGroup(plan, new Set([completeGroup[0] - 1]), group.beat, new Set()),
           null,
           'An unrelated key must never satisfy a written chord.',
         );
         assert.ok(
-          findCompletePolyphonicGroup(plan, new Set(wanted), group.beat, new Set()),
+          findCompletePolyphonicGroup(plan, new Set(completeGroup), group.beat, new Set()),
           'The complete simultaneous chord must satisfy its written stack.',
         );
         assert.equal(
           findCompletePolyphonicGroup(
             plan,
-            new Set([...wanted, wanted[0] - 1]),
+            new Set([...completeGroup, completeGroup[0] - 1]),
             group.beat,
             new Set(),
           ),

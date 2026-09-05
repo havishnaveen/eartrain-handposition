@@ -148,6 +148,11 @@ export interface SpatialChordSpec {
   rootPitch: string;
   /** Root, third, fifth. Detection is sequential across these three targets. */
   chordPitches: [string, string, string];
+  /** Fully visible, already-known chord heard before the hidden target. */
+  referenceChordName: string;
+  referencePitches: [string, string, string];
+  /** Short physical relationship the learner should listen for. */
+  relationshipHint: string;
   /** Semitone distances above the root, used for spatial-efficiency telemetry. */
   intervals: [number, number];
   /** The anchor is given or replayed in isolation; it is never blind-guessed. */
@@ -201,6 +206,8 @@ export interface AnchorShiftSpec {
 export interface Question {
   /** Unique per instance: `${conceptId}#${ordinal}`. Telemetry keys on this. */
   id: string;
+  /** Stable authored-material id; present on reviewed normal-reading scores. */
+  materialId?: string;
   conceptId: string;
   exerciseMode: ExerciseMode;
   /** Hands used across this lesson, even when one rep displays one staff. */
