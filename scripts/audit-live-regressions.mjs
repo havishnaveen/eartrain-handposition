@@ -20,6 +20,7 @@ try {
     alignPitchSequences,
     gradeSequence,
     gradeSpatialChord,
+    planFor,
   } = await server.ssrLoadModule('/src/audio/timing.ts');
 
   const oneMissAlignment = alignPitchSequences(
@@ -38,6 +39,7 @@ try {
     formatDetectedNoteGroups,
     hasCredibleAcousticAttack,
     polyphonicTargetsForPlan,
+    findCompletePolyphonicGroup,
     updateSpatialChordPresence,
   } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
@@ -45,6 +47,33 @@ try {
   const { credibleRealtimeFallback, spotifyPianoConsensus, withPitchOrderSlotHints } = await server.ssrLoadModule(
     '/src/audio/scoreAnalysis.ts',
   );
+
+  const heldBassPlan = planFor({ timeSignature: '4/4', staves: [
+    { clef: 'treble', hand: 'right', notes: ['e/4', 'f/4', 'g/4', 'a/4'].map((key) => ({ keys: [key], duration: 'q' })) },
+    { clef: 'bass', hand: 'left', notes: [{ keys: ['c/3'], duration: 'w' }] },
+  ] }, ['E4', 'C3', 'F4', 'G4', 'A4'], 75);
+  assert.deepEqual(polyphonicTargetsForPlan(heldBassPlan).sort((a, b) => a - b), [48, 64, 65, 67, 69],
+    'Every melody attack above a held bass needs independent polyphonic analysis.');
+  const openingSlots = new Set(heldBassPlan.expectedNotes.flatMap((slot, index) => slot.beat === 0 ? [index] : []));
+  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65]), 1, openingSlots)?.beat, 1,
+    'A held LH bass must not veto the next correct RH attack.');
+  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65, 66]), 1, openingSlots), null,
+    'An unrelated new tone must still fail the complete-group check.');
+  const phasePlan = planFor({ timeSignature: '4/4', staves: [
+    { clef: 'treble', hand: 'right', notes: ['c/4', 'd/4', 'e/4', 'f/4'].map((key) => ({ keys: [key], duration: 'q' })) },
+  ] }, ['C4', 'D4', 'E4', 'F4'], 75);
+  for (const offset of [-0.5, 0, 0.5]) {
+    const take = [60, 62, 64, 65].map((midi, index) => ({ midi,
+      time: 10 + (index + offset) * phasePlan.secondsPerBeat,
+      clarity: 0.95, strength: 2,
+    }));
+    const result = gradeSequence(['C4', 'D4', 'E4', 'F4'], take,
+      { plan: phasePlan, playStartTime: 10, lessonLevel: 1, totalLessons: 24 });
+    assert.equal(result.scores.pitch, 5);
+    if (offset === 0) assert.equal(result.scores.timing, 5);
+    else assert.ok(result.scores.timing <= 2.5,
+      `Half-beat displacement must score at most 2.5, received ${result.scores.timing}.`);
+  }
 
   assert.equal(hasCredibleAcousticAttack({
     peakRms: 0.00026,

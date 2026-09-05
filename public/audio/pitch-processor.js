@@ -1078,7 +1078,17 @@ class PitchProcessor extends AudioWorkletProcessor {
     for (let i = this.pending.length - 1; i >= 0; i--) {
       const item = this.pending[i];
       const done = force || currentTime >= item.time + PITCH_DELAY_SEC + PITCH_WINDOW_SEC;
-      if (!done && item.estimates.length < PITCH_MAX_ESTIMATES) continue;
+      if (!done && item.estimates.length < PITCH_MAX_ESTIMATES) {
+        // Only Prove It's watched pitch may finish its measurement early.
+        // Both estimators must independently agree; all hammer, speech and
+        // harmonic checks below still apply to this event.
+        if (this.watchedMidi === null || currentTime - item.time < 0.1) continue;
+        const earlyVotes = [pitchHypothesis(item.yinEstimates, 'yin'),
+          pitchHypothesis(item.emergentEstimates, 'emergent')];
+        if (!earlyVotes.every((vote) => vote && vote.frames >= 5 &&
+          vote.consensus >= 0.9 && vote.clarity >= 0.8 &&
+          Math.abs(69 + 12 * Math.log2(vote.frequency / 440) - this.watchedMidi) <= 0.2)) continue;
+      }
 
       this.pending.splice(i, 1);
       const hypotheses = [

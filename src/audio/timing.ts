@@ -1656,7 +1656,7 @@ export function gradeSequence(
         ) {
           const phaseRange = Math.max(
             0.01,
-            0.75 - timingProfile.fullCreditOnsetWindow,
+            0.58 - timingProfile.fullCreditOnsetWindow,
           );
           const phaseExcess = rhythm.meanOnsetErrorBeats - timingProfile.fullCreditOnsetWindow;
           const phaseScore = 5 * Math.pow(

@@ -66,13 +66,20 @@ function run(targetMidi, playedMidi = [], gainsByMidi = {}, options = {}) {
         const age = time - strikeAt;
         const envelope = Math.min(1, age / 0.012) * Math.exp(-age / 1.9) * 0.014;
         for (const midi of playedMidi) {
+          const noteStart = options.starts?.[midi] ?? strikeAt;
+          const noteEnd = options.ends?.[midi] ?? duration;
+          if (time < noteStart || time >= noteEnd) continue;
+          const noteAge = time - noteStart;
+          const noteEnvelope = options.starts
+            ? Math.min(1, noteAge / 0.012) * Math.exp(-noteAge / 1.9) * 0.014
+            : envelope;
           const toneGain = gainsByMidi[midi] ?? 1;
           const fundamental = 440 * 2 ** ((midi - 69) / 12) *
             2 ** ((options.detuneCents ?? 0) / 1200);
           for (let harmonic = 1; harmonic <= 5; harmonic++) {
             const stretched = fundamental * harmonic *
               (1 + (options.stiffness ?? 0.00012) * harmonic * harmonic);
-            sample += envelope * toneGain * (1 / harmonic ** 1.15) *
+            sample += noteEnvelope * toneGain * (1 / harmonic ** 1.15) *
               Math.sin(2 * Math.PI * stretched * time + midi * 0.07);
           }
         }
@@ -83,6 +90,19 @@ function run(targetMidi, playedMidi = [], gainsByMidi = {}, options = {}) {
     processor.process([[frame]]);
   }
   return messages;
+}
+
+const overlapMessages = run([48, 64, 65, 67], [48, 64, 65, 67], {}, {
+  starts: { 48: 0.24, 64: 0.24, 65: 0.6, 67: 0.96 },
+  ends: { 64: 0.59, 65: 0.95 },
+});
+for (const [midi, start] of [[64, 0.24], [65, 0.6], [67, 0.96]]) {
+  const frame = overlapMessages.find((message) => message.type === 'chord-tones' &&
+    message.midi.includes(48) && message.midi.includes(midi));
+  assert.ok(frame, `Held bass must coexist with the independent melody tone ${midi}.`);
+  const arrival = frame.arrivals.find((note) => note.midi === midi);
+  assert.ok(Math.abs(arrival.time - start) < 0.1,
+    'Melody timing must follow its own arrival, not the age of the held bass.');
 }
 
 for (const chord of [[48, 52, 55], [60, 64, 67], [59, 63, 66], [71, 75, 78]]) {

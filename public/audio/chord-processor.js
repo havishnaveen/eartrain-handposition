@@ -44,6 +44,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.stableFrames = new Map();
     this.missingFrames = new Map();
     this.reportedPresent = new Set();
+    this.arrivalTimes = new Map();
     this.calibrationFrames = 0;
     this.listening = false;
     this.port.onmessage = (event) => {
@@ -71,6 +72,7 @@ class ChordProcessor extends AudioWorkletProcessor {
         this.stableFrames.clear();
         this.missingFrames.clear();
         this.reportedPresent.clear();
+        this.arrivalTimes.clear();
         this.calibrationFrames = canReuseBaseline ? 0 : CALIBRATION_FRAMES;
         this.reportEnabled = data.type === 'listen-chord';
         this.listening = true;
@@ -232,6 +234,11 @@ class ChordProcessor extends AudioWorkletProcessor {
       currentlyPresent.size !== this.reportedPresent.size ||
       [...currentlyPresent].some((midi) => !this.reportedPresent.has(midi));
     if (this.reportEnabled && changed) {
+      for (const midi of currentlyPresent) {
+        if (!this.reportedPresent.has(midi)) {
+          this.arrivalTimes.set(midi, currentTime - WINDOW / (2 * sampleRate));
+        }
+      }
       // Send the complete current set on edges only. A held chord therefore
       // produces one arrival, not dozens of fake repeated notes; adding the
       // root later still re-sends the already-held third/fifth in this set.
@@ -239,6 +246,7 @@ class ChordProcessor extends AudioWorkletProcessor {
         type: 'chord-tones',
         midi: [...currentlyPresent],
         expectedMidi: [...this.expectedTargets],
+        arrivals: [...currentlyPresent].map((midi) => ({ midi, time: this.arrivalTimes.get(midi) })),
         time: currentTime,
       });
       this.reportedPresent = currentlyPresent;

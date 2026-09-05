@@ -810,7 +810,7 @@ export function PathwayRouter({
       if (activeProofQuestionIdRef.current === questionId) {
         activeProofQuestionIdRef.current = null;
       }
-    }, 1050);
+    }, 650);
   }, []);
 
   const handleProofListenStart = useCallback(() => {

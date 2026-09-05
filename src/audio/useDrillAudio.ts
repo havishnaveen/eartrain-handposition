@@ -990,7 +990,9 @@ export function polyphonicSlotGroupsForPlan(plan: DrillPlan): PolyphonicSlotGrou
     slotsByBeat.set(beatKey, slots);
   });
   return [...slotsByBeat.entries()]
-    .filter(([, slots]) => slots.length > 1)
+    .filter(([beat, slots]) => slots.length > 1 || plan.expectedNotes.some((note) =>
+      note.beat < beat && note.beat + note.beats > beat,
+    ))
     .map(([beat, slots]) => ({ beat, slots }));
 }
 
@@ -1009,7 +1011,10 @@ export function findCompletePolyphonicGroup(
   return polyphonicSlotGroupsForPlan(plan)
     .filter((candidate) =>
       candidate.slots.every(({ midi }) => heard.has(midi)) &&
-      [...heard].every((midi) => candidate.slots.some((slot) => slot.midi === midi)) &&
+      [...heard].every((midi) => candidate.slots.some((slot) => slot.midi === midi) ||
+        plan.expectedNotes.some((slot, index) => occupied.has(index) &&
+          pitchToMidi(slot.pitch) === midi && slot.beat < candidate.beat &&
+          slot.beat + slot.beats >= candidate.beat)) &&
       candidate.slots.some(({ index }) => !occupied.has(index)) &&
       Math.abs(candidate.beat - onsetBeat) <= 0.75,
     )
@@ -1021,8 +1026,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
-    workletUrl = '/audio/pitch-processor.js?v=physical-event-v19-2026-09-01',
-    chordWorkletUrl = '/audio/chord-processor.js?v=guard-tones-v5-2026-08-26',
+    workletUrl = '/audio/pitch-processor.js?v=proof-consensus-v20-2026-09-05',
+    chordWorkletUrl = '/audio/chord-processor.js?v=overlap-arrivals-v6-2026-09-05',
   } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
@@ -1905,6 +1910,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             : { midi: primaryMidi, slot: null, disambiguated: false };
           midi = contextual.midi;
           const expectedSlot = contextual.slot;
+          if (onsetsRef.current.some((note) => note.detectorLane === 'polyphonic' &&
+            note.midi === midi && Math.abs(note.time - Number(data.time)) <= 0.12)) {
+            return;
+          }
           if (
             plan &&
             expectedSlot !== null &&
@@ -2173,10 +2182,21 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             occupiedExpectedSlotsRef.current,
           );
           if (!group) return;
+          const arrivals = new Map<number, number>(
+            (Array.isArray(data.arrivals) ? data.arrivals : []).flatMap(
+              (arrival: { midi: number; time: number }) =>
+                Number.isFinite(arrival.midi) && Number.isFinite(arrival.time)
+                  ? [[arrival.midi, arrival.time] as [number, number]] : [],
+            ),
+          );
+          // A sustained tone can support another hand's new attack, but it
+          // cannot become a second attack merely because the written beat changed.
+          if (group.slots.some(({ index, midi }) => !occupiedExpectedSlotsRef.current.has(index) &&
+            (!arrivals.has(midi) || baseTime - arrivals.get(midi)! > 0.2))) return;
           let added = false;
-          group.slots.forEach(({ index: expectedSlot, midi }, index) => {
+          group.slots.forEach(({ index: expectedSlot, midi }) => {
             if (occupiedExpectedSlotsRef.current.has(expectedSlot)) return;
-            const time = baseTime + index * 0.001;
+            const time = arrivals.get(midi) ?? baseTime;
             const note: DetectedNote = {
               midi,
               time,

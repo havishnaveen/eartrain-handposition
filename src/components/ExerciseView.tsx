@@ -295,8 +295,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       instruction,
       exerciseMode,
       positionProof,
-      positionProofIndex = 0,
-      positionProofCount = 1,
       blindMemory,
       anchorShift,
       spatialChord,
@@ -492,9 +490,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const proofHand = positionProof.hand;
       const proofNotes = positionProof.proofNotes;
       const proofHandLabel = proofHand === 'right' ? 'RIGHT HAND' : 'LEFT HAND';
-      const proofSequenceLabel = positionProofCount > 1
-        ? `${proofHandLabel} check ${positionProofIndex + 1} of ${positionProofCount}`
-        : `${proofHandLabel} check`;
+      const proofSequenceLabel = proofHandLabel;
       const activeProofIndex = Math.min(proofProgress, proofNotes.length - 1);
       const activeProofNote = proofNotes[activeProofIndex];
       // Only the single note the student needs right now — echoing all three
@@ -553,7 +549,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 <div className="et-proof__eyebrow">
                   {status === 'proof-success'
                     ? `${proofHandLabel} DONE`
-                    : `${proofHandLabel} · CHECK ${positionProofIndex + 1} OF ${positionProofCount} · STEP ${Math.min(proofProgress + 1, proofNotes.length)} OF ${proofNotes.length}`}
+                    : proofHandLabel}
                 </div>
                 <div className="et-proof__headline">
                   {status === 'proof-success'
