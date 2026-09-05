@@ -144,10 +144,19 @@ class ChordProcessor extends AudioWorkletProcessor {
     // fundamental, and that fundamental must not merely be an overtone of a
     // louder key one or more octaves/partials below it.
     let strongestLowerParent = 0;
+    let independentUpperPeak = false;
     for (let divisor = 2; divisor <= 5; divisor++) {
       const parentFrequency = bestFrequency / divisor;
       if (parentFrequency < 27.5) continue;
       strongestLowerParent = Math.max(strongestLowerParent, this._magnitude(parentFrequency));
+      // A played octave reinforces the even partials of the lower key. Require
+      // excess at BOTH peaks above a lower piano string's decaying envelope;
+      // one strong second partial alone is not evidence of a second key.
+      if (divisor === 2) {
+        const parent = this._magnitude(parentFrequency);
+        independentUpperPeak = bestFundamental > parent * 0.7 &&
+          this._magnitude(bestFrequency * 2) > parent * 0.32;
+      }
     }
     const adjacentEnergy = Math.max(
       this._magnitude(bestFrequency * Math.pow(2, -1 / 12)),
@@ -158,6 +167,7 @@ class ChordProcessor extends AudioWorkletProcessor {
       score: bestScore,
       purity: bestFundamental / Math.max(1e-10, bestScore),
       parentRatio: strongestLowerParent / Math.max(1e-10, bestFundamental),
+      independentUpperPeak,
       neighborRatio: bestFundamental / Math.max(1e-10, adjacentEnergy),
     };
   }
@@ -216,7 +226,7 @@ class ChordProcessor extends AudioWorkletProcessor {
         tone.fundamental >= fundamentalThreshold &&
         tone.score >= scoreThreshold &&
         tone.purity >= (expectedTone ? 0.2 : 0.23) &&
-        tone.parentRatio <= 1.05 &&
+        (tone.parentRatio <= 1.05 || (tone.parentRatio <= 2 && tone.independentUpperPeak)) &&
         tone.neighborRatio >= (expectedTone ? 1.06 : 0.72);
       const stable = present ? (this.stableFrames.get(tone.midi) || 0) + 1 : 0;
       this.stableFrames.set(tone.midi, stable);

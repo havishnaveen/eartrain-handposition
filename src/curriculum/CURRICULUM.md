@@ -26,9 +26,13 @@ Difficulty uses a challenge budget, not simultaneous escalation on every axis.
 Lessons 1-5 establish quarter-note pulse; Lessons 6-12 add eighth-note
 subdivision. Lessons 13-18 retain that rhythm vocabulary while movement and
 deep-key placement become the new challenge. Lesson 17 is deliberately a
-one-hand, five-event bridge with one closing chord before Lesson 18 adds the
+five-event LH bridge with a held RH anchor and one closing chord before Lesson 18 adds the
 timed B-to-F-sharp move. From Lesson 19 onward, polyphony and independent chord
 hearing are the new load.
+
+Every lesson from 7 onward includes an authored hands-together reading slot.
+The short memory and position drills remain hand-specific; the normal reading
+slot shows both staves and includes overlapping attacks or held accompaniment.
 
 Hand-shift travel is beat-aligned. Every shift owns one complete, steady 4/4
 rest measure: move on beats 1-2, settle on 3-4, and play on the following

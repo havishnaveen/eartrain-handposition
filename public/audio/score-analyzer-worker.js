@@ -121,6 +121,40 @@ function smoothTrack(values) {
   return result;
 }
 
+// Broad FFT peak bins overlap adjacent notes in a dense two-hand texture.
+// For live polyphonic events only, verify the actual frequency in the PCM,
+// independently of those broad templates and independently of the score.
+function verifyPolyphonicAttack(analysis, midi, time) {
+  const size = 4096;
+  const frequency = midiFrequency(midi);
+  const magnitude = (hz, offset) => {
+    const start = Math.round((time - analysis.captureStartTime + offset) * analysis.sampleRate);
+    if (start < 0 || start + size > analysis.filtered.length) return 0;
+    const omega = 2 * Math.PI * hz / analysis.sampleRate;
+    const coefficient = 2 * Math.cos(omega);
+    let previous = 0;
+    let previousTwo = 0;
+    for (let i = 0; i < size; i++) {
+      const value = analysis.filtered[start + i] * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (size - 1))) +
+        coefficient * previous - previousTwo;
+      previousTwo = previous;
+      previous = value;
+    }
+    return 2 * Math.hypot(previous - previousTwo * Math.cos(omega), previousTwo * Math.sin(omega)) / size;
+  };
+  const post = magnitude(frequency, 0.025);
+  const pre = magnitude(frequency, -size / analysis.sampleRate - 0.025);
+  const neighbor = Math.max(magnitude(frequency * 2 ** (-1 / 12), 0.025),
+    magnitude(frequency * 2 ** (1 / 12), 0.025));
+  let parent = 0;
+  for (let divisor = 2; divisor <= 5; divisor++) {
+    if (frequency / divisor >= 27.5) parent = Math.max(parent, magnitude(frequency / divisor, 0.025));
+  }
+  const upperPeak = post > parent * 0.7 && magnitude(frequency * 2, 0.025) > parent * 0.32;
+  return post > 0.00008 && post > pre * 1.8 && post > neighbor * 1.1 &&
+    (post > parent / 1.05 || upperPeak);
+}
+
 function buildAnalysis(samples, sampleRate, captureStartTime, midiValues) {
   const filtered = highpass(samples, sampleRate);
   const frameCount = Math.max(0, Math.floor((filtered.length - FFT_SIZE) / HOP) + 1);
@@ -878,6 +912,7 @@ function analyzeTake(payload) {
       const timingErrorBeats = Math.abs(Number(note.time) - expectedTime) / secondsPerBeat;
       let evidence = null;
       const centerFrame = nearestFrame(analysis.frameTimes, Number(note.time));
+      const resolvedPolyphonic = polyphonicLive && verifyPolyphonicAttack(analysis, midi, Number(note.time));
       const searchRadius = Math.max(2, Math.round(0.1 * sampleRate / HOP));
       for (
         let candidateFrame = Math.max(12, centerFrame - searchRadius);
@@ -892,7 +927,7 @@ function analyzeTake(payload) {
           NaN,
           secondsPerBeat,
         );
-        if (!nearby?.physicalAttack) continue;
+        if (!nearby || (!nearby.physicalAttack && !(resolvedPolyphonic && nearby.rearticulated && nearby.rmsSnr >= 1.3))) continue;
         if (!evidence || nearby.evidence > evidence.evidence) evidence = nearby;
       }
       /* Live metadata is not ground truth. It can guide this narrow PCM
@@ -902,12 +937,12 @@ function analyzeTake(payload) {
       if (
         !evidence ||
         evidence.speechLike ||
-        evidence.octaveConflict ||
-        evidence.harmonicParentConflict ||
+        (!resolvedPolyphonic && evidence.octaveConflict) ||
+        (!resolvedPolyphonic && evidence.harmonicParentConflict) ||
         evidence.evidence < (contextualLive ? 0.4 : 0.31) ||
         evidence.snr < (contextualLive ? 1.32 : 1.18) ||
-        evidence.contrast < (contextualLive ? 0.92 : 0.95) ||
-        evidence.persistentFrames < (contextualLive ? 7 : 6)
+        (!resolvedPolyphonic && evidence.contrast < (contextualLive ? 0.92 : 0.95)) ||
+        (!resolvedPolyphonic && evidence.persistentFrames < (contextualLive ? 7 : 6))
       ) continue;
       const quality =
         evidence.evidence * 0.32 +

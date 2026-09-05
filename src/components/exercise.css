@@ -85,7 +85,7 @@
 
 .et-shell--pathway {
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
+  grid-template-columns: 312px minmax(0, 1fr);
   align-items: stretch;
   transition: grid-template-columns 0.22s ease;
 }
@@ -137,7 +137,7 @@
 }
 
 .et-shell--pathway:not(.et-shell--sidebar-collapsed) .et-sidebar-toggle {
-  left: 234px;
+  left: 274px;
 }
 
 .et-sidebar-toggle__icon {
@@ -173,6 +173,10 @@
   scrollbar-color: var(--et-line-strong) transparent;
 }
 
+.et-sidebar__inner > * {
+  flex-shrink: 0;
+}
+
 .et-sidebar__brand {
   display: flex;
   align-items: center;
@@ -202,14 +206,14 @@
 }
 
 .et-sidebar__brand strong {
-  font-size: 17px;
+  font-size: 22px;
   line-height: 1.15;
   letter-spacing: -0.025em;
 }
 
 .et-sidebar__brand small {
-  color: var(--et-ink-faint);
-  font-size: 10px;
+  color: var(--et-ink-soft);
+  font-size: 14px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -245,7 +249,7 @@
   gap: 8px;
   margin: 0 0 9px;
   color: var(--et-orange-ink);
-  font-size: 9.5px;
+  font-size: 14px;
   font-weight: 750;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -261,7 +265,7 @@
   z-index: 1;
   margin: 0;
   color: var(--et-ink-strong);
-  font-size: 22px;
+  font-size: 27px;
   font-weight: 740;
   line-height: 1.16;
   letter-spacing: -0.035em;
@@ -272,7 +276,7 @@
   z-index: 1;
   margin: 8px 0 0;
   color: var(--et-ink-soft);
-  font-size: 12.5px;
+  font-size: 17px;
   line-height: 1.45;
 }
 
@@ -286,8 +290,8 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
-  color: var(--et-ink-faint);
-  font-size: 9.5px;
+  color: var(--et-ink-soft);
+  font-size: 14px;
   font-weight: 750;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -306,9 +310,9 @@
   display: grid;
   grid-template-columns: 18px 23px minmax(0, 1fr);
   align-items: center;
-  min-height: 18px;
-  color: var(--et-ink-faint);
-  font-size: 9px;
+  min-height: 26px;
+  color: var(--et-ink-soft);
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -358,7 +362,7 @@
 
 .et-lesson-progress__tick em {
   color: var(--et-orange-ink);
-  font-size: 8.5px;
+  font-size: 13px;
   font-style: normal;
   font-weight: 750;
   letter-spacing: 0.04em;
@@ -382,7 +386,7 @@
 
 .et-sidebar__set-copy > span {
   color: var(--et-ink-soft);
-  font-size: 10px;
+  font-size: 15px;
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -398,7 +402,7 @@
 
 .et-sidebar__set-copy small {
   color: var(--et-ink-faint);
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 650;
 }
 
@@ -1068,7 +1072,7 @@
     padding: 14px 15px;
   }
 
-  .et-sidebar__lesson h1 { font-size: 19px; }
+  .et-sidebar__lesson h1 { font-size: 25px; }
   .et-sidebar__focus { margin-top: 5px; }
 
   .et-sidebar__set {
@@ -1136,7 +1140,7 @@
   }
 
   .et-stage { padding: 26px 20px 44px; }
-  .et-instruction { font-size: 23px; }
+  .et-instruction { font-size: 25px; }
   .et-piece-progress { margin-top: -5px; }
   .et-cue { padding: 22px 20px 20px; }
   .et-verdict { padding: 16px 20px; }
@@ -1834,6 +1838,32 @@
   place-items: center;
 }
 
+.et-spatial__comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  width: min(100%, 900px);
+}
+.et-spatial__direction { font-size: 36px; color: var(--et-orange-deep); }
+.et-spatial__reference-card > strong { text-align: center; font-size: 24px; }
+.et-spatial__target-card {
+  min-width: 0;
+  padding: 24px;
+  border: 2px dashed var(--et-orange-edge);
+  border-radius: 24px;
+  text-align: center;
+  background: var(--et-peach, #fff4ee);
+}
+.et-spatial__target-card small { font-size: 18px; font-weight: 750; }
+.et-spatial__target-card strong { display: block; font-size: 38px; margin: 12px 0; }
+.et-spatial__target-card p { font-size: 18px; line-height: 1.5; margin: 0; }
+@media (max-width: 600px) {
+  .et-spatial__comparison { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .et-spatial__direction { text-align: center; transform: rotate(90deg); }
+  .et-spatial__target-card { padding: 16px; }
+}
+
 .et-spatial__intro {
   display: grid;
   place-items: center;
@@ -1943,7 +1973,7 @@
 
 .et-spatial__reference-label {
   color: var(--et-orange-deep);
-  font-size: 10px;
+  font-size: 15px;
   font-weight: 900;
   letter-spacing: .1em;
   text-align: center;

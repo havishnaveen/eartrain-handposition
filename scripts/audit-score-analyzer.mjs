@@ -263,6 +263,21 @@ const partialChordResult = runWorker({
     scoreContextAccepted: true,
   })),
 });
+for (const played of [[48], [48, 60], [48, 60, 64, 67]]) {
+  const targets = [48, 60, 64, 67];
+  const result = runWorker({
+    samples: synthesize({ seconds: 2.8, strikes: played.map((midi) => ({
+      midi, time: 1, duration: 1, amplitude: midi === 48 ? 0.012 : 0.006,
+    })), seed: 137 }),
+    expected: targets.map((midi) => ({ midi, beat: 0, beats: 2 })),
+    realtime: targets.map((midi, expectedSlot) => ({
+      midi, time: 1, clarity: 0.82, strength: 2, expectedSlot,
+      detectorLane: 'polyphonic', scoreContextAccepted: true,
+    })),
+  });
+  assert.deepEqual(Array.from(result.notes, (note) => note.midi).sort((a, b) => a - b), played,
+    'Two-hand PCM must preserve played octaves without inventing bass harmonics.');
+}
 assert.deepEqual(
   Array.from(partialChordResult.notes, (note) => note.midi),
   [60],

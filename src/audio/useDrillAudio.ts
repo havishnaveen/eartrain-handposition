@@ -24,6 +24,7 @@ import {
   loadSample as loadPianoSample,
   scheduleNote as schedulePianoSample,
   stopActiveSourcesOnly as stopPianoSamples,
+  OUTPUT_GAIN_MULTIPLIER,
 } from '../lib/audio';
 
 export type MicStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'unsupported' | 'error';
@@ -103,7 +104,6 @@ const EMPTY_DIAGNOSTICS: RecognitionDiagnostics = {
 
 /** Prove It must not reset from a weak, ambiguous decay estimate. */
 const PROOF_RELEASE_MIN_CONFIDENCE = 0.66;
-const OUTPUT_GAIN_MULTIPLIER = 2.025;
 
 interface PianoAnalysisProfile {
   presenceHz: number;
@@ -938,9 +938,9 @@ function playProofSuccessChime(): void {
       await pianoContext.resume().catch(() => undefined);
     }
     const start = pianoContext.currentTime + 0.02;
-    void schedulePianoSample('E', 5, 0.48, 0.42, start);
-    void schedulePianoSample('G#', 5, 0.48, 0.38, start + 0.075);
-    void schedulePianoSample('B', 5, 0.55, 0.36, start + 0.15);
+    void schedulePianoSample('E', 5, 0.36, 0.8, start);
+    void schedulePianoSample('G#', 5, 0.36, 0.75, start + 0.085);
+    void schedulePianoSample('B', 5, 0.4, 0.7, start + 0.17);
   })();
 }
 
@@ -2333,7 +2333,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       // Metronome output bus.
       const clickGain = ctx.createGain();
       clickGain.gain.value = 0.65 * OUTPUT_GAIN_MULTIPLIER;
-      clickGain.connect(ctx.destination);
+      const clickLimiter = ctx.createDynamicsCompressor();
+      clickLimiter.threshold.value = -3;
+      clickLimiter.knee.value = 0;
+      clickLimiter.ratio.value = 20;
+      clickLimiter.attack.value = 0.003;
+      clickLimiter.release.value = 0.08;
+      clickGain.connect(clickLimiter);
+      clickLimiter.connect(ctx.destination);
       clickGainRef.current = clickGain;
 
       safeSet(setMicStatus, 'ready' as MicStatus);

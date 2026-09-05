@@ -96,6 +96,17 @@ const overlapMessages = run([48, 64, 65, 67], [48, 64, 65, 67], {}, {
   starts: { 48: 0.24, 64: 0.24, 65: 0.6, 67: 0.96 },
   ends: { 64: 0.59, 65: 0.95 },
 });
+for (const chord of [[48, 60], [48, 60, 64, 67], [48, 55, 64]]) {
+  const heard = run(chord, chord, { 60: 0.5, 64: 0.5, 67: 0.5 }).filter((message) => message.type === 'chord-tones');
+  assert.ok(heard.some((message) => chord.every((midi) => message.midi.includes(midi))),
+    `Both-hand voicing ${chord} must retain independently played upper tones.`);
+}
+for (const bass of [36, 48, 55]) {
+  const heard = run([bass, bass + 12], [bass])
+    .filter((message) => message.type === 'chord-tones').flatMap((message) => message.midi);
+  assert.ok(heard.includes(bass));
+  assert.ok(!heard.includes(bass + 12), 'A bass harmonic is not a played upper octave.');
+}
 for (const [midi, start] of [[64, 0.24], [65, 0.6], [67, 0.96]]) {
   const frame = overlapMessages.find((message) => message.type === 'chord-tones' &&
     message.midi.includes(48) && message.midi.includes(midi));

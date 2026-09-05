@@ -118,7 +118,8 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
   },
   '17-3': {
     id: 'f-sharp-chord-cadence', title: 'F-sharp chord cadence', meter: 4,
-    solo: '0q 1q 2q 3q | 024w', soloHand: 'left',
+    right: '0w | 0w',
+    left: '0q 1q 2q 3q | 024w',
   },
   '18-1': {
     id: 'b-fsharp-held-harmony', title: 'Tune over held harmony', meter: 4,

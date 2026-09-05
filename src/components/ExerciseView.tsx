@@ -6,7 +6,6 @@ import {
   useState,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { midiToName, pitchToMidi } from '../audio/timing';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
 import type {
   AnchorShiftSpec,
@@ -380,12 +379,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const isCue = status === 'chord-cue';
       const isListening = status === 'chord-root' || status === 'chord-build';
       const isComplete = status === 'chord-complete';
-      const referencePitches = spatialChord.chordPitches.map((pitch) => {
-        const midi = pitchToMidi(pitch);
-        return midi === null ? pitch : midiToName(midi - 2);
-      });
+      const referencePitches = spatialChord.referencePitches;
       const referenceCue: CueSpec = {
-        keySignature: 'C',
+        keySignature: spatialChord.referenceChordName.split(' ')[0],
         showTimeSignature: false,
         staves: [{
           clef: spatialChord.hand === 'right' ? 'treble' : 'bass',
@@ -420,8 +416,10 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           </header>
 
           <div className="et-spatial__single-stage">
+            <div className="et-spatial__comparison">
             <div className="et-spatial__cue-card et-spatial__reference-card">
               <small className="et-spatial__reference-label">Visible reference chord</small>
+              <strong>{spatialChord.referenceChordName}</strong>
               <StaffCue cue={referenceCue} notationScale={2} accentColor="#ef6a47" inkColor="#242237" />
               {isCue ? (
                 <div className="et-spatial__listening" role="status">
@@ -429,6 +427,13 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   <span><strong>Listen…</strong><small>Visible reference → hidden target</small></span>
                 </div>
               ) : null}
+            </div>
+            <span className="et-spatial__direction" aria-hidden="true">→</span>
+            <div className="et-spatial__target-card">
+              <small>Find this chord</small>
+              <strong>{isComplete ? spatialChord.chordName : '?'}</strong>
+              <p>{isComplete ? 'Matched on your piano.' : 'Listen to the second chord, then play it on your piano.'}</p>
+            </div>
             </div>
 
             {isListening ? (

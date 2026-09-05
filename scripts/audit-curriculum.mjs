@@ -264,6 +264,12 @@ try {
     ));
 
   const openingQuestions = baseQuestionsFor(1);
+  for (let lessonIndex = 7; lessonIndex <= 24; lessonIndex++) {
+    assert.ok(baseQuestionsFor(lessonIndex).some((question) =>
+      question.exerciseMode === 'standard' && question.handScope === 'both' &&
+      question.cue.staves.length === 2),
+    `Lesson ${lessonIndex} must retain a hands-together grand-staff exercise.`);
+  }
   assert.deepEqual(
     openingQuestions[0].expectedSequence,
     ['C4', 'D4', 'E4', 'F4', 'G4'],
@@ -902,7 +908,7 @@ try {
     );
     assert.deepEqual(
       lesson17.map((question) => question.handScope),
-      ['right', 'left', 'right', 'left'],
+      ['right', 'left', 'right', 'both'],
     );
   }
 

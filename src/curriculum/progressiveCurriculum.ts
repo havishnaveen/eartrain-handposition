@@ -536,7 +536,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place both hands in B and F-sharp positions before any jump between them is required.',
     coreProblems: ['b-major-position', 'f-sharp-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'register-placement', 'chord-reading', 'chord-simultaneity'],
-    drillPurposes: ['Build the right-hand B frame', 'Build the left-hand B frame', 'Build the right-hand F-sharp frame', 'Read a short left-hand F-sharp chord phrase'],
+    drillPurposes: ['Build the right-hand B frame', 'Build the left-hand B frame', 'Build the right-hand F-sharp frame', 'Read a left-hand F-sharp phrase beneath a held right-hand anchor'],
   },
   'c18-shift-b-to-fsharp': {
     learningOutcome: 'Move either hand from B to F-sharp after a two-second destination preview.',

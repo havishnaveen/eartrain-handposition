@@ -62,7 +62,7 @@ try {
         .filter((note) => !note.duration.endsWith('r') && note.keys.length >= 2);
       assert.ok(chordNotes.length >= 1, `Lesson ${lesson.index} normal exercise needs chords.`);
       if (lesson.index === 17) {
-        const sounded = question.cue.staves.flatMap((staff) => staff.notes)
+        const sounded = question.cue.staves.filter((staff) => staff.hand === 'left').flatMap((staff) => staff.notes)
           .filter((note) => !note.duration.endsWith('r'));
         assert.equal(sounded.length, 5, 'Lesson 17 must stay at a short late-Level-5 phrase length.');
         assert.equal(sounded.at(-1).keys.length, 3, 'Lesson 17 introduces its only chord at the end.');
