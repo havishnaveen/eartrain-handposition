@@ -83,7 +83,7 @@ if (!exerciseView.includes('Shift on 1–2, set the hand on 3–4')) {
   throw new Error('The hand-shift cue lost its four-beat musical instruction.');
 }
 if (!exerciseView.includes('Visible reference chord') ||
-    !exerciseView.includes('Play the target on your piano') ||
+    !exerciseView.includes('Use the reference shape and the distance you heard') ||
     exerciseView.includes('SpatialKeyboardChallenge')) {
   throw new Error('Chord by Ear must show its reference and accept the target on a physical piano.');
 }

@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { midiToName, pitchToMidi } from '../audio/timing';
 import type { DetectedNote, DrillPlan, GradeResult } from '../audio/timing';
 import type {
   AnchorShiftSpec,
@@ -381,33 +382,37 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const isCue = status === 'chord-cue';
       const isListening = status === 'chord-root' || status === 'chord-build';
       const isComplete = status === 'chord-complete';
+      const referencePitches = spatialChord.chordPitches.map((pitch) => {
+        const midi = pitchToMidi(pitch);
+        return midi === null ? pitch : midiToName(midi - 2);
+      });
       const referenceCue: CueSpec = {
-        keySignature: spatialChord.referenceChordName.split(' ')[0],
+        keySignature: 'C',
         showTimeSignature: false,
         staves: [{
           clef: spatialChord.hand === 'right' ? 'treble' : 'bass',
           hand: spatialChord.hand,
           notes: [{
-            keys: spatialChord.referencePitches.map(proofPitchToStaffKey),
+            keys: referencePitches.map(proofPitchToStaffKey),
             duration: 'w',
           }],
         }],
       };
+
+      const spatialHeaderText = status === 'prompt'
+        ? 'Study the reference chord, then find the nearby hidden one by feel.'
+        : isComplete
+          ? `${spatialChord.chordName} matched.`
+          : isListening
+            ? 'Use the reference shape and the distance you heard.'
+            : null;
 
       return (
         <section className={`et-spatial et-spatial--${status}`} aria-live="polite">
           <header className="et-spatial__header">
             <span className="et-mode-chip">Chord by ear</span>
             <h2>{isComplete ? 'Chord found' : isListening ? 'Play the hidden chord' : 'Hear the nearby chord'}</h2>
-            <p>
-              {status === 'prompt'
-                ? 'Study and play the visible chord. Then listen for one nearby hidden chord.'
-                : isCue
-                  ? 'Reference first, then the hidden target.'
-                  : isComplete
-                    ? `${spatialChord.chordName} matched.`
-                    : 'Use the reference shape and the distance you heard. Play the target on your piano.'}
-            </p>
+            {spatialHeaderText ? <p>{spatialHeaderText}</p> : null}
             {orientationNotice ? (
               <OrientationCallout
                 notice={orientationNotice}
@@ -417,16 +422,16 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           </header>
 
           <div className="et-spatial__single-stage">
-            {!isComplete ? <div className="et-spatial__cue-card et-spatial__reference-card">
-              <small className="et-spatial__reference-label">Start here · visible {spatialChord.referenceChordName}</small>
-              <StaffCue cue={referenceCue} notationScale={2.55} accentColor="#ef6a47" inkColor="#242237" />
+            <div className="et-spatial__cue-card et-spatial__reference-card">
+              <small className="et-spatial__reference-label">Visible reference chord</small>
+              <StaffCue cue={referenceCue} notationScale={2} accentColor="#ef6a47" inkColor="#242237" />
               {isCue ? (
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
                   <span><strong>Listen…</strong><small>Visible reference → hidden target</small></span>
                 </div>
               ) : null}
-            </div> : null}
+            </div>
 
             {isListening ? (
               <div className="et-spatial__piano-response" role="status">
@@ -435,8 +440,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                     <i key={index} className={index < spatialProgress ? 'is-heard' : ''} />
                   ))}
                 </div>
-                <strong>{spatialProgress === 0 ? 'Play the nearby chord together' : `${spatialProgress} of 3 tones heard`}</strong>
-                <p className="et-spatial__relationship-hint">{spatialChord.relationshipHint}</p>
+                <strong>{spatialProgress === 0 ? 'Listening…' : `${spatialProgress} of 3 tones heard`}</strong>
                 <span className="et-spatial__mic-level" aria-hidden="true"><i style={{ transform: `scaleX(${level})` }} /></span>
                 {spatialFoundMidi.length > 0 ? <small>Keep the correct tones held and adjust the shape.</small> : null}
                 <button type="button" className="et-spatial__replay" onClick={onReplayChord ?? NOOP}>↻ Hear both chords again</button>
@@ -523,7 +527,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                 hands={[proofHand]}
                 subtitle={status === 'position-prompt'
                   ? `${proofSequenceLabel}. Set the hand shape, then start.`
-                  : `${proofSequenceLabel}. Play each highlighted note once.`}
+                  : 'Play each highlighted note once.'}
                 onStart={status === 'position-prompt' ? onStart : undefined}
                 disabled={startBlocked}
                 activeFinger={status === 'position-prompt' ? undefined : activeProofNote.finger}
@@ -590,22 +594,16 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       isBlindMemory &&
       (status === 'prompt' || status === 'leadin' || status === 'listening');
     const memoryWaiting = isBlindMemory && status === 'prompt';
-    // Move Your Hand must show both positions before Start. Blind Memory has
-    // its own intentional cover; no generic nonstandard-mode hiding belongs
-    // here.
-    const hideUntilStart = false;
+    const hideUntilStart = status === 'prompt' && exerciseMode !== 'standard';
     const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
     const shiftWaitBeats = anchorShift?.timedShift?.waitBeats ?? 0;
     const isChordReading = exerciseMode === 'standard' && /stacked chord/i.test(instruction);
     const memoryDigit = Math.max(0, Math.ceil(memorySecondsRemaining));
     const showPieceProgress = status === 'listening';
-    const memoryHandLabel = instruction.startsWith('Left hand') ? 'Left hand' : 'Right hand';
     const visibleInstruction = isBlindMemory
       ? status === 'memory-preview'
-        ? `${memoryHandLabel}: find the short pattern and remember it.`
-        : status === 'leadin' || status === 'listening'
-          ? `${memoryHandLabel}: now play from memory.`
-          : ''
+        ? 'Find the pattern and remember it.'
+        : ''
       : exerciseMode === 'anchor-shift'
         ? status === 'prompt' ? '' : 'Play, move, continue.'
         : instruction;
@@ -687,14 +685,12 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <span className="et-start__dot"><RecordDot /></span>
               {startLabel}
             </button>
-            {micMessage || exerciseMode === 'blind-memory' || exerciseMode === 'anchor-shift' ? (
+            {micMessage || exerciseMode === 'anchor-shift' ? (
               <p className={`et-panel__sub${micBlocked ? ' et-panel__sub--alert' : ''}`}>
                 {micMessage ?? (
-                  exerciseMode === 'blind-memory'
-                    ? `You will have ${memoryPreviewSeconds} seconds to look.`
-                    : shiftWaitBeats > 0
-                      ? 'Shift on 1–2, set the hand on 3–4, then play.'
-                      : 'Move when the arrow lights up.'
+                  shiftWaitBeats > 0
+                    ? 'Shift on 1–2, set the hand on 3–4, then play.'
+                    : 'Move when the arrow lights up.'
                 )}
               </p>
             ) : null}
