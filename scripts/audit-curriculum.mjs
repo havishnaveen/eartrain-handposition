@@ -317,11 +317,21 @@ try {
     assert.equal(questions.filter(({ exerciseMode }) => exerciseMode === 'spatial-chord').length, 2,
       `Lesson ${lessonIndex} needs exactly two ear-chord applications.`);
   }
-  for (const lessonIndex of [21, 22, 23, 24]) {
-    const qualities = baseQuestionsFor(lessonIndex)
-      .flatMap(({ spatialChord }) => spatialChord ? [spatialChord.quality] : []);
-    assert.deepEqual(qualities, ['major', 'minor'],
-      `Lesson ${lessonIndex} must contrast major and minor in its two ear drills.`);
+  const expectedSpatialPairs = {
+    19: [['C Major', 'G Major'], ['C Major', 'F Major']],
+    20: [['C Major', 'E Major'], ['C Major', 'A Major']],
+    21: [['C Major', 'A Minor'], ['C Major', 'C Minor']],
+    22: [['G Major', 'D Major'], ['F Major', 'C Major']],
+    23: [['D Major', 'A Major'], ['Bb Major', 'F Major']],
+    24: [['E Major', 'B Major'], ['B Major', 'F# Major']],
+  };
+  for (let lessonIndex = 19; lessonIndex <= 24; lessonIndex += 1) {
+    const pairs = baseQuestionsFor(lessonIndex)
+      .flatMap(({ spatialChord }) => spatialChord
+        ? [[spatialChord.referenceChordName, spatialChord.chordName]]
+        : []);
+    assert.deepEqual(pairs, expectedSpatialPairs[lessonIndex],
+      `Lesson ${lessonIndex} left the authored Chord by Ear progression.`);
   }
 
   const lessonOne = baseQuestionsFor(1);
@@ -494,12 +504,14 @@ try {
             }
             if (question.exerciseMode === 'blind-memory') {
               const noteCount = question.expectedSequence.length;
-              assert.ok(noteCount >= 8 && noteCount <= 15,
+              assert.ok(noteCount >= 5 && noteCount <= 8,
                 `Memory drill length ${noteCount} is outside the chunking range.`);
-              const expectedPreview = noteCount >= 10 ? 15 : 10;
+              const expectedPreview = noteCount >= 7 ? 9 : 7;
               assert.equal(question.blindMemory?.previewSeconds, expectedPreview);
               assert.match(question.instruction, new RegExp(`${expectedPreview} seconds`));
               assert.match(question.instruction, /pattern/i);
+              assert.equal(question.cue.measuresPerSystem, undefined,
+                'A memory motif must remain on one readable system.');
             }
             if (question.exerciseMode === 'anchor-shift') {
               assert.ok(question.anchorShift);
@@ -1087,7 +1099,7 @@ try {
   const memoryQuestion = generateFor(5, 3, 12, 0.25, route.signal, 20260802);
   const laterMemoryQuestion = generateFor(12, 2, 44, 0.5, route.signal, 20260812);
   assert.equal(laterMemoryQuestion.exerciseMode, 'blind-memory');
-  assert.equal(laterMemoryQuestion.blindMemory?.previewSeconds, 15);
+  assert.equal(laterMemoryQuestion.blindMemory?.previewSeconds, 9);
   const laterMemoryPlan = planForQuestion(laterMemoryQuestion, 75);
   const memoryTimingTake = laterMemoryPlan.expectedNotes.map((slot, index) => ({
     midi: pitchToMidi(slot.pitch),

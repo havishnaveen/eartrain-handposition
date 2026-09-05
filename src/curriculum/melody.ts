@@ -78,27 +78,22 @@ export const MUSICAL_LATE: readonly Contour[] = [
 
 /** Short, visibly chunkable figures for the first memory lessons. */
 export const MEMORY_SHORT_PATTERNS: readonly Contour[] = [
-  // Five-finger scale arch.
-  [0, 1, 2, 3, 4, 3, 2, 1, 0],
-  [4, 3, 2, 1, 0, 1, 2, 3, 4],
-  // Alberti-style low-high-middle-high cells.
-  [0, 4, 2, 4, 0, 4, 2, 4],
-  [4, 0, 2, 0, 4, 0, 2, 0],
-  // Short sequential cells that move through the hand.
-  [0, 1, 2, 1, 1, 2, 3, 2],
-  [4, 3, 2, 3, 3, 2, 1, 2],
+  [0, 1, 2, 1, 0],
+  [4, 3, 2, 3, 4],
+  [0, 2, 1, 2, 0],
+  [4, 2, 3, 2, 4],
+  [0, 1, 0, 2, 1, 0],
+  [4, 3, 4, 2, 3, 4],
 ];
 
-/** Ten-to-fifteen-note chunks used once the shorter patterns are familiar. */
+/** One-line, two-cell motifs used once five-note recall is familiar. */
 export const MEMORY_LONG_PATTERNS: readonly Contour[] = [
-  [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 0],
-  [4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 4],
-  [0, 4, 2, 4, 0, 4, 2, 4, 0, 4, 2, 4],
-  [4, 0, 2, 0, 4, 0, 2, 0, 4, 0, 2, 0],
-  [0, 1, 2, 1, 1, 2, 3, 2, 2, 3, 4, 3],
-  [4, 3, 2, 3, 3, 2, 1, 2, 2, 1, 0, 1],
-  [0, 2, 1, 3, 2, 4, 3, 1, 2, 0],
-  [4, 2, 3, 1, 2, 0, 1, 3, 2, 4],
+  [0, 1, 2, 1, 0, 2, 1, 0],
+  [4, 3, 2, 3, 4, 2, 3, 4],
+  [0, 2, 4, 2, 0, 1, 2, 0],
+  [4, 2, 0, 2, 4, 3, 2, 4],
+  [0, 1, 0, 2, 1, 3, 2, 0],
+  [4, 3, 4, 2, 3, 1, 2, 4],
 ];
 
 /* --- Three-note figures, grouped by how far they reach --------------------

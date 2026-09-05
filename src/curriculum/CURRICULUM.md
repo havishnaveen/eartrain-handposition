@@ -82,7 +82,15 @@ the other before the shift begins.
 4. The four `drillPurposes` must describe the displayed slots in exact order.
 5. Curriculum audits must fail if any of these contracts drift.
 
+Remember It uses one short, single-system motif at a time: five or six notes in
+the early lessons and no more than eight notes later. The prompt names the
+intended hand; paired lessons deliberately alternate right- and left-hand
+recall instead of turning one memory drill into an unreadable two-hand piece.
+
 Chord by Ear is physical-piano work. Each ear drill declares an authored,
 visible `referencePitches` chord and an intentionally related hidden target.
-The reference stays visible while the learner searches; there is no on-screen
-keyboard and no Prove-It or numeric report.
+Lessons 19-20 always begin from visible C major and move to familiar major
+chords (G, F, E, then A). Only after those shapes are secure does the sequence
+add major/minor contrast, fifth transfers, B-flat, and the deeper B/F-sharp
+positions. The reference stays visible while the learner searches; there is
+no on-screen keyboard and no Prove-It or numeric report.

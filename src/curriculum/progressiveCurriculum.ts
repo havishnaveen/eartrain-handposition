@@ -54,8 +54,8 @@ import type { AuthoredReadingScore } from './authoredReading';
 
 const BASE_QUESTIONS = 4;
 const MAX_QUESTIONS = 10;
-const SHORT_MEMORY_PREVIEW_SECONDS = 10;
-const LONG_MEMORY_PREVIEW_SECONDS = 15;
+const SHORT_MEMORY_PREVIEW_SECONDS = 7;
+const LONG_MEMORY_PREVIEW_SECONDS = 9;
 
 const C = positionById('C');
 const G = positionById('G');
@@ -815,31 +815,44 @@ function chordPitches(rootPitch: string, quality: ChordQuality): [string, string
   ];
 }
 
-function authoredSpatialReference(
-  lessonIndex: number,
-  target: [string, string, string],
-  targetQuality: ChordQuality,
-): Pick<SpatialChordSpec, 'referenceChordName' | 'referencePitches' | 'relationshipHint'> {
-  const root = target[0];
-  if (lessonIndex === 21 || lessonIndex === 24) {
-    const quality: ChordQuality = targetQuality === 'major' ? 'minor' : 'major';
-    const pitches = chordPitches(root, quality);
-    return {
-      referenceChordName: `${root.replace(/-?\d+$/, '')} ${quality === 'major' ? 'Major' : 'Minor'}`,
-      referencePitches: pitches,
-      relationshipHint: 'Keep the outside notes. Listen for the middle note to move.',
-    };
-  }
-  const semitones = lessonIndex <= 20 ? -2 : lessonIndex === 22 ? -7 : 2;
-  const referenceRoot = transposePitch(root, semitones);
-  const pitches = chordPitches(referenceRoot, targetQuality);
-  return {
-    referenceChordName: `${referenceRoot.replace(/-?\d+$/, '')} ${targetQuality === 'major' ? 'Major' : 'Minor'}`,
-    referencePitches: pitches,
-    relationshipHint: Math.abs(semitones) === 2
-      ? `Move the whole hand one nearby step ${semitones < 0 ? 'up' : 'down'}.`
-      : 'Move the same chord shape by a fifth.',
-  };
+interface AuthoredSpatialPair {
+  referenceRoot: string;
+  referenceQuality: ChordQuality;
+  targetRoot: string;
+  targetQuality: ChordQuality;
+  relationshipHint: string;
+}
+
+/** Reviewed easy-to-hard pairs; Chord by Ear must never invent a target. */
+const SPATIAL_CHORD_PAIRS: Readonly<Record<number, readonly [AuthoredSpatialPair, AuthoredSpatialPair]>> = {
+  19: [
+    { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'G', targetQuality: 'major', relationshipHint: 'Keep the familiar major shape and move to the nearby chord you heard.' },
+    { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'F', targetQuality: 'major', relationshipHint: 'Use the same white-key major shape on the other side of C.' },
+  ],
+  20: [
+    { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'E', targetQuality: 'major', relationshipHint: 'Listen for the new bottom note, then rebuild the same 1–3–5 spacing.' },
+    { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'A', targetQuality: 'major', relationshipHint: 'Find the new anchor first, then copy the major-chord shape.' },
+  ],
+  21: [
+    { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'A', targetQuality: 'minor', relationshipHint: 'The hidden chord is still a simple 1–3–5 shape; listen closely to its middle tone.' },
+    { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'C', targetQuality: 'minor', relationshipHint: 'Keep the outside C and G. Only the middle tone changes.' },
+  ],
+  22: [
+    { referenceRoot: 'G', referenceQuality: 'major', targetRoot: 'D', targetQuality: 'major', relationshipHint: 'Move the same major shape by a fifth and keep all three tones together.' },
+    { referenceRoot: 'F', referenceQuality: 'major', targetRoot: 'C', targetQuality: 'major', relationshipHint: 'Move the same major shape by a fifth toward the center of the keyboard.' },
+  ],
+  23: [
+    { referenceRoot: 'D', referenceQuality: 'major', targetRoot: 'A', targetQuality: 'major', relationshipHint: 'Transfer the same major shape by a fifth.' },
+    { referenceRoot: 'Bb', referenceQuality: 'major', targetRoot: 'F', targetQuality: 'major', relationshipHint: 'Hold onto the flat-key shape and move it by a fifth.' },
+  ],
+  24: [
+    { referenceRoot: 'E', referenceQuality: 'major', targetRoot: 'B', targetQuality: 'major', relationshipHint: 'Keep the black-key pattern and move the complete shape by a fifth.' },
+    { referenceRoot: 'B', referenceQuality: 'major', targetRoot: 'F#', targetQuality: 'major', relationshipHint: 'Use the same major spacing in the deeper sharp-key position.' },
+  ],
+};
+
+function spatialRootPitch(root: string, hand: Hand): string {
+  return `${root}${hand === 'right' ? 4 : 3}`;
 }
 
 type HarmonicRole = 'tonic' | 'supertonic' | 'subdominant' | 'dominant' | 'submediant';
@@ -1248,29 +1261,20 @@ function spatialChordQuestion(
   hand: Hand,
 ): Question {
   const localRep = positiveModulo(questionNumber - 1, BASE_QUESTIONS);
-  // Recipe lists are pedagogical order, not merely random pools. Keying this
-  // to the global ordinal made an earlier adaptive extension silently rotate
-  // every later chord lesson: a learner could meet F-sharp first in Lesson 24
-  // simply because they needed extra practice in Lesson 6. Local rep order
-  // keeps each lesson's intended easiest-to-hardest sequence stable.
-  // Dedicated chord lessons should not all restart on C. Preserve the
-  // within-lesson progression while rotating each lesson's starting root.
-  const lessonRootOffset = lesson.exerciseMode === 'spatial-chord'
-    ? Math.max(0, (lesson.index - 19) * 2)
-    : 0;
-  const rootTemplate = cyclePick(recipe.roots, localRep + lessonRootOffset);
-  // Two ear drills in one four-slot lesson must contrast qualities instead of
-  // accidentally selecting only the odd (minor) entries at slots 2 and 4.
-  const quality = cyclePick(recipe.qualities, Math.floor(localRep / 2));
-  const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
-  // Ear work stays in the already-established register until the dedicated
-  // chord phase. Octave displacement is a separate motor skill and must not
-  // be smuggled into the first anchor/shape exercises.
-  const octave = lesson.index < 19 ? octavePool[0] : cyclePick(octavePool, localRep);
-  const position = buildPosition(rootTemplate, octave);
-  const pitches = chordPitches(position.sci[0], quality);
-  const rootName = pitches[0].replace(/-?\d+$/, '');
-  const chordName = `${rootName} ${quality === 'major' ? 'Major' : 'Minor'}`;
+  const spatialIndex = lesson.drills
+    .slice(0, localRep + 1)
+    .filter((kind) => kind === 'spatial-chord').length - 1;
+  const pair = cyclePick(
+    SPATIAL_CHORD_PAIRS[lesson.index] ?? SPATIAL_CHORD_PAIRS[19],
+    spatialIndex,
+  );
+  const quality = pair.targetQuality;
+  const pitches = chordPitches(spatialRootPitch(pair.targetRoot, hand), quality);
+  const referencePitches = chordPitches(
+    spatialRootPitch(pair.referenceRoot, hand),
+    pair.referenceQuality,
+  );
+  const chordName = `${pair.targetRoot} ${quality === 'major' ? 'Major' : 'Minor'}`;
   const fingers = hand === 'right' ? ([1, 3, 5] as const) : ([5, 3, 1] as const);
   // The screen, piano demonstration, and staff all use the same physical
   // order: root, third, fifth—the conventional 1-3-5 chord shape.
@@ -1293,7 +1297,9 @@ function spatialChordQuestion(
     quality,
     rootPitch: pitches[0],
     chordPitches: pitches,
-    ...authoredSpatialReference(lesson.index, pitches, quality),
+    referenceChordName: `${pair.referenceRoot} ${pair.referenceQuality === 'major' ? 'Major' : 'Minor'}`,
+    referencePitches,
+    relationshipHint: pair.relationshipHint,
     intervals: [quality === 'major' ? 4 : 3, 7],
     rootSupport: recipe.rootSupport,
     buildOrder: [0, 1, 2],
@@ -1317,7 +1323,7 @@ function spatialChordQuestion(
     handScope: hand,
     instruction: lesson.instruction,
     cue: {
-      keySignature: quality === 'major' ? position.template.keySignature : 'C',
+      keySignature: quality === 'major' ? pair.targetRoot : 'C',
       timeSignature: '3/4',
       staves: [{
         clef: hand === 'right' ? 'treble' : 'bass',
@@ -1542,7 +1548,7 @@ function questionFor(
     exerciseMode === 'blind-memory' ? memoryPool : lesson.contours,
     localRep,
   );
-  const memoryPreviewSeconds = contour.length >= 10
+  const memoryPreviewSeconds = contour.length >= 7
     ? LONG_MEMORY_PREVIEW_SECONDS
     : SHORT_MEMORY_PREVIEW_SECONDS;
   const beatsPerBar = cyclePick(lesson.meters, localRep);
@@ -1626,15 +1632,12 @@ function questionFor(
     exerciseMode,
     handScope: hand,
     instruction: exerciseMode === 'blind-memory'
-      ? `Look for ${memoryPreviewSeconds} seconds. Find the pattern, then play it from memory.`
+      ? `${hand === 'right' ? 'Right' : 'Left'} hand: look for ${memoryPreviewSeconds} seconds, then play the short pattern from memory.`
       : 'Read the phrase and play it after the count-in.',
     cue: {
       keySignature: lesson.showKeySignature ? position.template.keySignature : 'C',
       timeSignature: `${beatsPerBar}/4`,
       staves: [{ clef, hand, notes: applyRhythm(notes, beatsPerBar, rand, rhythmLevel) }],
-      ...(exerciseMode === 'blind-memory' && contour.length >= 10
-        ? { measuresPerSystem: 2 }
-        : {}),
     },
     expectedSequence: contour.map((degree) => position.sci[degree]),
     tempoWindowSec: lerp(lesson.tempoEasy, lesson.tempoHard, modeDifficulty),

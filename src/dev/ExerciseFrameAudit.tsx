@@ -26,9 +26,9 @@ function question(lessonIndex: number, questionNumber: number): Question {
 function Frame() {
   const shiftRef = useRef<StaffCueHandle>(null);
   const config = useMemo(() => {
-    if (FRAME.startsWith('memory')) return { question: question(10, 2), lesson: 10 };
+    if (FRAME.startsWith('memory')) return { question: question(9, 3), lesson: 9 };
     if (FRAME.startsWith('shift')) return { question: question(14, 1), lesson: 14 };
-    return { question: question(21, 1), lesson: 21 };
+    return { question: question(19, 1), lesson: 19 };
   }, []);
   const active = config.question;
   const status = FRAME === 'memory-prompt' || FRAME === 'shift-overview' || FRAME === 'chord-reference'

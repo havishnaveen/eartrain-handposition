@@ -382,7 +382,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const isListening = status === 'chord-root' || status === 'chord-build';
       const isComplete = status === 'chord-complete';
       const referenceCue: CueSpec = {
-        keySignature: 'C',
+        keySignature: spatialChord.referenceChordName.split(' ')[0],
         showTimeSignature: false,
         staves: [{
           clef: spatialChord.hand === 'right' ? 'treble' : 'bass',
@@ -401,7 +401,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <h2>{isComplete ? 'Chord found' : isListening ? 'Play the hidden chord' : 'Hear the nearby chord'}</h2>
             <p>
               {status === 'prompt'
-                ? 'Study the reference chord. You will hear it followed by a nearby hidden chord.'
+                ? 'Study and play the visible chord. Then listen for one nearby hidden chord.'
                 : isCue
                   ? 'Reference first, then the hidden target.'
                   : isComplete
@@ -418,7 +418,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
           <div className="et-spatial__single-stage">
             {!isComplete ? <div className="et-spatial__cue-card et-spatial__reference-card">
-              <small className="et-spatial__reference-label">Visible reference chord · {spatialChord.referenceChordName}</small>
+              <small className="et-spatial__reference-label">Start here · visible {spatialChord.referenceChordName}</small>
               <StaffCue cue={referenceCue} notationScale={2.55} accentColor="#ef6a47" inkColor="#242237" />
               {isCue ? (
                 <div className="et-spatial__listening" role="status">
@@ -599,11 +599,12 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     const isChordReading = exerciseMode === 'standard' && /stacked chord/i.test(instruction);
     const memoryDigit = Math.max(0, Math.ceil(memorySecondsRemaining));
     const showPieceProgress = status === 'listening';
+    const memoryHandLabel = instruction.startsWith('Left hand') ? 'Left hand' : 'Right hand';
     const visibleInstruction = isBlindMemory
       ? status === 'memory-preview'
-        ? 'Find the pattern and remember it.'
+        ? `${memoryHandLabel}: find the short pattern and remember it.`
         : status === 'leadin' || status === 'listening'
-          ? 'Now play from memory.'
+          ? `${memoryHandLabel}: now play from memory.`
           : ''
       : exerciseMode === 'anchor-shift'
         ? status === 'prompt' ? '' : 'Play, move, continue.'
