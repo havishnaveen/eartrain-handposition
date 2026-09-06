@@ -27,7 +27,7 @@ export interface ExerciseReportProps {
 const AUTO_ADVANCE_MS = 10000;
 const AUTO_ADVANCE_TICK_MS = 50;
 
-export function reportNoticeFor(result: GradeResult, plan?: DrillPlan | null, notes: readonly DetectedNote[] = []) {
+export function reportNoticeFor(_result: GradeResult, plan?: DrillPlan | null, notes: readonly DetectedNote[] = []) {
   const expected = plan?.expectedNotes.map((note) => pitchToMidi(note.pitch)).filter((midi): midi is number => midi !== null) ?? [];
   if (expected.length >= 3) {
     const matchCount = (offset: number) => alignPitchSequences(expected, notes.map((note) => ({ ...note, midi: note.midi - offset })), (midi) => midi)
@@ -37,14 +37,12 @@ export function reportNoticeFor(result: GradeResult, plan?: DrillPlan | null, no
       const shifted = matchCount(offset);
       if (shifted >= Math.ceil(expected.length * 0.75) && shifted >= unshifted + 2) {
         const distance = Math.abs(offset) === 12 ? 'one octave' : 'two octaves';
-        return { title: 'Check your starting octave', message: `The notes we heard mostly match the phrase ${distance} too ${offset < 0 ? 'low' : 'high'}. Move ${distance} ${offset < 0 ? 'higher' : 'lower'} and check the starting note before trying again.` };
+        return { title: 'Check your octave', message: `This sounded ${distance} too ${offset < 0 ? 'low' : 'high'}. Try ${distance} ${offset < 0 ? 'higher' : 'lower'}.` };
       }
     }
   }
-  if (result.missed > 0) return {
-    title: 'Some notes weren’t confirmed',
-    message: `We couldn’t confirm ${result.missed === 1 ? 'one written note' : `${result.missed} written notes`}, which lowered the pitch score. Check the starting keys and octave. If you played them, check that the microphone can hear the piano clearly before retrying.`,
-  };
+  // Missing detections alone cannot diagnose a player error. Keep their count
+  // in the report; do not interrupt every take with an acknowledgement gate.
   return null;
 }
 
@@ -75,20 +73,20 @@ const PlayIcon = ({ paused }: { paused: boolean }) => (
 );
 
 function scoreMessage(axis: 'pitch' | 'timing' | 'cleanliness', value: number | null): string {
-  if (value === null) return 'This drill did not include rhythm scoring.';
+  if (value === null) return 'Not timed.';
   if (axis === 'pitch') {
-    if (value >= 4.5) return 'The written notes were played accurately and in order.';
-    if (value >= 3.5) return 'Nearly there—review the missed notes before moving on.';
-    return 'Slow down and confirm the starting position before playing.';
+    if (value >= 4.5) return 'Notes matched.';
+    if (value >= 3.5) return 'Check the missed notes.';
+    return 'Check your starting keys.';
   }
   if (axis === 'timing') {
-    if (value >= 4.5) return 'Your note attacks stayed closely aligned with the beat.';
-    if (value >= 3.5) return 'Mostly steady—listen through the count-in before starting.';
-    return 'Try a slower internal count and aim each note at a click.';
+    if (value >= 4.5) return 'A steady beat.';
+    if (value >= 3.5) return 'A few notes were off the beat.';
+    return 'Follow the metronome.';
   }
-  if (value >= 4.5) return 'A clean take with no meaningful stray notes.';
-  if (value >= 3.5) return 'A few small sounds were detected around the played notes.';
-  return 'Release each key clearly and avoid correcting notes mid-phrase.';
+  if (value >= 4.5) return 'No extra notes.';
+  if (value >= 3.5) return 'A few extra notes.';
+  return 'Try without extra keys.';
 }
 
 function ScoreMeter({
@@ -534,7 +532,6 @@ export function ExerciseReport({
           <h2 id="exercise-report-title">
             {result.passed ? 'Drill complete' : 'A few things to refine'}
           </h2>
-          <p className="et-report__summary">{result.detail}</p>
         </div>
         <div className="et-report__overall" aria-label={`Overall score ${result.scores.overall.toFixed(1)} out of 5`}>
           <strong>{result.scores.overall.toFixed(1)}</strong>
@@ -565,7 +562,7 @@ export function ExerciseReport({
         <span aria-hidden="true">{result.missed === 0 ? '✓' : '♪'}</span>
         <p>
           <strong>{result.matched} of {result.expectedCount} notes matched</strong>
-          <small>{result.missed === 0 ? 'Every written note was heard.' : `${result.missed} ${result.missed === 1 ? 'note needs' : 'notes need'} another try.`}</small>
+          <small>{result.missed === 0 ? 'Every note was heard.' : `${result.missed} ${result.missed === 1 ? 'note' : 'notes'} not heard.`}</small>
         </p>
       </section>
 

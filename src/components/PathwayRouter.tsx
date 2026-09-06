@@ -114,7 +114,7 @@ function orientationNoticesFor(question: Question): OrientationNotice[] {
       notices.push({
         kind: 'register',
         title: `Stop — find ${register} ${noteName}`,
-        message: `This is not Middle ${noteName}. Move to the ${register === 'Bass' ? 'lower, left side' : 'higher, right side'} of the piano and find ${register} ${noteName} before continuing.`,
+        message: `Find ${register} ${noteName}, ${register === 'Bass' ? 'left' : 'right'} of Middle C.`,
         buttonLabel: `I found ${register} ${noteName}`,
       });
     }
@@ -126,23 +126,23 @@ function orientationNoticesFor(question: Question): OrientationNotice[] {
   if (handScope === 'left') {
     notices.push({
       kind: 'left-hand',
-      title: 'Stop — switch hands',
-      message: 'Use your LEFT HAND for this exercise. Put your right hand in your lap before continuing.',
-      buttonLabel: 'My left hand is ready',
+      title: 'Left hand',
+      message: 'Use your left hand.',
+      buttonLabel: 'Ready',
     });
   } else if (hasDualProof) {
     notices.push({
       kind: 'dual-proof',
       title: 'Check each hand',
-      message: 'Check your right-hand position first, then your left. After both checks, you’ll play the two-hand exercise.',
+      message: 'Check the right hand, then the left.',
       buttonLabel: 'Continue',
     });
   } else if (handScope === 'both') {
     notices.push({
       kind: 'both-hands',
-      title: 'Stop — use both hands',
-      message: 'This exercise uses your LEFT HAND and RIGHT HAND. Place both hands before continuing; follow the score to see whether they alternate or play together.',
-      buttonLabel: 'Both hands are ready',
+      title: 'Both hands',
+      message: 'Place both hands before starting.',
+      buttonLabel: 'Ready',
     });
   }
   return notices;

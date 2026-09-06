@@ -65,7 +65,7 @@ function Frame() {
       lessonFocus={PROGRESSIVE_CONCEPTS[config.lesson - 1].focus}
       phaseLabel={PROGRESSIVE_CONCEPTS[config.lesson - 1].phaseLabel}
     >
-      {FRAME === 'notice' && <AcknowledgeDialog title="Check each hand" message="Check your right-hand position first, then your left. After both checks, you’ll play the two-hand exercise." buttonLabel="Continue" />}
+      {FRAME === 'notice' && <AcknowledgeDialog title="Check each hand" message="Check the right hand, then the left." buttonLabel="Continue" />}
       <ExerciseView
         status={status}
         instruction={active.instruction}

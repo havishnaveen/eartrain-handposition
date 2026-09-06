@@ -50,6 +50,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.missingFrames = new Map();
     this.reportedPresent = new Set();
     this.arrivalTimes = new Map();
+    this.energyHistory = new Map();
     this.calibrationFrames = 0;
     this.listening = false;
     this.port.onmessage = (event) => {
@@ -78,6 +79,7 @@ class ChordProcessor extends AudioWorkletProcessor {
         this.missingFrames.clear();
         this.reportedPresent.clear();
         this.arrivalTimes.clear();
+        this.energyHistory.clear();
         this.calibrationFrames = canReuseBaseline ? 0 : CALIBRATION_FRAMES;
         this.reportEnabled = data.type === 'listen-chord';
         this.listening = true;
@@ -238,6 +240,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     }
 
     const currentlyPresent = new Set();
+    let reattacked = false;
     for (const tone of evidence) {
       const expectedTone = this.expectedTargets.includes(tone.midi);
       const baseline = this.baselines.get(tone.midi) || { fundamental: 0, score: 0 };
@@ -263,6 +266,20 @@ class ChordProcessor extends AudioWorkletProcessor {
         tone.neighborRatio >= (expectedTone || unresolvedBassNeighbor ? 1.06 : 0.72);
       const stable = present ? (this.stableFrames.get(tone.midi) || 0) + 1 : 0;
       this.stableFrames.set(tone.midi, stable);
+      const history = this.energyHistory.get(tone.midi) || [];
+      if (present && stable >= 2 && this.reportedPresent.has(tone.midi) && history.length === 8 &&
+          currentTime - (this.arrivalTimes.get(tone.midi) ?? currentTime) > .16 &&
+          tone.fundamental > Math.min(...history.map((sample) => sample.fundamental)) * 1.8 &&
+          tone.score > Math.min(...history.map((sample) => sample.score)) * 1.65) {
+        // A new hammer can strike a string while it is still ringing. Require
+        // renewed energy in both its fundamental and harmonic envelope; mere
+        // continuing presence or a score expectation is not an onset.
+        this.arrivalTimes.set(tone.midi, currentTime - WINDOW / (2 * sampleRate));
+        reattacked = true;
+      }
+      history.push({ fundamental: tone.fundamental, score: tone.score });
+      if (history.length > 8) history.shift();
+      this.energyHistory.set(tone.midi, history);
       const missing = present ? 0 : (this.missingFrames.get(tone.midi) || 0) + 1;
       this.missingFrames.set(tone.midi, missing);
       const requiredStableFrames = expectedTone ? 2 : GUARD_STABLE_FRAMES;
@@ -274,6 +291,7 @@ class ChordProcessor extends AudioWorkletProcessor {
       }
     }
     const changed =
+      reattacked ||
       currentlyPresent.size !== this.reportedPresent.size ||
       [...currentlyPresent].some((midi) => !this.reportedPresent.has(midi));
     if (this.reportEnabled && changed) {

@@ -23,6 +23,7 @@ self.onmessage = ({ data }) => {
         processor.missingFrames.clear();
         processor.reportedPresent.clear();
         processor.arrivalTimes.clear();
+        processor.energyHistory?.clear();
       }
       sequence = message.sequence;
       self.currentTime = message.time;

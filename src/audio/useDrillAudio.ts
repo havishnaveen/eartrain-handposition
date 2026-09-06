@@ -316,9 +316,10 @@ export function hasCredibleProofAttack(
   evidence: AcousticAttackEvidence,
   lane: 'strict' | 'candidate',
 ): boolean {
-  if (lane === 'strict' || evidence.referenceTransient === true) {
+  if (evidence.referenceTransient === true) {
     return hasCredibleAcousticAttack(evidence, lane);
   }
+  if (hasCredibleAcousticAttack(evidence, lane)) return true;
   const peakRms = Number(evidence.peakRms) || 0;
   const gate = Math.max(0.0005, Number(evidence.gate) || 0);
   return (
@@ -1026,13 +1027,26 @@ export function findCompletePolyphonicGroup(
     .sort((a, b) => Math.abs(a.beat - candidateBeat(a)) - Math.abs(b.beat - candidateBeat(b)))[0] ?? null;
 }
 
+/** Raw polyphonic evidence is retained even when a written stack is incomplete. */
+export function freshPolyphonicEvidence(
+  heard: ReadonlySet<number>,
+  arrivals: ReadonlyMap<number, number>,
+  consumed: ReadonlyMap<number, { time: number }>,
+): DetectedNote[] {
+  return [...heard].flatMap((midi) => {
+    const time = arrivals.get(midi);
+    if (!Number.isFinite(midi) || time === undefined || !Number.isFinite(time) || time <= (consumed.get(midi)?.time ?? -Infinity)) return [];
+    return [{ midi, time, clarity: .75, strength: 1.3, sustain: 1, detectorLane: 'polyphonic' as const }];
+  });
+}
+
 export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // The worklet lives in public/ and is otherwise easy for a browser/CDN to
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
     workletUrl = '/audio/pitch-processor.js?v=extended-register-v21-2026-09-06',
-    chordWorkletUrl = '/audio/chord-processor.js?v=shared-spectrum-v7-2026-09-05',
+    chordWorkletUrl = '/audio/chord-processor.js?v=repeated-attacks-v8-2026-09-06',
   } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
@@ -1456,7 +1470,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       const source = ctx.createMediaStreamSource(stream);
       const worklet = new AudioWorkletNode(ctx, 'pitch-processor');
       const chordWorklet = new AudioWorkletNode(ctx, 'chord-capture-processor');
-      const chordWorker = new Worker('/audio/chord-analysis-worker.js?v=1');
+      const chordWorker = new Worker('/audio/chord-analysis-worker.js?v=2');
       chordAnalysisWorkerRef.current = chordWorker;
       const chordChannel = new MessageChannel();
       chordWorklet.port.postMessage({ type: 'connect', port: chordChannel.port1 }, [chordChannel.port1]);
@@ -1670,9 +1684,9 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         if (data.type === 'note-onset' || data.type === 'note-candidate') {
           const isCandidate = data.type === 'note-candidate';
           const proofWanted = proofRef.current?.targetMidi[proofRef.current.nextIndex];
-          const proofCandidate = Boolean(isCandidate && Number.isFinite(proofWanted));
+          const proofCandidate = Boolean(Number.isFinite(proofWanted));
           const quietBassProofCandidate = Boolean(
-            isCandidate && Number.isFinite(proofWanted) && (proofWanted as number) <= 55
+            Number.isFinite(proofWanted) && (proofWanted as number) <= 55
           );
           // See isProofAudioDebugEnabled() above. Only logs while a Prove It
           // is actually in progress, so it stays silent during every other
@@ -2224,12 +2238,13 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           // An extra key must be audited for Cleanliness, not erase a complete
           // correct chord. Record only fresh independent polyphonic arrivals;
           // the PCM verifier remains responsible for admitting these extras.
-          for (const midi of heardSet) {
-            const time = arrivals.get(midi);
-            if (time === undefined || time <= (lastStrikeByMidiRef.current.get(midi)?.time ?? -Infinity)) continue;
+          for (const note of freshPolyphonicEvidence(heardSet, arrivals, lastStrikeByMidiRef.current)) {
+            const { midi, time } = note;
             if (group?.slots.some((slot) => slot.midi === midi)) continue;
-            if (plan.expectedNotes.some((slot) => pitchToMidi(slot.pitch) === midi && Math.abs(slot.beat - toBeat(time)) <= .75)) continue;
-            onsetsRef.current.push({ midi, time, clarity: .75, strength: 1.3, sustain: 1, detectorLane: 'polyphonic' });
+            // Retain independently heard members of a partial stack too.
+            // Pitch-order hints and PCM verification assign them after the
+            // take; this does not claim that the whole chord was played.
+            onsetsRef.current.push(note);
             lastStrikeByMidiRef.current.set(midi, { time, peakRms: 0, candidate: false });
             added = true;
           }

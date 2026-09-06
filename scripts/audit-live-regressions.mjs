@@ -40,6 +40,8 @@ try {
     hasCredibleAcousticAttack,
     polyphonicTargetsForPlan,
     findCompletePolyphonicGroup,
+    freshPolyphonicEvidence,
+    hasCredibleProofAttack,
     updateSpatialChordPresence,
   } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
@@ -55,6 +57,16 @@ try {
   assert.deepEqual(polyphonicTargetsForPlan(heldBassPlan).sort((a, b) => a - b), [48, 64, 65, 67, 69],
     'Every melody attack above a held bass needs independent polyphonic analysis.');
   const openingSlots = new Set(heldBassPlan.expectedNotes.flatMap((slot, index) => slot.beat === 0 ? [index] : []));
+  const partialEvidence = freshPolyphonicEvidence(new Set([64]), new Map([[64, 10]]), new Map());
+  const partialHints = withPitchOrderSlotHints(heldBassPlan, partialEvidence);
+  assert.equal(partialHints.length, 1, 'A missing LH note must not discard the independently heard RH note.');
+  assert.equal(heldBassPlan.expectedNotes[partialHints[0].expectedSlot].pitch, 'E4');
+  assert.equal(freshPolyphonicEvidence(new Set([64]), new Map([[64,10]]), new Map([[64,{time:10}]])).length, 0,
+    'A held tone must not be recorded twice.');
+  const quietProofAttack = {peakRms:.00035, gate:.0005, pianoAttackConfidence:.35, attackBandCoverage:3, stableFrames:3, consensus:.44, clarity:.4, frameAttackRatio:1.05, novelty:.3};
+  assert.equal(hasCredibleProofAttack(quietProofAttack, 'candidate'), true);
+  assert.equal(hasCredibleProofAttack(quietProofAttack, 'strict'), true, 'The same supported proof attack must not be rejected merely because it came through the strict lane.');
+  assert.equal(hasCredibleProofAttack({...quietProofAttack, novelty:0, pianoAttackConfidence:0}, 'strict'), false);
   const cleanTwoHands = heldBassPlan.expectedNotes.map((slot, expectedSlot) => ({
     midi: ({ C3: 48, E4: 64, F4: 65, G4: 67, A4: 69 })[slot.pitch], expectedSlot,
     time: 10 + slot.beat * heldBassPlan.secondsPerBeat,
@@ -74,8 +86,8 @@ try {
   const noticePlan = planFor({ timeSignature: '4/4', staves: [{ clef: 'treble', hand: 'right', notes: ['c/4', 'd/4', 'e/4'].map((key) => ({keys:[key], duration:'q'})) }] }, ['C4','D4','E4'], 75);
   const missedResult = { missed: 3 };
   assert.match(reportNoticeFor(missedResult, noticePlan, [48,50,52].map((midi) => ({midi}))).message, /one octave too low/);
-  assert.match(reportNoticeFor(missedResult, noticePlan, []).title, /weren’t confirmed/,
-    'Silence must not be diagnosed as a wrong octave.');
+  assert.equal(reportNoticeFor(missedResult, noticePlan, []), null,
+    'Missing detections must not trigger a forced popup.');
   assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65]), 1, openingSlots)?.beat, 1,
     'A held LH bass must not veto the next correct RH attack.');
   assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65]), 1, new Set())?.beat, 1,

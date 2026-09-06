@@ -21,10 +21,16 @@ evidence. PCM-verified extra chord tones affect Cleanliness without removing
 correct chord tones. Timing has a small per-attack ceiling for clearly
 off-beat events so averaging cannot turn a missed first beat into full credit.
 
-Student reports can require acknowledgement of missing notes or an evidenced
-octave displacement. `reportNoticeFor` is presentation-only: it never changes
+Student reports require acknowledgement only for an evidenced octave
+displacement, never for missing detections alone. `reportNoticeFor` is presentation-only: it never changes
 scores, and missing audio alone is not described as an octave mistake. The
 live pitch ticker is hidden because it is provisional; telemetry is retained.
+
+Every fresh polyphonic arrival is retained, including members of an incomplete
+written stack. Pitch-order slot hints and independent PCM verification decide
+credit after capture. Losing one chord tone must not discard the other hand.
+Repeated chords can renew their arrival timestamps through independent rises
+in fundamental and harmonic energy, without requiring the strings to go silent.
 
 To integrate reading.oclef.com, install a provider during trusted application
 bootstrap. A remote provider should POST the `GradingRequest` to an EarTrain

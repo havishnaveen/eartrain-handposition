@@ -66,13 +66,14 @@ function run(targetMidi, playedMidi = [], gainsByMidi = {}, options = {}) {
         const age = time - strikeAt;
         const envelope = Math.min(1, age / 0.012) * Math.exp(-age / 1.9) * 0.014;
         for (const midi of playedMidi) {
-          const noteStart = options.starts?.[midi] ?? strikeAt;
+          const noteStart = options.repeatAt && time >= options.repeatAt ? options.repeatAt : options.starts?.[midi] ?? strikeAt;
           const noteEnd = options.ends?.[midi] ?? duration;
           if (time < noteStart || time >= noteEnd) continue;
           const noteAge = time - noteStart;
-          const noteEnvelope = options.starts
+          let noteEnvelope = options.starts || options.repeatAt
             ? Math.min(1, noteAge / 0.012) * Math.exp(-noteAge / 1.9) * 0.014
             : envelope;
+          if (options.repeatAt && time >= options.repeatAt) noteEnvelope += envelope;
           const toneGain = gainsByMidi[midi] ?? 1;
           const fundamental = 440 * 2 ** ((midi - 69) / 12) *
             2 ** ((options.detuneCents ?? 0) / 1200);
@@ -164,6 +165,16 @@ assert.ok(
 );
 
 const cMajor = [60, 64, 67];
+const heldChord = run(cMajor, cMajor).filter((message) => message.type === 'chord-tones');
+for (const midi of cMajor) {
+  assert.equal(new Set(heldChord.flatMap((message) => message.arrivals.filter((arrival) => arrival.midi === midi).map((arrival) => arrival.time))).size, 1,
+    'One sustained chord must remain one attack per pitch.');
+}
+const repeatedChord = run(cMajor, cMajor, {}, { repeatAt: .75 }).filter((message) => message.type === 'chord-tones');
+for (const midi of cMajor) {
+  const arrivals = new Set(repeatedChord.flatMap((message) => message.arrivals.filter((arrival) => arrival.midi === midi).map((arrival) => arrival.time)));
+  assert.equal(arrivals.size, 2, 'A second physical chord attack must register without requiring silence between strikes.');
+}
 for (const played of [[60], [64], [67], [60, 64], [60, 67], [64, 67]]) {
   const toneMessages = run(cMajor, played)
     .filter((message) => message.type === 'chord-tones');
