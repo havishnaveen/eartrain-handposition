@@ -1021,17 +1021,19 @@ function buildRhythm(
   );
   const durationAccuracy = durationErrors.length === 0
     ? null
-    : durationErrors.reduce(
-        (sum, sample) => sum + Math.max(
+    : 1 - durationErrors.reduce(
+        (sum, sample) => sum + (1 - Math.max(
           0,
           1 - Math.max(0, sample.error - profile.fullCreditDurationWindow) / durationScoringRange,
-        ) * sample.weight,
+        )) * sample.weight,
         0,
-      ) / durationErrors.reduce((sum, sample) => sum + sample.weight, 0);
+      ) / durationErrors.length;
+  // Divide by observations, not summed confidence: normalizing by confidence
+  // cancels it entirely when release estimates share the same uncertainty.
   const meanDurationError = durationErrors.length === 0
     ? 0
     : durationErrors.reduce((sum, sample) => sum + sample.error * sample.weight, 0) /
-      durationErrors.reduce((sum, sample) => sum + sample.weight, 0);
+      durationErrors.length;
   // Relative spacing is the central musical fact once a take has been
   // aligned to its downbeat. Blend it with absolute onset residuals so fixed
   // browser/speaker/microphone latency cannot turn expert rhythm into 3/5.

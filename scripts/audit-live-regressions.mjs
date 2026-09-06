@@ -82,6 +82,18 @@ try {
       `Half-beat displacement must score at most 2.5, received ${result.scores.timing}.`);
   }
 
+  const holdPlan = planFor({ timeSignature: '4/4', staves: [
+    { clef: 'treble', hand: 'right', notes: ['c/4', 'd/4'].map((key) => ({ keys: [key], duration: 'h' })) },
+  ] }, ['C4', 'D4'], 75);
+  const holdScore = (durationConfidence, heldBeats) => gradeSequence(['C4', 'D4'],
+    [60, 62].map((midi, i) => ({ midi, time: 10 + i * 2 * holdPlan.secondsPerBeat,
+      endTime: 10 + (i * 2 + heldBeats) * holdPlan.secondsPerBeat,
+      durationConfidence, clarity: .95, strength: 2 })),
+    { plan: holdPlan, playStartTime: 10, lessonLevel: 1, totalLessons: 24 }).scores.timing;
+  assert.equal(holdScore(1, 2), 5, 'Correct half notes must retain full timing credit.');
+  assert.ok(holdScore(.72, 1) >= 4.8, 'Marginal release evidence must not overwhelm perfect onsets.');
+  assert.ok(holdScore(1, 1) <= 4, 'Confident half-as-quarter releases must still lose timing credit.');
+
   assert.equal(hasCredibleAcousticAttack({
     peakRms: 0.00026,
     gate: 0.0005,
