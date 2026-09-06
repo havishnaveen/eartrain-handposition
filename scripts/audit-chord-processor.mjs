@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
-const sampleRate = 44_100;
 const quantum = 128;
 const source = await readFile(new URL('../public/audio/chord-processor.js', import.meta.url), 'utf8');
 
 function run(targetMidi, playedMidi = [], gainsByMidi = {}, options = {}) {
+  const sampleRate = options.sampleRate ?? 44_100;
   const messages = [];
   let Processor;
   class MockAudioWorkletProcessor {
@@ -44,7 +44,7 @@ function run(targetMidi, playedMidi = [], gainsByMidi = {}, options = {}) {
     return randomState / 4294967296;
   };
   const duration = 1.35;
-  const strikeAt = options.prepareFirst ? 0.38 : 0.24;
+  const strikeAt = options.strikeAt ?? (options.prepareFirst ? 0.38 : 0.24);
   let armed = !options.prepareFirst;
   for (let offset = 0; offset < duration * sampleRate; offset += quantum) {
     if (!armed && offset / sampleRate >= 0.22) {
@@ -100,6 +100,16 @@ for (const chord of [[48, 60], [48, 60, 64, 67], [48, 55, 64]]) {
   const heard = run(chord, chord, { 60: 0.5, 64: 0.5, 67: 0.5 }).filter((message) => message.type === 'chord-tones');
   assert.ok(heard.some((message) => chord.every((midi) => message.midi.includes(midi))),
     `Both-hand voicing ${chord} must retain independently played upper tones.`);
+}
+for (const deviceRate of [44_100, 48_000]) {
+  const chord = [48, 60, 64, 67];
+  const frames = run(chord, chord, { 60: .5, 64: .5, 67: .5 }, {
+    sampleRate: deviceRate, strikeAt: .5,
+    monitorMidi: Array.from({ length: 24 }, (_, i) => 46 + i),
+  }).filter((message) => message.type === 'chord-tones');
+  assert.ok(frames.some((frame) => chord.every((midi) => frame.midi.includes(midi))));
+  assert.ok(frames.every((frame) => frame.midi.every((midi) => chord.includes(midi))),
+    'Bass main-lobe leakage must not create neighboring wrong keys that veto both hands.');
 }
 for (const bass of [36, 48, 55]) {
   const heard = run([bass, bass + 12], [bass])

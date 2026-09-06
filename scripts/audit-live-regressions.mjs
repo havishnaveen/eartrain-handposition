@@ -57,6 +57,13 @@ try {
   const openingSlots = new Set(heldBassPlan.expectedNotes.flatMap((slot, index) => slot.beat === 0 ? [index] : []));
   assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65]), 1, openingSlots)?.beat, 1,
     'A held LH bass must not veto the next correct RH attack.');
+  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65]), 1, new Set())?.beat, 1,
+    'An uncredited opening stack must not cascade into rejecting later correct melody attacks.');
+  const delayedArrivals = new Map([[48, 0], [64, .3]]);
+  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 64]), 1.2, new Set(), delayedArrivals)?.beat, 0,
+    'Delayed full-chord confirmation must use acoustic arrival time, not callback delivery time.');
+  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 64]), 1.2, new Set(), delayedArrivals, delayedArrivals), null,
+    'The same held arrivals cannot be scored again.');
   assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65, 66]), 1, openingSlots), null,
     'An unrelated new tone must still fail the complete-group check.');
   const phasePlan = planFor({ timeSignature: '4/4', staves: [

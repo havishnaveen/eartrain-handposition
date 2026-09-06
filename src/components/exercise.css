@@ -206,7 +206,7 @@
 }
 
 .et-sidebar__brand strong {
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1.15;
   letter-spacing: -0.025em;
 }
@@ -703,7 +703,7 @@
 .et-instruction {
   margin: 0;
   text-align: center;
-  font-size: 31px;
+  font-size: 33px;
   line-height: 1.28;
   font-weight: 700;
   letter-spacing: -0.023em;
@@ -1140,7 +1140,7 @@
   }
 
   .et-stage { padding: 26px 20px 44px; }
-  .et-instruction { font-size: 25px; }
+  .et-instruction { font-size: 27px; }
   .et-piece-progress { margin-top: -5px; }
   .et-cue { padding: 22px 20px 20px; }
   .et-verdict { padding: 16px 20px; }
@@ -1155,15 +1155,15 @@
   }
 
   .et-sidebar__brand { margin-bottom: 1px; }
-  .et-sidebar__brand strong { font-size: 16px; }
+  .et-sidebar__brand strong { font-size: 18px; }
 
   .et-sidebar__lesson {
     padding: 12px 13px;
     border-radius: 15px 15px 15px 6px;
   }
 
-  .et-sidebar__eyebrow { font-size: 8.5px; }
-  .et-sidebar__lesson h1 { font-size: 17px; }
+  .et-sidebar__eyebrow { font-size: 11px; }
+  .et-sidebar__lesson h1 { font-size: 19px; }
   .et-sidebar__focus { display: none; }
 
   .et-sidebar__set {

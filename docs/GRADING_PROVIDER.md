@@ -3,6 +3,16 @@
 Exercise capture ends at `gradeTake()` in `src/grading/gradingProvider.ts`.
 The current `localGradingProvider` preserves EarTrain's existing grader.
 
+Live polyphony is isolated from playback: `chord-capture-processor.js` copies
+512-sample blocks through a bounded MessagePort queue to
+`chord-analysis-worker.js`, which hosts the spectral engine in
+`chord-processor.js`. Audio-clock timestamps survive worker delivery delays.
+`findCompletePolyphonicGroup()` in `useDrillAudio.ts` consumes acoustic arrivals
+once, after the complete written stack is present. It does not use callback
+latency as a reason to discard a chord. Single-note detection and post-take
+grading remain separate. Run `audit:audio`, `audit:score`, and the development
+`chord-runtime-audit.html` browser test when replacing this transport.
+
 To integrate reading.oclef.com, install a provider during trusted application
 bootstrap. A remote provider should POST the `GradingRequest` to an EarTrain
 server route, where the partner API key is stored as a server-only environment

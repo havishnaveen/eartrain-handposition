@@ -1,5 +1,6 @@
 /**
- * Expected-tone polyphonic analyzer, run alongside the ordinary single-pitch
+ * Expected-tone polyphonic analyzer, hosted by chord-analysis-worker.js beside
+ * (not on the audio-rendering thread with) the ordinary single-pitch
  * detector where the score actually contains simultaneous notes (see the
  * `listen-chord` callers in useDrillAudio.ts). Spatial-chord exercises target
  * their three chord tones; ordinary melodies stay on the onset detector.
@@ -14,6 +15,7 @@
 // Four thousand samples separate adjacent fundamentals cleanly enough that a
 // strong partial of one piano key cannot masquerade as another chord tone.
 const WINDOW = 4096;
+const SPECTRUM_SIZE = WINDOW * 4;
 const HOP = 512;
 const CALIBRATION_FRAMES = 12;
 // A tone must disappear for several consecutive hops before it can become a
@@ -32,6 +34,9 @@ class ChordProcessor extends AudioWorkletProcessor {
     super();
     this.ring = new Float32Array(WINDOW);
     this.window = new Float32Array(WINDOW);
+    this.real = new Float32Array(SPECTRUM_SIZE);
+    this.imaginary = new Float32Array(SPECTRUM_SIZE);
+    this.spectrum = new Float32Array(SPECTRUM_SIZE / 2);
     for (let index = 0; index < WINDOW; index++) {
       this.window[index] = 0.5 - 0.5 * Math.cos((2 * Math.PI * index) / (WINDOW - 1));
     }
@@ -92,26 +97,50 @@ class ChordProcessor extends AudioWorkletProcessor {
   }
 
   _magnitude(frequency) {
-    const cacheKey = Math.round(frequency * 100);
-    const cached = this.magnitudeCache.get(cacheKey);
-    if (cached !== undefined) return cached;
-    const omega = (2 * Math.PI * frequency) / sampleRate;
-    const cosine = Math.cos(omega);
-    const sine = Math.sin(omega);
-    const coefficient = 2 * cosine;
-    let previous = 0;
-    let previousTwo = 0;
-    for (let index = 0; index < WINDOW; index++) {
-      const sample = this.ring[(this.write + index) % WINDOW] * this.window[index];
-      const current = sample + coefficient * previous - previousTwo;
-      previousTwo = previous;
-      previous = current;
+    const bin = frequency * SPECTRUM_SIZE / sampleRate;
+    const lower = Math.floor(bin);
+    if (lower < 0 || lower + 1 >= this.spectrum.length) return 0;
+    return this.spectrum[lower] + (this.spectrum[lower + 1] - this.spectrum[lower]) * (bin - lower);
+  }
+
+  _buildSpectrum() {
+    // One shared FFT replaces hundreds of full-window Goertzel scans per hop.
+    // Zero padding preserves the fine tuning probes without widening their
+    // frequency bands. Analysis cost no longer grows with every target partial.
+    const real = this.real;
+    const imaginary = this.imaginary;
+    real.fill(0);
+    imaginary.fill(0);
+    for (let i = 0; i < WINDOW; i++) real[i] = this.ring[(this.write + i) % WINDOW] * this.window[i];
+    for (let i = 1, j = 0; i < SPECTRUM_SIZE; i++) {
+      let bit = SPECTRUM_SIZE >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) [real[i], real[j]] = [real[j], real[i]];
     }
-    const real = previous - previousTwo * cosine;
-    const imaginary = previousTwo * sine;
-    const magnitude = (2 * Math.sqrt(real * real + imaginary * imaginary)) / WINDOW;
-    this.magnitudeCache.set(cacheKey, magnitude);
-    return magnitude;
+    for (let size = 2; size <= SPECTRUM_SIZE; size <<= 1) {
+      const angle = -2 * Math.PI / size;
+      const stepReal = Math.cos(angle);
+      const stepImaginary = Math.sin(angle);
+      for (let start = 0; start < SPECTRUM_SIZE; start += size) {
+        let wr = 1;
+        let wi = 0;
+        for (let offset = 0; offset < size / 2; offset++) {
+          const even = start + offset;
+          const odd = even + size / 2;
+          const tr = wr * real[odd] - wi * imaginary[odd];
+          const ti = wr * imaginary[odd] + wi * real[odd];
+          real[odd] = real[even] - tr;
+          imaginary[odd] = imaginary[even] - ti;
+          real[even] += tr;
+          imaginary[even] += ti;
+          const nextWr = wr * stepReal - wi * stepImaginary;
+          wi = wr * stepImaginary + wi * stepReal;
+          wr = nextWr;
+        }
+      }
+    }
+    for (let i = 0; i < this.spectrum.length; i++) this.spectrum[i] = 2 * Math.hypot(real[i], imaginary[i]) / WINDOW;
   }
 
   _toneEvidence(midi) {
@@ -173,7 +202,7 @@ class ChordProcessor extends AudioWorkletProcessor {
   }
 
   _analyze() {
-    this.magnitudeCache = new Map();
+    this._buildSpectrum();
     let squareSum = 0;
     for (let index = 0; index < WINDOW; index++) {
       const sample = this.ring[index];
@@ -222,12 +251,16 @@ class ChordProcessor extends AudioWorkletProcessor {
         baseline.score * 2 + 0.00004,
         rms * 0.055,
       );
+      // Bass semitones can fall within one true FFT resolution bin. Do not
+      // label the sides of a bass peak as two additional played keys.
+      const unresolvedBassNeighbor = 440 * Math.pow(2, (tone.midi - 69) / 12) *
+        (Math.pow(2, 1 / 12) - 1) < sampleRate / WINDOW;
       const present =
         tone.fundamental >= fundamentalThreshold &&
         tone.score >= scoreThreshold &&
         tone.purity >= (expectedTone ? 0.2 : 0.23) &&
         (tone.parentRatio <= 1.05 || (tone.parentRatio <= 2 && tone.independentUpperPeak)) &&
-        tone.neighborRatio >= (expectedTone ? 1.06 : 0.72);
+        tone.neighborRatio >= (expectedTone || unresolvedBassNeighbor ? 1.06 : 0.72);
       const stable = present ? (this.stableFrames.get(tone.midi) || 0) + 1 : 0;
       this.stableFrames.set(tone.midi, stable);
       const missing = present ? 0 : (this.missingFrames.get(tone.midi) || 0) + 1;

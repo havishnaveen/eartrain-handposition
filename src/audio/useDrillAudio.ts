@@ -1007,18 +1007,27 @@ export function findCompletePolyphonicGroup(
   heard: ReadonlySet<number>,
   onsetBeat: number,
   occupied: ReadonlySet<number>,
+  arrivalBeats?: ReadonlyMap<number, number>,
+  consumedArrivalBeats: ReadonlyMap<number, number> = new Map(),
 ): PolyphonicSlotGroup | null {
+  const candidateBeat = (candidate: PolyphonicSlotGroup) => {
+    const arrivals = candidate.slots.filter(({ index }) => !occupied.has(index))
+      .map(({ midi }) => arrivalBeats?.get(midi)).filter((beat): beat is number => beat !== undefined);
+    return arrivals.length ? Math.min(...arrivals) : onsetBeat;
+  };
   return polyphonicSlotGroupsForPlan(plan)
     .filter((candidate) =>
       candidate.slots.every(({ midi }) => heard.has(midi)) &&
       [...heard].every((midi) => candidate.slots.some((slot) => slot.midi === midi) ||
-        plan.expectedNotes.some((slot, index) => occupied.has(index) &&
+        plan.expectedNotes.some((slot) =>
           pitchToMidi(slot.pitch) === midi && slot.beat < candidate.beat &&
           slot.beat + slot.beats >= candidate.beat)) &&
       candidate.slots.some(({ index }) => !occupied.has(index)) &&
-      Math.abs(candidate.beat - onsetBeat) <= 0.75,
+      (!arrivalBeats || candidate.slots.every(({ index, midi }) => occupied.has(index) ||
+        (arrivalBeats.has(midi) && arrivalBeats.get(midi)! > (consumedArrivalBeats.get(midi) ?? -Infinity)))) &&
+      Math.abs(candidate.beat - candidateBeat(candidate)) <= 0.75,
     )
-    .sort((a, b) => Math.abs(a.beat - onsetBeat) - Math.abs(b.beat - onsetBeat))[0] ?? null;
+    .sort((a, b) => Math.abs(a.beat - candidateBeat(a)) - Math.abs(b.beat - candidateBeat(b)))[0] ?? null;
 }
 
 export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
@@ -1027,7 +1036,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
     workletUrl = '/audio/pitch-processor.js?v=proof-consensus-v20-2026-09-05',
-    chordWorkletUrl = '/audio/chord-processor.js?v=overlap-arrivals-v6-2026-09-05',
+    chordWorkletUrl = '/audio/chord-processor.js?v=shared-spectrum-v7-2026-09-05',
   } = options;
 
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
@@ -1056,6 +1065,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const streamRef = useRef<MediaStream | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
   const chordWorkletRef = useRef<AudioWorkletNode | null>(null);
+  const chordAnalysisWorkerRef = useRef<Worker | null>(null);
   const chordReadyResolveRef = useRef<(() => void) | null>(null);
   /**
    * Distinct pitches that share a written onset in the current drill, fed to
@@ -1079,6 +1089,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
   const rafRef = useRef(0);
   const schedTimerRef = useRef(0);
+  const scheduledClickSourcesRef = useRef(new Set<AudioBufferSourceNode>());
   const playTransitionTimerRef = useRef(0);
 
   const planRef = useRef<DrillPlan | null>(null);
@@ -1285,6 +1296,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   }, [settleRecording]);
 
   const stopLoops = useCallback(() => {
+    for (const source of scheduledClickSourcesRef.current) {
+      try { source.stop(); } catch { /* Already ended. */ }
+    }
+    scheduledClickSourcesRef.current.clear();
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;
@@ -1362,6 +1377,8 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
     }
     chordReadyResolveRef.current?.();
     chordReadyResolveRef.current = null;
+    chordAnalysisWorkerRef.current?.terminate();
+    chordAnalysisWorkerRef.current = null;
 
     sourceRef.current?.disconnect();
     sourceRef.current = null;
@@ -1436,13 +1453,30 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
       await Promise.all([
         ctx.audioWorklet.addModule(workletUrl),
-        ctx.audioWorklet.addModule(chordWorkletUrl),
+        ctx.audioWorklet.addModule('/audio/chord-capture-processor.js?v=1'),
       ]);
       if (!mountedRef.current) return null;
 
       const source = ctx.createMediaStreamSource(stream);
       const worklet = new AudioWorkletNode(ctx, 'pitch-processor');
-      const chordWorklet = new AudioWorkletNode(ctx, 'chord-processor');
+      const chordWorklet = new AudioWorkletNode(ctx, 'chord-capture-processor');
+      const chordWorker = new Worker('/audio/chord-analysis-worker.js?v=1');
+      chordAnalysisWorkerRef.current = chordWorker;
+      const chordChannel = new MessageChannel();
+      chordWorklet.port.postMessage({ type: 'connect', port: chordChannel.port1 }, [chordChannel.port1]);
+      await new Promise<void>((resolve, reject) => {
+        const timer = window.setTimeout(() => reject(new Error('Chord analyzer startup timed out')), 2000);
+        chordWorker.onerror = () => { window.clearTimeout(timer); reject(new Error('Chord analyzer failed')); };
+        chordWorker.onmessage = ({ data }) => {
+          window.clearTimeout(timer);
+          if (data.type === 'ready') resolve();
+          else reject(new Error('Chord analyzer failed to load'));
+        };
+        chordWorker.postMessage({ type: 'connect', port: chordChannel.port2,
+          sampleRate: ctx.sampleRate, engineUrl: new URL(chordWorkletUrl, window.location.href).href }, [chordChannel.port2]);
+      });
+      if (!mountedRef.current) { chordWorker.terminate(); chordWorklet.disconnect(); return null; }
+      chordWorker.onerror = () => safeSet(setMicStatus, 'error' as MicStatus);
       if (proofAudioDebugRef.current) {
         worklet.port.postMessage({ type: 'debug', enabled: true });
       }
@@ -2175,13 +2209,6 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           if (!plan) return;
           const baseTime = Number.isFinite(data.time) ? Number(data.time) : ctx.currentTime;
           const onsetBeat = (baseTime - playStartRef.current) / plan.secondsPerBeat;
-          const group = findCompletePolyphonicGroup(
-            plan,
-            heardSet,
-            onsetBeat,
-            occupiedExpectedSlotsRef.current,
-          );
-          if (!group) return;
           const arrivals = new Map<number, number>(
             (Array.isArray(data.arrivals) ? data.arrivals : []).flatMap(
               (arrival: { midi: number; time: number }) =>
@@ -2189,10 +2216,14 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                   ? [[arrival.midi, arrival.time] as [number, number]] : [],
             ),
           );
-          // A sustained tone can support another hand's new attack, but it
-          // cannot become a second attack merely because the written beat changed.
-          if (group.slots.some(({ index, midi }) => !occupiedExpectedSlotsRef.current.has(index) &&
-            (!arrivals.has(midi) || baseTime - arrivals.get(midi)! > 0.2))) return;
+          // Confirmation may lag the first tone in a soft chord. Use the
+          // acoustic arrivals, not callback time, and consume each onset once.
+          const toBeat = (time: number) => (time - playStartRef.current) / plan.secondsPerBeat;
+          const group = findCompletePolyphonicGroup(plan, heardSet, onsetBeat,
+            occupiedExpectedSlotsRef.current,
+            new Map([...arrivals].map(([midi, time]) => [midi, toBeat(time)])),
+            new Map([...lastStrikeByMidiRef.current].map(([midi, strike]) => [midi, toBeat(strike.time)])));
+          if (!group) return;
           let added = false;
           group.slots.forEach(({ index: expectedSlot, midi }) => {
             if (occupiedExpectedSlotsRef.current.has(expectedSlot)) return;
@@ -2400,9 +2431,11 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
     noise.start(time);
     noise.stop(time + 0.025);
+    scheduledClickSourcesRef.current.add(noise);
 
     // One-shot nodes: release the graph edges so they can be collected.
     noise.onended = () => {
+      scheduledClickSourcesRef.current.delete(noise);
       noise.disconnect();
       noiseFilter.disconnect();
       noiseEnv.disconnect();
@@ -2896,7 +2929,10 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
         });
       });
       clicksRef.current = clicks;
-      nextClickRef.current = 0;
+      // Queue both count-in bars before analysis starts. Their timing must not
+      // depend on UI timer delivery during detector startup or calibration.
+      clicks.slice(0, countInBeats).forEach((click) => scheduleClick(click.time, click.accent));
+      nextClickRef.current = countInBeats;
       // The worklet receives the exact audio-clock click schedule. It can
       // downgrade coincident click-shaped events to score-aware candidates
       // while still retaining a real piano note played on that same beat.

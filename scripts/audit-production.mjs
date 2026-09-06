@@ -22,6 +22,9 @@ for (const asset of html.matchAll(/(?:src|href)="\/(assets\/[^"?]+|eartrain-favi
   if (!existsSync(new URL(asset[1], dist))) throw new Error(`Built asset is missing: /${asset[1]}`);
 }
 const sourceRoot = new URL('../src/', import.meta.url);
+for (const asset of ['chord-capture-processor.js', 'chord-analysis-worker.js', 'chord-processor.js']) {
+  if (!existsSync(new URL(`audio/${asset}`, dist))) throw new Error(`Missing live polyphonic asset: ${asset}`);
+}
 const analysisCss = readFileSync(new URL('components/exercise.css', sourceRoot), 'utf8');
 
 const scoreAnalysis = readFileSync(new URL('audio/scoreAnalysis.ts', sourceRoot), 'utf8');
