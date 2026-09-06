@@ -206,14 +206,14 @@
 }
 
 .et-sidebar__brand strong {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.15;
   letter-spacing: -0.025em;
 }
 
 .et-sidebar__brand small {
   color: var(--et-ink-soft);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -265,7 +265,7 @@
   z-index: 1;
   margin: 0;
   color: var(--et-ink-strong);
-  font-size: 27px;
+  font-size: 24px;
   font-weight: 740;
   line-height: 1.16;
   letter-spacing: -0.035em;
@@ -276,7 +276,7 @@
   z-index: 1;
   margin: 8px 0 0;
   color: var(--et-ink-soft);
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1.45;
 }
 
@@ -2519,9 +2519,9 @@
 .et-hand-requirement--both .et-hand-badge { width: 130px; }
 
 .et-orientation-gate {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 2147483647;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -2530,23 +2530,30 @@
 }
 
 .et-orientation-tip {
-  position: relative;
-  width: min(100%, 520px);
+  position: fixed;
+  z-index: 2147483647;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(calc(100% - 32px), 640px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  font-family: var(--et-font);
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   margin: 0;
-  padding: 24px;
+  padding: clamp(24px, 4vw, 40px);
   border: 2px solid rgba(239, 106, 71, 0.68);
-  border-radius: 12px 30px 30px 30px;
+  border-radius: 24px;
   color: var(--et-ink-strong);
   background: rgba(255, 252, 249, 0.98);
   box-shadow:
     0 28px 70px rgba(16, 13, 30, 0.3),
     inset 6px 0 0 var(--et-orange);
   text-align: left;
-  animation: et-orientation-arrive 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .et-orientation-tip__pointer {
@@ -2574,19 +2581,21 @@
   font-weight: 900;
 }
 
-.et-orientation-tip strong {
+.et-orientation-tip h2 {
+  margin: 0;
   display: block;
   color: var(--et-orange-deep);
-  font-size: 23px;
+  font-size: clamp(24px, 3vw, 30px);
+  line-height: 1.2;
   font-weight: 850;
 }
 
 .et-orientation-tip p {
   margin: 3px 0 0;
   color: var(--et-ink-soft);
-  font-size: 16px;
-  font-weight: 650;
-  line-height: 1.4;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.55;
 }
 
 .et-orientation-tip button {

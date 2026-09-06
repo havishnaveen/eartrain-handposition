@@ -141,6 +141,24 @@ function runWorker({ samples, expected, playStartTime = 1, secondsPerBeat = 0.5,
 }
 
 const expectedCde = [60, 62, 64].map((midi, index) => ({ midi, beat: index, beats: 1 }));
+// Exercise the chooser directly: polyphonic evidence must not depend on the
+// accidental order in which harmonic estimators finish their analysis.
+const chooserContext = vm.createContext({ self: {}, Float32Array, Float64Array });
+vm.runInContext(workerSource, chooserContext);
+const simultaneousChoices = vm.runInContext(`chooseMonotonicPath(
+  [[{time:1.01,evidence:1,timingErrorBeats:0}], [{time:1,evidence:1,timingErrorBeats:0}], [{time:1.25,evidence:1,timingErrorBeats:0}]],
+  [{midi:60,beat:0},{midi:48,beat:0},{midi:62,beat:0.5}], 0.5)`, chooserContext);
+assert.equal(simultaneousChoices.filter(Boolean).length, 3, 'A simultaneous bass must not be dropped by serial onset ordering.');
+const heldUnderMelody = runWorker({
+  samples: synthesize({ seconds: 3.6, strikes: [
+    { midi: 48, time: 1, duration: 2, amplitude: 0.01 },
+    ...[64, 65, 67, 69].map((midi, index) => ({ midi, time: 1 + index * .5, duration: .4, amplitude: .006 })),
+  ] }),
+  expected: [{ midi: 48, beat: 0, beats: 4 }, ...[64, 65, 67, 69].map((midi, index) => ({ midi, beat: index, beats: 1 }))].sort((a,b) => a.beat-b.beat),
+  realtime: [48, 64, 65, 67, 69].map((midi, expectedSlot) => ({ midi, expectedSlot, time: 1 + Math.max(0, expectedSlot - 1) * .5, clarity: .82, strength: 2, detectorLane: 'polyphonic', scoreContextAccepted: true })),
+});
+const heldBass = heldUnderMelody.notes.find((note) => note.midi === 48);
+assert.ok(heldBass && heldBass.lastSustainTime > 2.5, `The next RH attack must not truncate a whole-note LH sustain: ${JSON.stringify(heldBass)}`);
 const softCde = synthesize({
   seconds: 3.2,
   room: 0.00022,
@@ -263,6 +281,12 @@ const partialChordResult = runWorker({
     scoreContextAccepted: true,
   })),
 });
+const extraChordResult = runWorker({
+  samples: synthesize({ seconds: 2.8, strikes: [60,64,67,70].map((midi) => ({ midi, time: 1, duration: 1, amplitude: .008 })) }),
+  expected: simultaneousCMajor,
+  realtime: [60,64,67,70].map((midi, index) => ({ midi, time: 1, clarity: .82, strength: 2, detectorLane: 'polyphonic', ...(index < 3 ? {expectedSlot:index, scoreContextAccepted:true} : {}) })),
+});
+assert.ok(extraChordResult.notes.some((note) => note.midi === 70), 'A separately played extra chord tone must survive PCM verification.');
 for (const played of [[48], [48, 60], [48, 60, 64, 67]]) {
   const targets = [48, 60, 64, 67];
   const result = runWorker({

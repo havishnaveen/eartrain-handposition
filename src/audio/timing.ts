@@ -1449,13 +1449,16 @@ export function gradeSequence(
   let playedRepeatExtras = 0;
 
   const hasIndependentPlayedAttack = (note: DetectedNote) => Boolean(
-    note.detectorLane === 'strict' &&
-    note.voiceVeto !== true &&
-    note.voiceBurst !== true &&
+    (note.detectorLane === 'polyphonic' && note.analysisSource === 'offline-verified-extra') ||
     (
-      (note.pianoAttackConfidence ?? 0) >= 0.5 ||
-      (note.frameAttackRatio ?? 0) >= 1.08 ||
-      (note.novelty ?? 0) >= 0.4
+      note.detectorLane === 'strict' &&
+      note.voiceVeto !== true &&
+      note.voiceBurst !== true &&
+      (
+        (note.pianoAttackConfidence ?? 0) >= 0.5 ||
+        (note.frameAttackRatio ?? 0) >= 1.08 ||
+        (note.novelty ?? 0) >= 0.4
+      )
     )
   );
 
@@ -1647,6 +1650,17 @@ export function gradeSequence(
           Math.max(0, 1 - gradedOnsetError / onsetScoringRange),
           1.15,
         );
+        // Averaging must not erase a clearly off-beat attack. Do not use the
+        // median-adjusted onBeat fraction here: subtracting a small negative
+        // offset can push otherwise fluent +0.22-beat attacks over its edge.
+        const clearlyOffBeat = matches.filter(({ expectedIndex, time }) => {
+          if (options.anchorShift && expectedIndex >= options.anchorShift.splitIndex) return false;
+          const slot = options.plan?.expectedNotes[expectedIndex];
+          if (!slot || options.playStartTime === undefined || !options.plan) return false;
+          return Math.abs((time - options.playStartTime) / options.plan.secondsPerBeat - slot.beat) >
+            Math.max(0.35, timingProfile.onBeatWindow + timingProfile.startOffsetAllowance);
+        }).length;
+        onsetScore = Math.min(onsetScore, 5 - clearlyOffBeat / Math.max(1, matches.length) * 1.75);
         // A steady pulse can still be steadily off the beat. Its interval
         // error is near zero, so the blended attack metric alone is too kind.
         // Apply an absolute-phase ceiling only to that specific case; uneven

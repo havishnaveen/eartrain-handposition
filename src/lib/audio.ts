@@ -21,7 +21,7 @@ const normalizeNote = (note: string) => {
 let audioCtx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let outputLimiter: DynamicsCompressorNode | null = null;
-export const OUTPUT_GAIN_MULTIPLIER = 3.8;
+export const OUTPUT_GAIN_MULTIPLIER = 3.2;
 const activeSources = new Set<AudioBufferSourceNode>();
 const loadingPromises = new Map<string, Promise<AudioBuffer | null>>();
 const bufferCache = new Map<string, AudioBuffer>();

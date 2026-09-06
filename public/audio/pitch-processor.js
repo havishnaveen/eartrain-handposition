@@ -221,23 +221,20 @@ const RELEASE_PROFILE_BANDS = 6;
 /* YIN */
 const YIN_THRESHOLD = 0.2;
 /**
- * 90Hz (F#2) is deliberately above mains hum and its second harmonic's
- * useful range. Nothing in the curriculum sounds below G2, so this costs no
- * real notes and removes the single worst failure mode: YIN locking onto a
- * 60Hz hum, which reports every note in the room as B1.
+ * Include C1 for register diagnostics. Attack, speech, and harmonic gates
+ * still apply: extending the search band must not turn mains hum into notes.
  */
-const MIN_FREQ = 65;
+const MIN_FREQ = 32;
 /**
- * C#6 is the curriculum ceiling (1109Hz); this leaves headroom above it
- * without opening the range to shrill artefacts.
+ * Include the upper piano register so a high-octave mistake can be identified.
  */
-const MAX_FREQ = 1250;
+const MAX_FREQ = 4200;
 const MIN_CLARITY = 0.38;
 
 /** High-pass cutoff applied before pitch analysis, to strip hum and rumble. */
-// Preserve C2-and-up fundamentals. Dedicated 50/60Hz notches upstream handle
+// Preserve C1-and-up fundamentals. Dedicated 50/60Hz notches upstream handle
 // mains hum without deleting the bass evidence YIN needs.
-const HPF_HZ = 50;
+const HPF_HZ = 28;
 
 /** Onset must fall back below this fraction of threshold before re-arming. */
 const REARM_FRACTION = 0.6;

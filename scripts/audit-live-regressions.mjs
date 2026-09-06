@@ -55,6 +55,27 @@ try {
   assert.deepEqual(polyphonicTargetsForPlan(heldBassPlan).sort((a, b) => a - b), [48, 64, 65, 67, 69],
     'Every melody attack above a held bass needs independent polyphonic analysis.');
   const openingSlots = new Set(heldBassPlan.expectedNotes.flatMap((slot, index) => slot.beat === 0 ? [index] : []));
+  const cleanTwoHands = heldBassPlan.expectedNotes.map((slot, expectedSlot) => ({
+    midi: ({ C3: 48, E4: 64, F4: 65, G4: 67, A4: 69 })[slot.pitch], expectedSlot,
+    time: 10 + slot.beat * heldBassPlan.secondsPerBeat,
+    endTime: 10 + (slot.beat + slot.beats) * heldBassPlan.secondsPerBeat,
+    durationConfidence: .95, clarity: .95, strength: 2,
+  }));
+  const gradeHands = (notes) => gradeSequence(heldBassPlan.expectedNotes.map((slot) => slot.pitch), notes, { plan: heldBassPlan, playStartTime: 10, lessonLevel: 12, totalLessons: 24 });
+  assert.equal(gradeHands(cleanTwoHands).scores.timing, 5, 'Correct simultaneous attacks and holds deserve full Timing.');
+  const extraWithCorrectChord = gradeHands([...cleanTwoHands, {
+    midi: 70, time: 10.01, clarity: .9, strength: 2, detectorLane: 'polyphonic', analysisSource: 'offline-verified-extra',
+  }].sort((a, b) => a.time - b.time));
+  assert.equal(extraWithCorrectChord.matched, cleanTwoHands.length, 'An extra key must not erase correctly played chord tones.');
+  assert.ok(extraWithCorrectChord.scores.cleanliness < 5, 'A PCM-verified extra chord tone must reduce Cleanliness.');
+  assert.ok(gradeHands(cleanTwoHands.map((note, index) => index === 0 ? { ...note, time: note.time + heldBassPlan.secondsPerBeat * .5 } : note)).scores.timing < 5,
+    'Mistiming the first attack must never improve an accurate performance.');
+  const { reportNoticeFor } = await server.ssrLoadModule('/src/components/ExerciseReport.tsx');
+  const noticePlan = planFor({ timeSignature: '4/4', staves: [{ clef: 'treble', hand: 'right', notes: ['c/4', 'd/4', 'e/4'].map((key) => ({keys:[key], duration:'q'})) }] }, ['C4','D4','E4'], 75);
+  const missedResult = { missed: 3 };
+  assert.match(reportNoticeFor(missedResult, noticePlan, [48,50,52].map((midi) => ({midi}))).message, /one octave too low/);
+  assert.match(reportNoticeFor(missedResult, noticePlan, []).title, /weren’t confirmed/,
+    'Silence must not be diagnosed as a wrong octave.');
   assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65]), 1, openingSlots)?.beat, 1,
     'A held LH bass must not veto the next correct RH attack.');
   assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65]), 1, new Set())?.beat, 1,
@@ -64,8 +85,8 @@ try {
     'Delayed full-chord confirmation must use acoustic arrival time, not callback delivery time.');
   assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 64]), 1.2, new Set(), delayedArrivals, delayedArrivals), null,
     'The same held arrivals cannot be scored again.');
-  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65, 66]), 1, openingSlots), null,
-    'An unrelated new tone must still fail the complete-group check.');
+  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 65, 66]), 1, openingSlots)?.beat, 1,
+    'An extra tone must not erase independently heard correct notes; it is graded separately.');
   const phasePlan = planFor({ timeSignature: '4/4', staves: [
     { clef: 'treble', hand: 'right', notes: ['c/4', 'd/4', 'e/4', 'f/4'].map((key) => ({ keys: [key], duration: 'q' })) },
   ] }, ['C4', 'D4', 'E4', 'F4'], 75);

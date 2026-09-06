@@ -26,7 +26,7 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
   '3-2': { id: 'bass-answer', title: 'Bass answer', meter: 4, solo: '4q 2q 3q 1q | 2q 1q 0h', soloHand: 'left' },
 
   '4-0': {
-    id: 'hands-say-hello', title: 'Hands say hello', meter: 4,
+    id: 'hands-say-hello', title: 'One hand answers the other', meter: 4,
     right: '0q 1q 2q 1q | rq rq rq rq',
     left: 'rq rq rq rq | 4q 3q 2q 0q',
   },
@@ -66,7 +66,7 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
     left: '0h 4h | 4q 3q 2q 0q',
   },
   '9-1': {
-    id: 'a-major-contrary', title: 'A-major contrary motion', meter: 4,
+    id: 'a-major-contrary', title: 'Moving apart in A', meter: 4,
     right: '0q 1q 2q 3q | 4q 3q 2q 0q',
     left: '4q 3q 2q 1q | 0q 1q 2q 4q',
   },
@@ -81,17 +81,17 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
     left: '0q 4q 2q 4q | 0q 4q 2q 0q',
   },
   '11-1': {
-    id: 'e-major-parallel', title: 'E-major parallel motion', meter: 4,
+    id: 'e-major-parallel', title: 'Moving together in E', meter: 4,
     right: '0q 1q 2-8 3-8 4q | 2q 1q 2q 0q',
     left: '0q 1q 2-8 3-8 4q | 2q 1q 2q 0q',
   },
   '12-0': {
-    id: 'e-major-alberti', title: 'E-major Alberti study', meter: 4,
+    id: 'e-major-alberti', title: 'E melody, flowing bass', meter: 4,
     right: '0q 2q 3-8 4-8 3q | 1q 2-8 3-8 2q 0q',
     left: '0-8 4-8 2-8 4-8 0-8 4-8 2-8 4-8 | 0-8 4-8 2-8 4-8 0h',
   },
   '12-2': {
-    id: 'e-major-cadence', title: 'E-major cadence tune', meter: 3,
+    id: 'e-major-cadence', title: 'Finding home in E', meter: 3,
     right: '0q 1-8 2-8 3q | 4qd 3-8 2q | 1q 2q 0q',
     left: '0hd | 4qd 2-8 0q | 0hd',
     measuresPerSystem: 2,
@@ -117,7 +117,7 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
     left: '024h rh | 024w',
   },
   '17-3': {
-    id: 'f-sharp-chord-cadence', title: 'F-sharp chord cadence', meter: 4,
+    id: 'f-sharp-chord-cadence', title: 'Finding home in F-sharp', meter: 4,
     right: '0w | 0w',
     left: '0q 1q 2q 3q | 024w',
   },
@@ -127,12 +127,12 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
     left: '024w | 024h 04h',
   },
   '19-1': {
-    id: 'chord-shell-answer', title: 'Chord and shell answer', meter: 4,
+    id: 'chord-shell-answer', title: 'Chords in conversation', meter: 4,
     right: '024h 1q 2q | 04h 024h',
     left: '0w | 4h 0h',
   },
   '19-3': {
-    id: 'chord-pulse-cadence', title: 'Chord pulse cadence', meter: 4,
+    id: 'chord-pulse-cadence', title: 'A steady chord pulse', meter: 4,
     right: '024q 024q 1q 2q | 04h 024h',
     left: '0h 4h | 0w',
   },
@@ -167,7 +167,7 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
     left: '024h 0q 2q | 0w',
   },
   '23-0': {
-    id: 'alberti-under-chords', title: 'Chords over Alberti bass', meter: 4,
+    id: 'alberti-under-chords', title: 'Chords over a flowing bass', meter: 4,
     right: '024h 04h | 1q 2q 024h',
     left: '0-8 4-8 2-8 4-8 0-8 4-8 2-8 4-8 | 0-8 4-8 2-8 4-8 0h',
   },
@@ -177,7 +177,7 @@ const SCORES: Readonly<Record<string, AuthoredReadingScore>> = {
     left: '0q 1q 2q 3q | 4q 3q 2q 0q',
   },
   '24-0': {
-    id: 'parallel-cadence-study', title: 'Parallel cadence study', meter: 4,
+    id: 'parallel-cadence-study', title: 'Together to the finish', meter: 4,
     right: '0-8 1-8 2q 024h | 4q 3q 2q 024q',
     left: '0-8 1-8 2q 024h | 4q 3q 2q 024q',
   },

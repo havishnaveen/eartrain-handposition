@@ -6,7 +6,8 @@ import {
   useState,
 } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { midiToName, pitchToMidi } from '../audio/timing';
+import { alignPitchSequences, midiToName, pitchToMidi } from '../audio/timing';
+import AcknowledgeDialog from './AcknowledgeDialog';
 import type { DetectedNote, DrillPlan, ExtraKind, GradeResult } from '../audio/timing';
 import './exercise-report.css';
 
@@ -25,6 +26,27 @@ export interface ExerciseReportProps {
 
 const AUTO_ADVANCE_MS = 10000;
 const AUTO_ADVANCE_TICK_MS = 50;
+
+export function reportNoticeFor(result: GradeResult, plan?: DrillPlan | null, notes: readonly DetectedNote[] = []) {
+  const expected = plan?.expectedNotes.map((note) => pitchToMidi(note.pitch)).filter((midi): midi is number => midi !== null) ?? [];
+  if (expected.length >= 3) {
+    const matchCount = (offset: number) => alignPitchSequences(expected, notes.map((note) => ({ ...note, midi: note.midi - offset })), (midi) => midi)
+      .filter((operation) => operation.kind === 'match').length;
+    const unshifted = matchCount(0);
+    for (const offset of [-12, 12, -24, 24]) {
+      const shifted = matchCount(offset);
+      if (shifted >= Math.ceil(expected.length * 0.75) && shifted >= unshifted + 2) {
+        const distance = Math.abs(offset) === 12 ? 'one octave' : 'two octaves';
+        return { title: 'Check your starting octave', message: `The notes we heard mostly match the phrase ${distance} too ${offset < 0 ? 'low' : 'high'}. Move ${distance} ${offset < 0 ? 'higher' : 'lower'} and check the starting note before trying again.` };
+      }
+    }
+  }
+  if (result.missed > 0) return {
+    title: 'Some notes weren’t confirmed',
+    message: `We couldn’t confirm ${result.missed === 1 ? 'one written note' : `${result.missed} written notes`}, which lowered the pitch score. Check the starting keys and octave. If you played them, check that the microphone can hear the piano clearly before retrying.`,
+  };
+  return null;
+}
 
 const CheckIcon = () => (
   <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -442,6 +464,8 @@ void PerformanceReplay;
 
 export function ExerciseReport({
   result,
+  plan,
+  detectedNotes,
   onNext,
   nextLabel = 'Next Drill',
 }: ExerciseReportProps) {
@@ -450,6 +474,9 @@ export function ExerciseReport({
   // child sees only the overall score, three categories, and one useful fact.
   const [remainingMs, setRemainingMs] = useState(AUTO_ADVANCE_MS);
   const [isStaying, setIsStaying] = useState(false);
+  const notice = useMemo(() => reportNoticeFor(result, plan, detectedNotes), [result, plan, detectedNotes]);
+  const [acknowledgedResult, setAcknowledgedResult] = useState<GradeResult | null>(null);
+  const needsAcknowledgement = notice !== null && acknowledgedResult !== result;
   const autoAdvanceTimerRef = useRef<number | null>(null);
   const countdownTickRef = useRef<number | null>(null);
   const didAdvanceRef = useRef(false);
@@ -475,6 +502,7 @@ export function ExerciseReport({
   }, [clearAutoAdvance]);
 
   useEffect(() => {
+    if (needsAcknowledgement || isStaying) return clearAutoAdvance;
     const deadline = performance.now() + AUTO_ADVANCE_MS;
     setRemainingMs(AUTO_ADVANCE_MS);
     countdownTickRef.current = window.setInterval(() => {
@@ -482,7 +510,7 @@ export function ExerciseReport({
     }, AUTO_ADVANCE_TICK_MS);
     autoAdvanceTimerRef.current = window.setTimeout(moveNext, AUTO_ADVANCE_MS);
     return clearAutoAdvance;
-  }, [clearAutoAdvance, moveNext]);
+  }, [clearAutoAdvance, moveNext, needsAcknowledgement, isStaying]);
 
   const stayHere = useCallback(() => {
     clearAutoAdvance();
@@ -496,6 +524,7 @@ export function ExerciseReport({
 
   return (
     <section className={`et-report et-report--${result.passed ? 'success' : 'focus'}`} aria-labelledby="exercise-report-title">
+      {needsAcknowledgement && notice && <AcknowledgeDialog {...notice} onAcknowledge={() => setAcknowledgedResult(result)} />}
       <header className="et-report__hero">
         <div className="et-report__verdict-mark">
           {result.passed ? <CheckIcon /> : <FocusIcon />}

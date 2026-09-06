@@ -383,7 +383,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [D, A, E, B],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.8,
-    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.88,
+    drills: ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'], difficultyBase: 0.88,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [D, A, E, B], qualities: ['major', 'minor'], rootSupport: 'matched',
       layers: [], progressionLength: 1, targetRepeats: 2,
@@ -397,7 +397,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A, E],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12.4, tempoHard: 11.2,
-    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.92,
+    drills: ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'], difficultyBase: 0.92,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A, E], qualities: ['major', 'minor'], rootSupport: 'matched',
       layers: [], progressionLength: 1, targetRepeats: 2,
@@ -411,7 +411,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [D, A, E, B, FS],
     rightOctaves: [4, 5], leftOctaves: BASS, contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 12, tempoHard: 10.8,
-    drills: ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'], difficultyBase: 0.96,
+    drills: ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'], difficultyBase: 0.96,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [D, A, E, B, FS], qualities: ['major', 'minor'], rootSupport: 'matched',
       layers: [], progressionLength: 1, targetRepeats: 2,
@@ -566,19 +566,19 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Match an isolated piano anchor inside light texture and transfer its chord shape.',
     coreProblems: ['chord-anchor', 'background-piano-separation', 'chord-shape-transfer', 'chord-by-ear'],
     supportingProblems: ['major-minor-hearing', 'chord-reading', 'chord-simultaneity'],
-    drillPurposes: ['Read a reference chord', 'Match its heard anchor and rebuild', 'Read a contrasting chord', 'Transfer the heard shape to a new anchor'],
+    drillPurposes: ['Read a reference chord', 'Match its heard anchor and rebuild', 'Find a contrasting chord by ear', 'Transfer the heard shape to a new anchor'],
   },
   'c23-separate-background-piano': {
     learningOutcome: 'Track the piano through a mix, match its anchor, and reproduce the complete chord.',
     coreProblems: ['background-piano-separation', 'chord-by-ear', 'chord-simultaneity'],
     supportingProblems: ['chord-anchor', 'chord-reading', 'major-minor-hearing', 'chord-shape-transfer'],
-    drillPurposes: ['Prime the written shape', 'Extract and rebuild the piano chord', 'Read a new harmonic shape', 'Extract and rebuild a contrasting chord'],
+    drillPurposes: ['Prime the written shape', 'Extract and rebuild the piano chord', 'Find a new chord from its reference', 'Extract and rebuild a contrasting chord'],
   },
   'c24-carry-shape-through-song': {
     learningOutcome: 'Retain and reproduce a target piano chord through a four-chord musical context.',
     coreProblems: ['chord-shape-transfer', 'background-piano-separation', 'chord-by-ear', 'major-minor-hearing'],
     supportingProblems: ['chord-anchor', 'chord-reading', 'chord-simultaneity', 'chord-quality-spacing'],
-    drillPurposes: ['Prime the first written shape', 'Retain it through a progression', 'Read a contrasting shape', 'Retain and rebuild the final target'],
+    drillPurposes: ['Prime the first written shape', 'Find a nearby chord by ear', 'Find a contrasting shape by ear', 'Retain and rebuild the final target'],
   },
 };
 
@@ -757,53 +757,12 @@ function withPositionProof(question: Question, preferredHand: Hand): Question {
   if (question.positionProof) return question;
 
   const hand = question.handScope === 'left' ? 'left' : preferredHand;
-  const staff = question.cue.staves.find((candidate) => candidate.hand === hand)
-    ?? question.cue.staves[0];
-  const writtenPitches = staff?.notes.flatMap((note) =>
-    note.duration.endsWith('r')
-      ? []
-      : note.keys.map(vexToScientificPitch).filter((pitch): pitch is string => pitch !== null)
-  ) ?? [];
-  // Chord-by-ear must not leak its unknown middle tone in the preceding
-  // position check. Use root, adjacent key, and outer fifth as a neutral hand
-  // warm-up; the real chord quality remains something the student hears.
-  const spatialWarmup = question.spatialChord
-    ? [
-        question.spatialChord.rootPitch,
-        transposePitch(question.spatialChord.rootPitch, 2),
-        transposePitch(question.spatialChord.rootPitch, 7),
-      ]
-    : null;
-  const sourcePitches = spatialWarmup
-    ?? (writtenPitches.length > 0 ? writtenPitches : question.expectedSequence);
-  const uniquePitches = [...new Set(sourcePitches)]
-    .sort((a, b) => localPitchToMidi(a) - localPitchToMidi(b));
-  const fallbackRoot = uniquePitches[0] ?? question.expectedSequence[0] ?? 'C4';
-  while (uniquePitches.length < 3) {
-    uniquePitches.push(transposePitch(fallbackRoot, uniquePitches.length === 1 ? 4 : 7));
-  }
-  const middleIndex = Math.floor((uniquePitches.length - 1) / 2);
-  const anchors = [
-    uniquePitches[0],
-    uniquePitches[middleIndex],
-    uniquePitches[uniquePitches.length - 1],
-  ] as [string, string, string];
-  const fingers = question.spatialChord
-    ? hand === 'right' ? ([1, 2, 5] as const) : ([5, 4, 1] as const)
-    : hand === 'right' ? ([1, 3, 5] as const) : ([5, 3, 1] as const);
-  const positionName = question.spatialChord
-    ? `${question.spatialChord.rootPitch.replace(/-?\d+$/, '')} Position`
-    : question.positionLabel
-        .replace(/\s+[—→].*$/, '')
-        .replace(/\s+\([^)]*\)$/, '')
-        .trim();
-  const positionProof: PositionProofSpec = {
-    positionName,
-    hand,
-    proofNotes: anchors.map((pitch, index) => ({ pitch, finger: fingers[index] })) as PositionProofSpec['proofNotes'],
-    requireHeld: false,
-    acceptWindowMs: POSITION_PROOF_ACCEPT_WINDOW_MS,
-  };
+  // Check the declared five-finger position, not a fragment of the melody.
+  // Three consecutive melody notes cannot legitimately inherit fingers 1–3–5.
+  const root = /\(([A-G](?:#|b)?)(-?\d+)\)/.exec(question.positionLabel);
+  if (!root) throw new Error(`Missing position root for ${question.id}: ${question.positionLabel}`);
+  const position = buildPosition(positionById(root[1]), Number(root[2]));
+  const positionProof = positionProofForPosition(position, hand);
   return { ...question, positionProof };
 }
 
@@ -1437,7 +1396,7 @@ function questionFor(
     const landingPool = fullLandingPool.map((contour) => contour.slice(0, landingLength));
     const opening = difficultyOrderedContour(openingPool, localRep);
     const landing = difficultyOrderedContour(landingPool, localRep);
-    const splitIndex = opening.length;
+    let splitIndex = opening.length;
     const degrees = [...opening, ...landing];
     const notes: CueNote[] = degrees.map((degree, index) => {
       const inLanding = index >= splitIndex;
@@ -1463,6 +1422,20 @@ function questionFor(
     // preserves the metronome pulse and gives a learnable physical routine:
     // travel on 1–2, settle on 3–4, play on the following downbeat.
     const waitBeats = 4;
+    const padBar = (phrase: CueNote[]): CueNote[] => {
+      const result = applyRhythm(phrase, 4, rand, rhythmLevel, [0, phrase.length - 1]);
+      const duration = result.reduce((sum, note) => sum + beatsForDuration(note.duration), 0);
+      let remaining = (4 - duration % 4) % 4;
+      while (remaining > 0.001) {
+        const beats = remaining >= 1 ? 1 : 0.5;
+        result.push({ keys: [clef === 'bass' ? 'd/3' : 'b/4'], duration: beats === 1 ? 'qr' : '8r' });
+        remaining -= beats;
+      }
+      return result;
+    };
+    const departure = padBar(notes.slice(0, splitIndex));
+    const destination = padBar(notes.slice(splitIndex));
+    splitIndex = departure.length;
 
     const shiftQuestion: Question = {
       id: `${lesson.id}#${ordinal}`,
@@ -1488,13 +1461,7 @@ function questionFor(
           // Never place an eighth/sixteenth group across the hand-off. Both
           // boundary attacks retain a full beat so the movement is physically
           // possible, while later lessons still receive faster rhythm elsewhere.
-          notes: applyRhythm(
-            notes,
-            4,
-            rand,
-            rhythmLevel,
-            [splitIndex - 1, splitIndex],
-          ),
+          notes: [...departure, ...destination],
         }],
       },
       expectedSequence,

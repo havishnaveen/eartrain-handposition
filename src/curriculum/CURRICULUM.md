@@ -98,3 +98,13 @@ chords (G, F, E, then A). Only after those shapes are secure does the sequence
 add major/minor contrast, fifth transfers, B-flat, and the deeper B/F-sharp
 positions. The reference stays visible while the learner searches; there is
 no on-screen keyboard and no Prove-It or numeric report.
+
+### September 6 review
+
+Lessons 22–24 now contain one written chord phrase followed by three Chord by
+Ear applications. The final application revisits the first relationship with
+the other hand. Earlier lesson slots and stable exercise IDs are unchanged.
+All position checks use the declared major five-finger position's root,
+third, and fifth (RH 1–3–5; LH 5–3–1), never three arbitrary melody notes.
+Each side of a hand shift fills complete 4/4 bars; its movement interval is
+one additional complete 4/4 rest bar, on the same beat clock.

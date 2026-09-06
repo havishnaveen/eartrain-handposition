@@ -13,6 +13,19 @@ latency as a reason to discard a chord. Single-note detection and post-take
 grading remain separate. Run `audit:audio`, `audit:score`, and the development
 `chord-runtime-audit.html` browser test when replacing this transport.
 
+The PCM chooser permits simultaneous written pitches in either acoustic
+confirmation order. Sustain analysis ends at the next strike of the **same
+pitch**, not the next attack from the other hand; polyphonic sustain uses a
+narrow fundamental envelope. Detector `reattack` messages are not key-up
+evidence. PCM-verified extra chord tones affect Cleanliness without removing
+correct chord tones. Timing has a small per-attack ceiling for clearly
+off-beat events so averaging cannot turn a missed first beat into full credit.
+
+Student reports can require acknowledgement of missing notes or an evidenced
+octave displacement. `reportNoticeFor` is presentation-only: it never changes
+scores, and missing audio alone is not described as an octave mistake. The
+live pitch ticker is hidden because it is provisional; telemetry is retained.
+
 To integrate reading.oclef.com, install a provider during trusted application
 bootstrap. A remote provider should POST the `GradingRequest` to an EarTrain
 server route, where the partner API key is stored as a server-only environment

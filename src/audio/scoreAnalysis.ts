@@ -25,7 +25,7 @@ export interface ScoreAnalysisResult {
   reason: string;
 }
 
-const WORKER_URL = '/audio/score-analyzer-worker.js?v=physical-evidence-v17-2026-08-26';
+const WORKER_URL = '/audio/score-analyzer-worker.js?v=polyphonic-holds-v18-2026-09-06';
 const ANALYSIS_TIMEOUT_MS = 2_000;
 
 type AnalyzedNote = DetectedNote & {

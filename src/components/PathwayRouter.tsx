@@ -133,9 +133,9 @@ function orientationNoticesFor(question: Question): OrientationNotice[] {
   } else if (hasDualProof) {
     notices.push({
       kind: 'dual-proof',
-      title: 'Two hand checks — one at a time',
-      message: 'First prove the RIGHT HAND position, then the LEFT HAND. Complete both before the two-hand exercise begins.',
-      buttonLabel: 'I’ll check RH, then LH',
+      title: 'Check each hand',
+      message: 'Check your right-hand position first, then your left. After both checks, you’ll play the two-hand exercise.',
+      buttonLabel: 'Continue',
     });
   } else if (handScope === 'both') {
     notices.push({

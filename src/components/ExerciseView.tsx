@@ -17,6 +17,7 @@ import type {
   SpatialChordSpec,
 } from '../curriculum/types';
 import ExerciseReport from './ExerciseReport';
+import AcknowledgeDialog from './AcknowledgeDialog';
 import LessonPanel from './LessonPanel';
 import StaffCue from './StaffCue';
 import './exercise.css';
@@ -242,24 +243,7 @@ function OrientationCallout({
   onAcknowledge?: () => void;
 }) {
   return (
-    <div className="et-orientation-gate">
-      <aside
-        className={`et-orientation-tip et-orientation-tip--${notice.kind}`}
-        role="alertdialog"
-        aria-modal="true"
-        aria-label={notice.title}
-      >
-        <span className="et-orientation-tip__pointer" aria-hidden="true" />
-        <span className="et-orientation-tip__stop" aria-hidden="true">!</span>
-        <div>
-          <strong>{notice.title}</strong>
-          <p>{notice.message}</p>
-        </div>
-        <button type="button" onClick={onAcknowledge} autoFocus>
-          {notice.buttonLabel ?? 'I understand'}
-        </button>
-      </aside>
-    </div>
+    <AcknowledgeDialog {...notice} onAcknowledge={onAcknowledge} />
   );
 }
 
@@ -316,7 +300,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       onNext,
       nextLabel = 'Next Drill',
       inputLevel = 0,
-      detectedNotes = [],
       proofProgress = 0,
       spatialProgress = 0,
       spatialFoundMidi = [],
@@ -761,9 +744,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               </div>
             </div>
 
-            {detectedNotes.length > 0 ? (
-              <span className="et-listen__label">{detectedNotes.slice(-8).join('  ·  ')}</span>
-            ) : null}
           </div>
         </div>
       </section>

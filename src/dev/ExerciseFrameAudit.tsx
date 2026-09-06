@@ -4,6 +4,7 @@ import { beatsForDuration } from '../audio/timing';
 import AnchorShiftCue from '../components/AnchorShiftCue';
 import ExerciseLayout from '../components/ExerciseLayout';
 import ExerciseView from '../components/ExerciseView';
+import AcknowledgeDialog from '../components/AcknowledgeDialog';
 import StaffCue from '../components/StaffCue';
 import type { StaffCueHandle } from '../components/StaffCue';
 import { PROGRESSIVE_CONCEPTS } from '../curriculum/progressiveCurriculum';
@@ -12,6 +13,7 @@ import type { Question } from '../curriculum/types';
 import '../index.css';
 
 type AuditFrame =
+  | 'notice'
   | 'memory-prompt' | 'memory-look' | 'memory-play'
   | 'shift-overview' | 'shift-rest' | 'shift-land'
   | 'chord-reference' | 'chord-listen' | 'chord-search' | 'chord-complete';
@@ -63,6 +65,7 @@ function Frame() {
       lessonFocus={PROGRESSIVE_CONCEPTS[config.lesson - 1].focus}
       phaseLabel={PROGRESSIVE_CONCEPTS[config.lesson - 1].phaseLabel}
     >
+      {FRAME === 'notice' && <AcknowledgeDialog title="Check each hand" message="Check your right-hand position first, then your left. After both checks, you’ll play the two-hand exercise." buttonLabel="Continue" />}
       <ExerciseView
         status={status}
         instruction={active.instruction}

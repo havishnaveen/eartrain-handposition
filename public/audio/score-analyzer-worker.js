@@ -11,8 +11,8 @@
 
 const FFT_SIZE = 2048;
 const HOP = 256;
-const MIN_FREQ = 82;
-const MAX_FREQ = 1400;
+const MIN_FREQ = 32;
+const MAX_FREQ = 4200;
 const HARMONIC_PARENT_INTERVALS = [7, 12, 19, 24, 28, 31, 34, 36];
 
 function clamp(value, low = 0, high = 1) {
@@ -653,7 +653,13 @@ function chooseMonotonicPath(candidateSets, expectedNotes, secondsPerBeat) {
         choices: [...state.choices, null],
       });
       for (const candidate of candidateSets[slotIndex]) {
-        if (candidate.time <= state.lastTime + minimumGap) continue;
+        // A chord is one onset, not an ascending sequence of hammer times.
+        // Enforce order between beats, while allowing either analysis order
+        // for independent pitches on the same written beat.
+        const prior = state.choices.flatMap((choice, index) => choice ? [{ choice, index }] : []);
+        const earlier = prior.filter(({ index }) => Number(expectedNotes[index].beat) < Number(expectedNotes[slotIndex].beat));
+        if (earlier.some(({ choice }) => candidate.time <= choice.time + minimumGap)) continue;
+        if (prior.some(({ choice, index }) => Number(expectedNotes[index].midi) === Number(expectedNotes[slotIndex].midi) && Math.abs(candidate.time - choice.time) < minimumGap)) continue;
         if (repeatsPreviousPitch && state.choices[slotIndex - 1] && !candidate.rearticulated) {
           continue;
         }
@@ -670,8 +676,35 @@ function chooseMonotonicPath(candidateSets, expectedNotes, secondsPerBeat) {
   return states[0]?.choices ?? candidateSets.map(() => null);
 }
 
-function sustainFor(analysis, midi, candidate, noise, expectedSeconds, nextTime) {
-  const track = analysis.salience.get(midi);
+function sustainFor(analysis, midi, candidate, noise, expectedSeconds, nextTime, polyphonic = false) {
+  let track = analysis.salience.get(midi);
+  if (polyphonic) {
+    // Broad harmonic salience moves when the other hand changes notes. A
+    // narrow fundamental envelope follows this string, not the whole chord.
+    analysis.sustainTracks ??= new Map();
+    if (!analysis.sustainTracks.has(midi)) {
+      const size = 4096;
+      const omega = 2 * Math.PI * midiFrequency(midi) / analysis.sampleRate;
+      const coefficient = 2 * Math.cos(omega);
+      const window = Float32Array.from({ length: size }, (_, index) => .5 - .5 * Math.cos(2 * Math.PI * index / (size - 1)));
+      const envelope = new Float32Array(analysis.frameTimes.length);
+      for (let index = 0; index < envelope.length; index += 4) {
+        const start = Math.round((analysis.frameTimes[index] - analysis.captureStartTime) * analysis.sampleRate) - size / 2;
+        let previous = 0;
+        let previousTwo = 0;
+        for (let sample = 0; sample < size; sample++) {
+          const value = (analysis.filtered[start + sample] ?? 0) * window[sample] + coefficient * previous - previousTwo;
+          previousTwo = previous;
+          previous = value;
+        }
+        const amplitude = Math.hypot(previous - previousTwo * Math.cos(omega), previousTwo * Math.sin(omega)) / size;
+        envelope.fill(amplitude, index, Math.min(index + 4, envelope.length));
+      }
+      analysis.sustainTracks.set(midi, envelope);
+    }
+    track = analysis.sustainTracks.get(midi);
+    noise = localNoise(track, analysis.frameTimes, candidate.time - .15);
+  }
   if (!track) return {};
   const maximumTime = Math.min(
     analysis.frameTimes[analysis.frameTimes.length - 1],
@@ -845,7 +878,7 @@ function analyzeTake(payload) {
       time: refinedTime,
       frameIndex: nearestFrame(analysis.frameTimes, refinedTime),
     };
-    const nextCandidate = chosen.slice(slotIndex + 1).find(Boolean);
+    const nextCandidate = chosen.find((choice, index) => index > slotIndex && choice && Number(expectedNotes[index].midi) === midi);
     const sustain = sustainFor(
       analysis,
       midi,
@@ -853,6 +886,7 @@ function analyzeTake(payload) {
       noiseByMidi.get(midi) ?? 1e-10,
       Number(slot.beats) * secondsPerBeat,
       nextCandidate?.time,
+      realtimeMatch?.detectorLane === 'polyphonic',
     );
     if (!realtimeMatch) recovered += 1;
     notes.push({
@@ -962,7 +996,7 @@ function analyzeTake(payload) {
       time: refinedTime,
       frameIndex: nearestFrame(analysis.frameTimes, refinedTime),
     };
-    const nextCandidate = chosen.slice(slotIndex + 1).find(Boolean);
+    const nextCandidate = chosen.find((choice, index) => index > slotIndex && choice && Number(expectedNotes[index].midi) === midi);
     notes.push({
       ...best.note,
       midi,
@@ -976,6 +1010,7 @@ function analyzeTake(payload) {
         noiseByMidi.get(midi) ?? 1e-10,
         Number(slot.beats) * secondsPerBeat,
         nextCandidate?.time,
+        best.note.detectorLane === 'polyphonic',
       ),
       analysisSource: canRefine ? 'realtime-pcm-preserved' : 'realtime-preserved',
       analysisConfidence: best.evidence.evidence,
@@ -1097,19 +1132,19 @@ function analyzeTake(payload) {
       secondsPerBeat,
     );
     const yin = yinAt(analysis, Number(note.time));
+    const independentPolyphonic = note.detectorLane === 'polyphonic' && verifyPolyphonicAttack(analysis, midi, Number(note.time));
     if (
       !evidence ||
-      !yin ||
-      yin.midi !== midi ||
-      evidence.evidence < 0.7 ||
+      (!independentPolyphonic && (!yin || yin.midi !== midi)) ||
+      (!independentPolyphonic && evidence.evidence < 0.7) ||
       evidence.snr < 2.5 ||
-      evidence.contrast < 1.22 ||
+      (!independentPolyphonic && evidence.contrast < 1.22) ||
       evidence.rise < 1.15 ||
-      evidence.persistentFrames < 10 ||
+      (!independentPolyphonic && evidence.persistentFrames < 10) ||
       evidence.postFlatness > 0.76 ||
       evidence.speechLike ||
-      evidence.octaveConflict ||
-      evidence.harmonicParentConflict
+      (!independentPolyphonic && evidence.octaveConflict) ||
+      (!independentPolyphonic && evidence.harmonicParentConflict)
     ) continue;
     usedRealtime.add(index);
     notes.push({

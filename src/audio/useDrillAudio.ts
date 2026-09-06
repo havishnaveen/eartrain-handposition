@@ -133,7 +133,7 @@ function connectPianoAnalysisFrontEnd(
 
   const highpass = ctx.createBiquadFilter();
   highpass.type = 'highpass';
-  highpass.frequency.value = 70;
+  highpass.frequency.value = 28;
   highpass.Q.value = 0.7;
 
   const hum50 = ctx.createBiquadFilter();
@@ -1018,10 +1018,6 @@ export function findCompletePolyphonicGroup(
   return polyphonicSlotGroupsForPlan(plan)
     .filter((candidate) =>
       candidate.slots.every(({ midi }) => heard.has(midi)) &&
-      [...heard].every((midi) => candidate.slots.some((slot) => slot.midi === midi) ||
-        plan.expectedNotes.some((slot) =>
-          pitchToMidi(slot.pitch) === midi && slot.beat < candidate.beat &&
-          slot.beat + slot.beats >= candidate.beat)) &&
       candidate.slots.some(({ index }) => !occupied.has(index)) &&
       (!arrivalBeats || candidate.slots.every(({ index, midi }) => occupied.has(index) ||
         (arrivalBeats.has(midi) && arrivalBeats.get(midi)! > (consumedArrivalBeats.get(midi) ?? -Infinity)))) &&
@@ -1035,7 +1031,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
-    workletUrl = '/audio/pitch-processor.js?v=proof-consensus-v20-2026-09-05',
+    workletUrl = '/audio/pitch-processor.js?v=extended-register-v21-2026-09-06',
     chordWorkletUrl = '/audio/chord-processor.js?v=shared-spectrum-v7-2026-09-05',
   } = options;
 
@@ -1637,6 +1633,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           const confidence = Number(data.confidence);
           if (
             note &&
+            data.reason !== 'reattack' &&
             Number.isFinite(releaseTime) &&
             releaseTime > note.time &&
             Number.isFinite(confidence) &&
@@ -2223,8 +2220,20 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
             occupiedExpectedSlotsRef.current,
             new Map([...arrivals].map(([midi, time]) => [midi, toBeat(time)])),
             new Map([...lastStrikeByMidiRef.current].map(([midi, strike]) => [midi, toBeat(strike.time)])));
-          if (!group) return;
           let added = false;
+          // An extra key must be audited for Cleanliness, not erase a complete
+          // correct chord. Record only fresh independent polyphonic arrivals;
+          // the PCM verifier remains responsible for admitting these extras.
+          for (const midi of heardSet) {
+            const time = arrivals.get(midi);
+            if (time === undefined || time <= (lastStrikeByMidiRef.current.get(midi)?.time ?? -Infinity)) continue;
+            if (group?.slots.some((slot) => slot.midi === midi)) continue;
+            if (plan.expectedNotes.some((slot) => pitchToMidi(slot.pitch) === midi && Math.abs(slot.beat - toBeat(time)) <= .75)) continue;
+            onsetsRef.current.push({ midi, time, clarity: .75, strength: 1.3, sustain: 1, detectorLane: 'polyphonic' });
+            lastStrikeByMidiRef.current.set(midi, { time, peakRms: 0, candidate: false });
+            added = true;
+          }
+          if (!group) return;
           group.slots.forEach(({ index: expectedSlot, midi }) => {
             if (occupiedExpectedSlotsRef.current.has(expectedSlot)) return;
             const time = arrivals.get(midi) ?? baseTime;

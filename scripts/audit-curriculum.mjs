@@ -214,9 +214,9 @@ try {
       ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'],
       ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
       ['spatial-chord', 'chord-reading', 'chord-reading', 'spatial-chord'],
-      ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
-      ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
-      ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'],
+      ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'],
     ],
     'Every lesson must keep its reviewed four-drill teaching order.',
   );
@@ -320,16 +320,16 @@ try {
     assert.ok(questions.every(({ exerciseMode }) =>
       exerciseMode === 'standard' || exerciseMode === 'spatial-chord'),
     `Lesson ${lessonIndex} must spend all four slots on chord reading or chord-by-ear.`);
-    assert.equal(questions.filter(({ exerciseMode }) => exerciseMode === 'spatial-chord').length, 2,
-      `Lesson ${lessonIndex} needs exactly two ear-chord applications.`);
+    assert.equal(questions.filter(({ exerciseMode }) => exerciseMode === 'spatial-chord').length, lessonIndex >= 22 ? 3 : 2,
+      `Lesson ${lessonIndex} must retain its prescribed ear-chord majority.`);
   }
   const expectedSpatialPairs = {
     19: [['C Major', 'G Major'], ['C Major', 'F Major']],
     20: [['C Major', 'E Major'], ['C Major', 'A Major']],
     21: [['C Major', 'A Minor'], ['C Major', 'C Minor']],
-    22: [['G Major', 'D Major'], ['F Major', 'C Major']],
-    23: [['D Major', 'A Major'], ['Bb Major', 'F Major']],
-    24: [['E Major', 'B Major'], ['B Major', 'F# Major']],
+    22: [['G Major', 'D Major'], ['F Major', 'C Major'], ['G Major', 'D Major']],
+    23: [['D Major', 'A Major'], ['Bb Major', 'F Major'], ['D Major', 'A Major']],
+    24: [['E Major', 'B Major'], ['B Major', 'F# Major'], ['E Major', 'B Major']],
   };
   for (let lessonIndex = 19; lessonIndex <= 24; lessonIndex += 1) {
     const pairs = baseQuestionsFor(lessonIndex)
@@ -507,6 +507,12 @@ try {
               const expectedFingers = staff.hand === 'right' ? [1, 3, 5] : [5, 3, 1];
               assert.deepEqual(question.positionProof.proofNotes.map((note) => note.finger), expectedFingers,
                 `Lesson ${concept.index}, drill ${questionNumber} has invalid ${staff.hand}-hand proof fingers.`);
+            }
+            for (const proof of question.positionProofs ?? (question.positionProof ? [question.positionProof] : [])) {
+              const pitches = proof.proofNotes.map((note) => pitchToMidi(note.pitch));
+              assert.deepEqual(pitches.map((pitch) => pitch - pitches[0]), [0, 4, 7],
+                `Lesson ${concept.index} drill ${questionNumber}: a 1–3–5 major-position check must use root, third and fifth, not adjacent melody notes.`);
+              assert.deepEqual(proof.proofNotes.map((note) => note.finger), proof.hand === 'right' ? [1, 3, 5] : [5, 3, 1]);
             }
             if (question.exerciseMode === 'blind-memory') {
               const noteCount = question.expectedSequence.length;

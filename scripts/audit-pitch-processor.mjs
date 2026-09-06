@@ -497,7 +497,7 @@ assert.ok(
   targetedWhisper.some((event) => midiOf(event) === 60),
   'The live recovery lane must preserve a very soft requested key for score-aware confirmation.',
 );
-for (const midi of [48, 52, 55]) {
+for (const midi of [24, 36, 40, 48, 52, 55, 84, 88, 96]) {
   const quietBassProof = noteEvents(runScenario({
     seconds: 3.6,
     watchMidi: midi,

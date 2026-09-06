@@ -112,15 +112,14 @@ try {
           findCompletePolyphonicGroup(plan, new Set(completeGroup), group.beat, new Set()),
           'The complete simultaneous chord must satisfy its written stack.',
         );
-        assert.equal(
+        assert.ok(
           findCompletePolyphonicGroup(
             plan,
             new Set([...completeGroup, completeGroup[0] - 1]),
             group.beat,
             new Set(),
           ),
-          null,
-          'A correct chord plus a nearby wrong key must not satisfy the written stack.',
+          'The written chord remains heard when an extra key is present; Cleanliness owns the extra.',
         );
       });
     });
@@ -142,7 +141,7 @@ try {
     );
     assert.equal(question.exerciseMode, 'anchor-shift');
     assert.equal(
-      question.cue.staves[0].notes.length - question.anchorShift.splitIndex,
+      question.cue.staves[0].notes.slice(question.anchorShift.splitIndex).filter((note) => !note.duration.endsWith('r')).length,
       expected.landingNotes,
       `Lesson ${lessonIndex} must use its gradual destination-phrase length.`,
     );
@@ -151,6 +150,10 @@ try {
       4,
       `Lesson ${lessonIndex} must use one complete 4/4 shift bar.`,
     );
+    for (const section of [question.cue.staves[0].notes.slice(0, question.anchorShift.splitIndex), question.cue.staves[0].notes.slice(question.anchorShift.splitIndex)]) {
+      assert.equal(section.reduce((sum, note) => sum + beatsForDuration(note.duration), 0) % 4, 0,
+        'Each hand position must finish on a complete 4/4 bar boundary.');
+    }
   }
 
   const dedicatedChordRoots = PROGRESSIVE_CONCEPTS
