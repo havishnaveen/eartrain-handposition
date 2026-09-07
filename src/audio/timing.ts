@@ -855,6 +855,30 @@ export function alignPitchSequencesWithGroups(
   norm: (midi: number) => number,
   groupKeyOf?: (expectedIndex: number) => unknown,
 ): PitchAlignmentOperation[] {
+  // Two staves can name the same physical key on the same beat. A microphone
+  // hears one hammer, not one event per hand. Collapse only exact unisons;
+  // octaves and later re-attacks still require their own acoustic evidence.
+  if (groupKeyOf) {
+    const representatives: number[] = [];
+    const aliases = new Map<number, number[]>();
+    expectedMidi.forEach((midi, index) => {
+      const first = representatives.find((prior) =>
+        expectedMidi[prior] === midi && groupKeyOf(prior) === groupKeyOf(index));
+      if (first === undefined) { representatives.push(index); aliases.set(index, [index]); }
+      else aliases.get(first)!.push(index);
+    });
+    if (representatives.length < expectedMidi.length) {
+      const mapped = detected.map((note) => {
+        if (note.expectedSlot === undefined) return note;
+        const slot = representatives.findIndex((index) => aliases.get(index)!.includes(note.expectedSlot!));
+        return { ...note, expectedSlot: slot >= 0 ? slot : undefined };
+      });
+      return alignPitchSequencesWithGroups(representatives.map((index) => expectedMidi[index]), mapped,
+        norm, (index) => groupKeyOf(representatives[index])).flatMap<PitchAlignmentOperation>((operation) =>
+        operation.kind === 'extra' ? [operation] : aliases.get(representatives[operation.expectedIndex])!
+          .map((expectedIndex) => ({ ...operation, expectedIndex })));
+    }
+  }
   const order = simultaneousGroupOrder(expectedMidi, groupKeyOf, detected, norm);
   const canonicalMidi = order.map((originalIndex) => expectedMidi[originalIndex]);
   // A detector slot hint names an ORIGINAL written index. Once a group has
@@ -1008,12 +1032,13 @@ function buildRhythm(
   // credible acoustic release is allowed to grade written note length.
   const durationErrors = releaseErrors;
 
-  const meanOnsetError = Math.sqrt(
-    adjusted.reduce((sum, deviation) => sum + deviation * deviation, 0) / adjusted.length,
-  );
+  // Absolute means keep an isolated slip proportional to the phrase. RMS
+  // amplified that slip and both adjacent interval errors before subdivision
+  // scaling; persistent displacement still retains its full error here.
+  const meanOnsetError = adjusted.reduce((sum, deviation) => sum + Math.abs(deviation), 0) / adjusted.length;
   const meanIntervalError = intervalErrors.length === 0
     ? 0
-    : Math.sqrt(intervalErrors.reduce((sum, error) => sum + error * error, 0) / intervalErrors.length);
+    : intervalErrors.reduce((sum, error) => sum + error, 0) / intervalErrors.length;
   const durationZeroWindow = profile.zeroScoreWindow * 0.85;
   const durationScoringRange = Math.max(
     0.01,
@@ -1433,11 +1458,13 @@ export function gradeSequence(
     ? (index: number) => options.plan!.expectedNotes[index]?.beat
     : undefined;
   const alignment = alignPitchSequencesWithGroups(expectedMidi, detected, norm, groupKeyOf);
-  const expectedIndexByDetected = new Map<number, number>();
+  const expectedIndexByDetected = new Map<number, number[]>();
   const missedExpectedIndices: number[] = [];
   alignment.forEach((operation) => {
     if (operation.kind === 'match') {
-      expectedIndexByDetected.set(operation.detectedIndex, operation.expectedIndex);
+      const indices = expectedIndexByDetected.get(operation.detectedIndex) ?? [];
+      indices.push(operation.expectedIndex);
+      expectedIndexByDetected.set(operation.detectedIndex, indices);
     } else if (operation.kind === 'miss') {
       missedExpectedIndices.push(operation.expectedIndex);
     }
@@ -1502,7 +1529,7 @@ export function gradeSequence(
     const matchedExpectedIndex = expectedIndexByDetected.get(i);
 
     if (matchedExpectedIndex !== undefined) {
-      matches.push({ expectedIndex: matchedExpectedIndex, time: note.time, note });
+      matchedExpectedIndex.forEach((expectedIndex) => matches.push({ expectedIndex, time: note.time, note }));
       accepted.push(note);
       lastEcho = note;
       continue;

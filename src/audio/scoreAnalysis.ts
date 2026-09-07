@@ -25,7 +25,7 @@ export interface ScoreAnalysisResult {
   reason: string;
 }
 
-const WORKER_URL = '/audio/score-analyzer-worker.js?v=polyphonic-dedup-v19-2026-09-07';
+const WORKER_URL = '/audio/score-analyzer-worker.js?v=refined-dedup-v20-2026-09-07';
 const ANALYSIS_TIMEOUT_MS = 2_000;
 
 type AnalyzedNote = DetectedNote & {

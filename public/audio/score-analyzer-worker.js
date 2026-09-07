@@ -1150,6 +1150,11 @@ function analyzeTake(payload) {
       (!independentPolyphonic && evidence.octaveConflict) ||
       (!independentPolyphonic && evidence.harmonicParentConflict)
     ) continue;
+    // The refined PCM peak can be the same strike already used by a written
+    // note even when the live callback arrived later. Deduplicate in the
+    // refined clock too, without merging rapid written re-attacks.
+    if (notes.some((accepted) => accepted.midi === midi &&
+      Math.abs(accepted.time - evidence.time) < Math.min(0.06, secondsPerBeat * 0.18))) continue;
     usedRealtime.add(index);
     notes.push({
       ...note,

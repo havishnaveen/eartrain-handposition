@@ -21,6 +21,8 @@ try {
     gradeSequence,
     gradeSpatialChord,
     planFor,
+    planForQuestion,
+    pitchToMidi,
   } = await server.ssrLoadModule('/src/audio/timing.ts');
 
   const oneMissAlignment = alignPitchSequences(
@@ -28,6 +30,29 @@ try {
     [60, 62, 65, 67].map((midi) => ({ midi })),
     (midi) => midi,
   );
+  const unisonPlan = planFor({ timeSignature: '4/4', staves: [
+    { clef: 'treble', hand: 'right', notes: [{ keys: ['c/4'], duration: 'w' }] },
+    { clef: 'bass', hand: 'left', notes: [{ keys: ['c/4'], duration: 'w' }] },
+  ] }, ['C4', 'C4'], 75);
+  const unisonGrade = gradeSequence(['C4', 'C4'], [{ midi: 60, time: 10,
+    clarity: 0.95, strength: 2, detectorLane: 'polyphonic' }],
+    { plan: unisonPlan, playStartTime: 10 });
+  assert.equal(unisonGrade.matched, 2, 'One physical unison attack satisfies both simultaneous notated voices.');
+  assert.equal(unisonGrade.scores.pitch, 5);
+  assert.equal(gradeSequence(['C4', 'C4'], [], { plan: unisonPlan, playStartTime: 10 }).matched, 0);
+
+  const { PROGRESSIVE_CONCEPTS } = await server.ssrLoadModule('/src/curriculum/progressiveCurriculum.ts');
+  for (const lesson of PROGRESSIVE_CONCEPTS) for (let slot = 1; slot <= 4; slot++) {
+    const question = lesson.generate(slot, () => 0.5, 0.5, 'normal', slot);
+    if (question.exerciseMode !== 'blind-memory') continue;
+    const plan = planForQuestion(question, 75);
+    const notes = plan.expectedNotes.map((note) => ({ midi: pitchToMidi(note.pitch),
+      time: 10 + note.beat * plan.secondsPerBeat, clarity: 0.95, strength: 2 }));
+    const result = gradeSequence(question.expectedSequence, notes, { plan, playStartTime: 10,
+      exerciseMode: 'blind-memory', lessonLevel: lesson.index, totalLessons: 24 });
+    assert.equal(result.scores.pitch, 5, `Perfect memory ${lesson.index}/${slot} must receive full pitch credit.`);
+    assert.equal(result.scores.timing, 5);
+  }
   assert.equal(oneMissAlignment.filter(({ kind }) => kind === 'miss').length, 1,
     'One missed pitch must remain one miss after sequence re-synchronization.');
   assert.deepEqual(
@@ -418,6 +443,12 @@ try {
     ...note,
     time: note.time + timedPlan.secondsPerBeat / 64,
   }));
+  const isolatedSlip = perfect.map((note, index) => ({ ...note,
+    time: note.time + (index === 2 ? timedPlan.secondsPerBeat * 0.5 : 0) }));
+  const isolatedGrade = gradeSequence(expected, isolatedSlip, { plan: timedPlan,
+    playStartTime: 10, lessonLevel: 12, totalLessons: 24 });
+  assert.ok(isolatedGrade.scores.timing >= 3.5 && isolatedGrade.scores.timing < 5,
+    `One half-beat slip deserves a deduction, not a failed take: ${isolatedGrade.scores.timing}`);
   const tinyPhaseGrade = gradeSequence(expected, tinyPhaseError, {
     plan: timedPlan,
     playStartTime: 10,
