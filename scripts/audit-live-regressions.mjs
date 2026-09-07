@@ -331,6 +331,14 @@ try {
     'Three accumulated target names without a confirmed concurrent hold must fail.');
 
   const expected = ['C4', 'D4', 'E4', 'F4'];
+  const denseExpected = Array.from({ length: 23 }, (_, index) => ['C4', 'D4', 'E4', 'F4'][index % 4]);
+  const denseTake = denseExpected.slice(0, 17).map((_, index) => ({
+    midi: [60, 62, 64, 65][index % 4], time: 10 + index * 0.5,
+    clarity: 0.95, strength: 2, detectorLane: 'polyphonic',
+  }));
+  const denseGrade = gradeSequence(denseExpected, denseTake);
+  assert.equal(denseGrade.scores.pitch, 3.7,
+    '17 of 23 verified polyphonic notes must retain proportional pitch credit.');
   const perfect = [60, 62, 64, 65].map((midi, index) => ({
     midi,
     time: 10 + index * 0.5,

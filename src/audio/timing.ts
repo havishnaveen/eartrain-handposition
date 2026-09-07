@@ -1580,7 +1580,10 @@ export function gradeSequence(
   const pitchPrecision = pitchEvidence <= 0
     ? 0
     : pitchEvidence / (pitchEvidence + pitchErrorCount);
-  const exactPitchScore = clamp5(5 * pitchCoverage * pitchPrecision);
+  // Polyphonic pitch reports coverage; extra keys belong to Cleanliness.
+  // Multiplying both metrics made 17/23 matched notes look like 1/5.
+  const polyphonicTake = detected.some((note) => note.detectorLane === 'polyphonic');
+  const exactPitchScore = clamp5(5 * pitchCoverage * (polyphonicTake ? 1 : pitchPrecision));
   // Memory assesses whether the learner retained the musical chunk. One
   // omitted note in an otherwise exact, ordered pattern still demonstrates
   // recognition; wrong notes and reordered material remain fully visible.
@@ -1801,7 +1804,9 @@ export function gradeSequence(
         // Only confident, uncorrected wrong-key strikes should materially
         // affect Cleanliness. Echoes, resonances, faint detections and quick
         // self-corrections must not make a correct take look dirty.
-        : clamp5(5 - 1.3 * significantExtraCount);
+        : clamp5(5 - (polyphonicTake
+          ? 5 * significantExtraCount / Math.max(1, expectedCount)
+          : 1.3 * significantExtraCount));
 
   // Pitch carries the most weight: this app exists to verify hand position.
   const wPitch = isMemory ? 0.7 : 0.43;

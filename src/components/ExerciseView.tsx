@@ -137,7 +137,7 @@ function PerformanceAnalysis({ progress }: { progress: number }) {
     const completionStart = displayedRef.current;
     const advance = (now: number) => {
       if (complete) {
-        const elapsed = (now - completionStartedAt) / 320;
+        const elapsed = (now - completionStartedAt) / 250;
         const t = Math.min(1, Math.max(0, elapsed));
         const easeOut = 1 - Math.pow(1 - t, 3);
         const next = Math.min(100, completionStart + (100 - completionStart) * easeOut);
@@ -151,7 +151,7 @@ function PerformanceAnalysis({ progress }: { progress: number }) {
         // Multi-phase dynamic pacing: starts with a lively curve, settles into a smooth glide,
         // and asymptotically eases towards 98% so it never hits an abrupt ceiling.
         const phase1 = 1 - Math.exp(-tSeconds * 2.2);
-        const phase2 = 1 - Math.exp(-tSeconds * 0.4);
+        const phase2 = 1 - Math.exp(-tSeconds * 0.48);
         const target = phase1 * 58 + phase2 * 40;
         const next = Math.min(98, Math.max(displayedRef.current, target));
         displayedRef.current = next;
@@ -379,7 +379,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
       const spatialHeaderText = status === 'prompt'
         ? 'Study the reference chord, then find the nearby hidden one by feel.'
         : isComplete
-          ? `${spatialChord.chordName} matched.`
+          ? null
           : isListening
             ? 'Use the reference shape and the distance you heard.'
             : null;
@@ -401,7 +401,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           <div className="et-spatial__single-stage">
             <div className="et-spatial__comparison">
             <div className="et-spatial__cue-card et-spatial__reference-card">
-              <small className="et-spatial__reference-label">Visible reference chord</small>
+              <small className="et-spatial__reference-label">Reference</small>
               <strong>{spatialChord.referenceChordName}</strong>
               <StaffCue cue={referenceCue} notationScale={2} accentColor="#ef6a47" inkColor="#242237" />
               {isCue ? (
@@ -413,9 +413,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             </div>
             <span className="et-spatial__direction" aria-hidden="true">→</span>
             <div className="et-spatial__target-card">
-              <small>Find this chord</small>
-              <strong>{isComplete ? spatialChord.chordName : '?'}</strong>
-              <p>{isComplete ? 'Matched on your piano.' : 'Listen to the second chord, then play it on your piano.'}</p>
+              <small>{isComplete ? 'Matched' : 'Your turn'}</small>
+              <strong>{isComplete ? '✓' : '?'}</strong>
+              <p>{isComplete ? 'Chord found.' : 'Listen, then find the hidden chord on your piano.'}</p>
             </div>
             </div>
 
@@ -440,12 +440,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               </div>
             ) : null}
 
-            {isComplete ? (
-              <div className="et-spatial__finished is-success">
-                <span aria-hidden="true">✓</span>
-                <p>{spatialChord.chordName}</p>
-              </div>
-            ) : null}
           </div>
 
           <footer className="et-spatial__action">

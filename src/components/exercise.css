@@ -1830,6 +1830,8 @@
    status simultaneously; this single stage keeps only the current task. */
 .et-spatial__single-stage {
   min-height: 315px;
+  width: 100%;
+  gap: 20px;
   display: grid;
   place-items: center;
 }
@@ -1936,6 +1938,8 @@
 }
 
 .et-spatial__reference-card {
+  min-width: 0;
+  box-sizing: border-box;
   display: grid;
   gap: 8px;
   padding: 16px 18px 0;

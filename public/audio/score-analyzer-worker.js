@@ -1122,6 +1122,10 @@ function analyzeTake(payload) {
     if (usedRealtime.has(index)) continue;
     const note = realtime[index];
     const midi = Number(note.midi);
+    // Live and PCM lanes can timestamp the same hammer strike differently.
+    // Do not turn that already-credited attack into an extra key press.
+    if (notes.some((accepted) => accepted.midi === midi &&
+      Math.abs(accepted.time - Number(note.time)) < Math.min(0.09, secondsPerBeat * 0.18))) continue;
     const frameIndex = nearestFrame(analysis.frameTimes, Number(note.time));
     const evidence = evidenceAt(
       analysis,

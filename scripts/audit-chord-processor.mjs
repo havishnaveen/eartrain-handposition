@@ -219,4 +219,13 @@ assert.equal(
   'Room noise must not produce chord tones.',
 );
 
+for (const root of [46, 58, 70]) {
+  const target = [root + 1, root + 5, root + 8]; // B major
+  const played = [root, root + 4, root + 7]; // B-flat major
+  const events = run(target, played, {}, {
+    monitorMidi: Array.from({ length: 14 }, (_, index) => root - 2 + index),
+  }).filter((message) => message.type === 'chord-tones');
+  assert.ok(events.every((message) => !target.every((midi) => message.midi.includes(midi))),
+    `B-flat major at MIDI ${root} must never satisfy B major.`);
+}
 console.log('Chord processor audit passed: full triads, partial-chord rejection, unrelated-note rejection, and bounded holds.');
