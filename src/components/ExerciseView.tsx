@@ -403,7 +403,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <div className="et-spatial__cue-card et-spatial__reference-card">
               <small className="et-spatial__reference-label">Reference</small>
               <strong>{spatialChord.referenceChordName}</strong>
-              <StaffCue cue={referenceCue} notationScale={2} accentColor="#ef6a47" inkColor="#242237" />
+              <StaffCue cue={referenceCue} compact notationScale={2.5} accentColor="#ef6a47" inkColor="#242237" />
               {isCue ? (
                 <div className="et-spatial__listening" role="status">
                   <span className="et-spatial__equalizer" aria-hidden="true"><i /><i /><i /><i /><i /></span>
@@ -542,7 +542,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
                   <div className="et-proof__mini-score" aria-label={`Note ${proofPitchName(activeProofNote.pitch)}, finger ${activeProofNote.finger}`}>
                     <StaffCue
                       cue={proofCue}
-                      notationScale={2.3}
+                      notationScale={2.5}
                       accentColor="#ef6a47"
                       inkColor="#242237"
                     />

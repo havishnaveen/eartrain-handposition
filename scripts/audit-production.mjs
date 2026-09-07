@@ -100,7 +100,7 @@ if (!exerciseView.includes("status !== 'position-prompt' ? ' et-proof__layout--a
     !exerciseView.includes('<div className="et-proof__identity">')) {
   throw new Error('The hand tile must stay centered before Start and remain beside the task afterward.');
 }
-if (!exerciseView.includes('notationScale={2.3}')) {
+if (!exerciseView.includes('notationScale={2.5}')) {
   throw new Error('The complete Prove It engraving is no longer proportionally enlarged.');
 }
 for (const layoutGuard of [

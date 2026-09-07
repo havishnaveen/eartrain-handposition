@@ -52,8 +52,8 @@ import { CURRICULUM_VERSION } from '../profiles/types';
 import type { ResolvedStudentLaunch } from '../profiles/types';
 import { learningProfileStore } from '../profiles/learningProfileStore';
 
-const MAX_ATTEMPTS = 2;
-const REPS_ADDED_PER_MISS = 2;
+const MAX_ATTEMPTS = 1;
+const REPS_ADDED_PER_MISS = 0;
 /** Briefly acknowledge analysis without delaying an already-complete grade. */
 const MIN_ANALYSIS_VISIBLE_MS = 320;
 const ORIENTATION_STORAGE_KEY = 'eartrain.orientation-cues.v1';
@@ -1273,7 +1273,7 @@ export function PathwayRouter({
           <AnchorShiftCue
             ref={staffRef}
             cue={question.cue}
-            notationScale={2.3}
+            notationScale={2.5}
             shift={question.anchorShift}
             accentColor="#ef6a47"
             inkColor="#242237"
@@ -1282,6 +1282,7 @@ export function PathwayRouter({
           <StaffCue
             ref={staffRef}
             cue={question.cue}
+            compact={question.exerciseMode !== 'standard'}
             notationScale={2.3}
             accentColor="#ef6a47"
             inkColor="#242237"

@@ -6,6 +6,12 @@ instructor identified a specific problem. Therefore each lesson is a complete
 four-drill mini-intervention: orient the skill, practise it with support, recall
 or transfer it, then apply or verify it.
 
+The pathway serves exactly 96 fixed exercises, once each. Failed grades do not
+insert retries or extend a lesson. Repeated placement checks in lessons 1–4,
+8 and 12 are replaced by distinct short memory motifs; lessons 22–24 each
+have three distinct chord relationships. Entry hand-placement gates remain
+orientation, not extra scored curriculum exercises.
+
 Difficulty is one continuous 96-drill staircase: the declared challenge rises
 across slots and lesson boundaries. Position-orientation lessons deliberately
 open with Prove It as a quick placement diagnostic, then provide supported
@@ -102,8 +108,7 @@ no on-screen keyboard and no Prove-It or numeric report.
 ### September 6 review
 
 Lessons 22–24 now contain one written chord phrase followed by three Chord by
-Ear applications. The final application revisits the first relationship with
-the other hand. Earlier lesson slots and stable exercise IDs are unchanged.
+Ear applications. Each application now has its own fixed reference/target pair.
 All position checks use the declared major five-finger position's root,
 third, and fifth (RH 1–3–5; LH 5–3–1), never three arbitrary melody notes.
 Each side of a hand shift fills complete 4/4 bars; its movement interval is

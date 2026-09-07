@@ -825,10 +825,10 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     // getBBox can omit text extents while the webfont is still resolving.
     // Reserve deterministic annotation gutters above RH numbers and below LH
     // numbers so a late font swap can never cut off a fingering.
-    const designedTop = STAVE_TOP - 35;
+    const designedTop = STAVE_TOP - (compact ? 20 : 35);
     const designedBottom = STAVE_TOP +
       (systemCount - 1) * systemHeight +
-      (staffCountPerSystem - 1) * STAVE_GAP + 128;
+      (staffCountPerSystem - 1) * STAVE_GAP + (compact ? 100 : 128);
     const boundsTop = Math.min(box.y, designedTop);
     const boundsBottom = Math.max(box.y + box.height, designedBottom);
     const viewBoxWidth = boundsRight - boundsLeft + boundsPadX * 2;

@@ -173,6 +173,9 @@
   scrollbar-color: var(--et-line-strong) transparent;
 }
 
+.et-sidebar__inner > * { flex-shrink: 0; }
+.et-lesson-progress__tick { flex-shrink: 0; }
+
 .et-sidebar__brand {
   display: flex;
   align-items: center;
@@ -2902,11 +2905,11 @@
    height. Landscape widths (iPad included) stay above 1100px and are
    untouched. */
 @media (max-width: 1100px) {
-  .et-exercise--mode-anchor-shift .et-cue { height: 510px; }
+  .et-exercise--mode-anchor-shift .et-cue { height: 590px; }
 }
 
 @media (max-width: 760px) {
-  .et-exercise--mode-anchor-shift .et-cue { height: 420px; }
+  .et-exercise--mode-anchor-shift .et-cue { height: 480px; }
 }
 
 .et-shift-map {

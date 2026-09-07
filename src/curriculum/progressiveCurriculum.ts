@@ -53,7 +53,7 @@ import type { AuthoredReadingScore } from './authoredReading';
  */
 
 const BASE_QUESTIONS = 4;
-const MAX_QUESTIONS = 10;
+const MAX_QUESTIONS = BASE_QUESTIONS;
 const SHORT_MEMORY_PREVIEW_SECONDS = 7;
 const LONG_MEMORY_PREVIEW_SECONDS = 9;
 
@@ -160,7 +160,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: RH, positions: [C], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: false,
     tempoEasy: 15, tempoHard: 14,
-    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.04,
+    drills: ['prove-it', 'standard', 'standard', 'blind-memory'], difficultyBase: 0.04,
   },
   {
     id: 'c02-rh-musical-phrases', index: 2, phase: 0, phaseLabel: 'Right hand foundations',
@@ -170,7 +170,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: RH, positions: [C, G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED], meters: [4, 3],
     showKeySignature: false, tempoEasy: 14.5, tempoHard: 13,
-    drills: ['standard', 'prove-it', 'blind-memory', 'standard'], difficultyBase: 0.08,
+    drills: ['standard', 'blind-memory', 'blind-memory', 'standard'], difficultyBase: 0.08,
   },
   {
     id: 'c03-lh-c-position', index: 3, phase: 0, phaseLabel: 'Left hand foundations',
@@ -180,7 +180,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: LH, positions: [C], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4], showKeySignature: false,
     tempoEasy: 15, tempoHard: 13.8,
-    drills: ['prove-it', 'standard', 'standard', 'prove-it'], difficultyBase: 0.12,
+    drills: ['prove-it', 'standard', 'standard', 'blind-memory'], difficultyBase: 0.12,
   },
   {
     id: 'c04-two-hand-white-keys', index: 4, phase: 0, phaseLabel: 'Two-hand foundations',
@@ -190,7 +190,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [C, G], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: false, tempoEasy: 14, tempoHard: 12.5,
-    drills: ['standard', 'prove-it', 'blind-memory', 'standard'], difficultyBase: 0.16,
+    drills: ['standard', 'blind-memory', 'blind-memory', 'standard'], difficultyBase: 0.16,
   },
   {
     id: 'c05-g-major-orientation', index: 5, phase: 1, phaseLabel: 'One sharp',
@@ -230,7 +230,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [D], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
-    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.32,
+    drills: ['standard', 'blind-memory', 'standard', 'blind-memory'], difficultyBase: 0.32,
   },
   {
     id: 'c09-a-major-orientation', index: 9, phase: 2, phaseLabel: 'Three sharps',
@@ -270,7 +270,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13, tempoHard: 11.5,
-    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.48,
+    drills: ['standard', 'blind-memory', 'standard', 'blind-memory'], difficultyBase: 0.48,
   },
   {
     id: 'c13-shift-c-to-g', index: 13, phase: 3, phaseLabel: 'Anchor and shift',
@@ -440,25 +440,25 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place the right hand in middle-C position and connect fingers 1-5 to the written notes.',
     coreProblems: ['right-hand-position', 'finger-number-mapping', 'c-position', 'register-placement'],
     supportingProblems: ['treble-clef-recognition'],
-    drillPurposes: ['Map the 1-3-5 frame in order', 'Read the five-finger map', 'Apply the map to a new contour', 'Verify the three anchor notes again'],
+    drillPurposes: ['Map the 1-3-5 frame in order', 'Read the five-finger map', 'Apply the map to a new contour', 'Recall a short right-hand motif'],
   },
   'c02-rh-musical-phrases': {
     learningOutcome: 'Read a short treble-clef phrase as steps, turns, repeats, and gentle skips without moving the hand.',
     coreProblems: ['treble-clef-recognition', 'stepwise-note-reading', 'skip-and-turn-reading', 'rhythm-pulse'],
     supportingProblems: ['right-hand-position', 'c-position', 'position-memory'],
-    drillPurposes: ['Read the phrase shape', 'Confirm its hand map', 'Recall the shape without notation', 'Transfer the idea to a new phrase'],
+    drillPurposes: ['Read the phrase shape', 'Recall a short hand-map motif', 'Recall a contrasting shape without notation', 'Transfer the idea to a new phrase'],
   },
   'c03-lh-c-position': {
     learningOutcome: 'Place the left hand in bass-clef C position and use the correct mirrored finger numbers.',
     coreProblems: ['left-hand-position', 'finger-number-mapping', 'bass-clef-recognition', 'c-position', 'register-placement'],
     supportingProblems: [],
-    drillPurposes: ['Map the 5-3-1 frame in order', 'Read the bass five-finger map', 'Apply the map to a new contour', 'Verify the three anchor notes again'],
+    drillPurposes: ['Map the 5-3-1 frame in order', 'Read the bass five-finger map', 'Apply the map to a new contour', 'Recall a short left-hand motif'],
   },
   'c04-two-hand-white-keys': {
     learningOutcome: 'Differentiate treble from bass and play a coordinated white-key grand-staff phrase.',
     coreProblems: ['clef-differentiation', 'hand-coordination', 'treble-clef-recognition', 'bass-clef-recognition'],
     supportingProblems: ['register-placement', 'stepwise-note-reading', 'position-memory'],
-    drillPurposes: ['Coordinate both staves', 'Re-anchor the left hand', 'Recall the right-hand map', 'Coordinate both staves in a new phrase'],
+    drillPurposes: ['Coordinate both staves', 'Recall the left-hand map', 'Recall a contrasting right-hand motif', 'Coordinate both staves in a new phrase'],
   },
   'c05-g-major-orientation': {
     learningOutcome: 'Place both hands in G-major position and use F-sharp without searching.',
@@ -482,7 +482,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Keep the D-major map stable through turns, repeats, skips, and two-hand reading.',
     coreProblems: ['d-major-position', 'position-memory', 'hand-coordination', 'skip-and-turn-reading'],
     supportingProblems: ['key-signature-orientation', 'clef-differentiation', 'rhythm-pulse'],
-    drillPurposes: ['Read D major on both staves', 'Recall the D map', 'Apply it to a new two-hand phrase', 'Verify the left-hand frame'],
+    drillPurposes: ['Read D major on both staves', 'Recall the D map', 'Apply it to a new two-hand phrase', 'Recall a contrasting left-hand motif'],
   },
   'c09-a-major-orientation': {
     learningOutcome: 'Place both hands in A-major position and include all three sharps automatically.',
@@ -506,7 +506,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Maintain E-major orientation through longer phrases, skips, and controlled subdivisions.',
     coreProblems: ['e-major-position', 'position-memory', 'hand-coordination', 'rapid-subdivision'],
     supportingProblems: ['key-signature-orientation', 'clef-differentiation', 'skip-and-turn-reading'],
-    drillPurposes: ['Read E major on both staves', 'Chunk and recall the pattern', 'Apply it to a longer phrase', 'Verify the left-hand frame'],
+    drillPurposes: ['Read E major on both staves', 'Chunk and recall the pattern', 'Apply it to a longer phrase', 'Recall a contrasting left-hand motif'],
   },
   'c13-shift-c-to-g': {
     learningOutcome: 'Move either hand from C to G while both destination phrases remain visible.',
@@ -783,7 +783,7 @@ interface AuthoredSpatialPair {
 }
 
 /** Reviewed easy-to-hard pairs; Chord by Ear must never invent a target. */
-const SPATIAL_CHORD_PAIRS: Readonly<Record<number, readonly [AuthoredSpatialPair, AuthoredSpatialPair]>> = {
+const SPATIAL_CHORD_PAIRS: Readonly<Record<number, readonly AuthoredSpatialPair[]>> = {
   19: [
     { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'G', targetQuality: 'major', relationshipHint: 'Keep the familiar major shape and move to the nearby chord you heard.' },
     { referenceRoot: 'C', referenceQuality: 'major', targetRoot: 'F', targetQuality: 'major', relationshipHint: 'Use the same white-key major shape on the other side of C.' },
@@ -799,14 +799,17 @@ const SPATIAL_CHORD_PAIRS: Readonly<Record<number, readonly [AuthoredSpatialPair
   22: [
     { referenceRoot: 'G', referenceQuality: 'major', targetRoot: 'D', targetQuality: 'major', relationshipHint: 'Move the same major shape by a fifth and keep all three tones together.' },
     { referenceRoot: 'F', referenceQuality: 'major', targetRoot: 'C', targetQuality: 'major', relationshipHint: 'Move the same major shape by a fifth toward the center of the keyboard.' },
+    { referenceRoot: 'D', referenceQuality: 'major', targetRoot: 'D', targetQuality: 'minor', relationshipHint: 'Keep the outside notes and listen to the middle tone.' },
   ],
   23: [
     { referenceRoot: 'D', referenceQuality: 'major', targetRoot: 'A', targetQuality: 'major', relationshipHint: 'Transfer the same major shape by a fifth.' },
     { referenceRoot: 'Bb', referenceQuality: 'major', targetRoot: 'F', targetQuality: 'major', relationshipHint: 'Hold onto the flat-key shape and move it by a fifth.' },
+    { referenceRoot: 'F', referenceQuality: 'major', targetRoot: 'Bb', targetQuality: 'major', relationshipHint: 'Find the nearby flat-key major shape.' },
   ],
   24: [
     { referenceRoot: 'E', referenceQuality: 'major', targetRoot: 'B', targetQuality: 'major', relationshipHint: 'Keep the black-key pattern and move the complete shape by a fifth.' },
     { referenceRoot: 'B', referenceQuality: 'major', targetRoot: 'F#', targetQuality: 'major', relationshipHint: 'Use the same major spacing in the deeper sharp-key position.' },
+    { referenceRoot: 'F#', referenceQuality: 'major', targetRoot: 'F#', targetQuality: 'minor', relationshipHint: 'Keep the outer tones and change the middle tone.' },
   ],
 };
 
@@ -1513,7 +1516,7 @@ function questionFor(
   const memoryPool = lesson.index >= 9 ? MEMORY_LONG_PATTERNS : MEMORY_SHORT_PATTERNS;
   const contour = difficultyOrderedContour(
     exerciseMode === 'blind-memory' ? memoryPool : lesson.contours,
-    localRep,
+    lesson.index === 4 && localRep === 2 ? 4 : localRep,
   );
   const memoryPreviewSeconds = contour.length >= 7
     ? LONG_MEMORY_PREVIEW_SECONDS

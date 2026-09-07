@@ -193,18 +193,18 @@ try {
   assert.deepEqual(
     CURRICULUM_BLUEPRINT.map(({ drills }) => drills),
     [
-      ['prove-it', 'standard', 'standard', 'prove-it'],
-      ['standard', 'prove-it', 'blind-memory', 'standard'],
-      ['prove-it', 'standard', 'standard', 'prove-it'],
-      ['standard', 'prove-it', 'blind-memory', 'standard'],
+      ['prove-it', 'standard', 'standard', 'blind-memory'],
+      ['standard', 'blind-memory', 'blind-memory', 'standard'],
+      ['prove-it', 'standard', 'standard', 'blind-memory'],
+      ['standard', 'blind-memory', 'blind-memory', 'standard'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
-      ['standard', 'blind-memory', 'standard', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'blind-memory'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
-      ['standard', 'blind-memory', 'standard', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'blind-memory'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
@@ -223,6 +223,20 @@ try {
 
   const curriculumDifficultyRungs = CURRICULUM_BLUEPRINT.flatMap((lesson) =>
     lesson.drills.map((_, drillIndex) => Math.min(1, lesson.difficultyBase + drillIndex * 0.012)));
+  const uniqueExercises = new Map();
+  for (const lesson of PROGRESSIVE_CONCEPTS) {
+    for (let slot = 1; slot <= 4; slot++) {
+      const q = lesson.generate(slot, () => 0.5, 0.5, 'balanced', slot);
+      const content = q.exerciseMode === 'prove-it' ? q.positionProof
+        : q.spatialChord ? [q.spatialChord.referencePitches, q.spatialChord.chordPitches, q.spatialChord.hand]
+          : q.cue;
+      const key = JSON.stringify([q.exerciseMode, content]);
+      assert.ok(!uniqueExercises.has(key),
+        `Duplicate exercise ${lesson.index}/${slot} repeats ${uniqueExercises.get(key)}`);
+      uniqueExercises.set(key, `${lesson.index}/${slot}`);
+    }
+  }
+  assert.equal(uniqueExercises.size, 96);
   curriculumDifficultyRungs.slice(1).forEach((difficulty, index) => {
     assert.ok(difficulty > curriculumDifficultyRungs[index],
       `Difficulty must rise at every drill boundary; rung ${index + 2} went backward.`);
@@ -293,6 +307,9 @@ try {
     return load;
   });
   openingLoads.slice(1).forEach((load, index) => {
+    // Recall deliberately shortens the motif while removing visual support;
+    // motor contour alone is not a cross-mode difficulty measure.
+    if (openingQuestions[index + 1].exerciseMode === 'blind-memory') return;
     assert.ok(load >= openingLoads[index],
       `Lesson 1 material became easier at drill ${index + 2}.`);
   });
@@ -327,9 +344,9 @@ try {
     19: [['C Major', 'G Major'], ['C Major', 'F Major']],
     20: [['C Major', 'E Major'], ['C Major', 'A Major']],
     21: [['C Major', 'A Minor'], ['C Major', 'C Minor']],
-    22: [['G Major', 'D Major'], ['F Major', 'C Major'], ['G Major', 'D Major']],
-    23: [['D Major', 'A Major'], ['Bb Major', 'F Major'], ['D Major', 'A Major']],
-    24: [['E Major', 'B Major'], ['B Major', 'F# Major'], ['E Major', 'B Major']],
+    22: [['G Major', 'D Major'], ['F Major', 'C Major'], ['D Major', 'D Minor']],
+    23: [['D Major', 'A Major'], ['Bb Major', 'F Major'], ['F Major', 'Bb Major']],
+    24: [['E Major', 'B Major'], ['B Major', 'F# Major'], ['F# Major', 'F# Minor']],
   };
   for (let lessonIndex = 19; lessonIndex <= 24; lessonIndex += 1) {
     const pairs = baseQuestionsFor(lessonIndex)
@@ -865,8 +882,8 @@ try {
     if (concept.index >= 5 && concept.index <= 12) {
       assert.ok(generatedModes.has('blind-memory') && generatedModes.has('standard'),
         `Lesson ${concept.index} must mix memory with complementary reading work.`);
-      assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, 1,
-        `Lesson ${concept.index} should contain exactly one memory drill in its base loop.`);
+      assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, [8, 12].includes(concept.index) ? 2 : 1,
+        `Lesson ${concept.index} must keep its authored memory slots.`);
     }
     if (concept.index <= 5) assert.equal(rhythms.eighth + rhythms.sixteenth, 0);
     if (concept.index >= 6 && concept.index <= 12) assert.equal(rhythms.sixteenth, 0);
@@ -1300,8 +1317,8 @@ try {
   }
   assert.equal(struggleRoute.lesson, 2, 'Maximum remedial practice must still advance to Lesson 2.');
   assert.equal(struggleRoute.questionsServed, PROGRESSIVE_CONCEPTS[0].maxQuestionCount);
-  assert.ok(struggleGuard <= PROGRESSIVE_CONCEPTS[0].maxQuestionCount * 2,
-    'The retry state machine exceeded its finite two-attempt bound.');
+  assert.equal(struggleGuard, 4,
+    'Failed grades must not repeat or extend the four fixed exercises.');
 
   // Jump directly to a chord lesson and verify every guarded state transition.
   const chordQuestion = generateFor(19, 1, 54, 0.25, route.signal, 20260802);
