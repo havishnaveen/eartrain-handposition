@@ -85,7 +85,7 @@
 
 .et-shell--pathway {
   display: grid;
-  grid-template-columns: 312px minmax(0, 1fr);
+  grid-template-columns: 272px minmax(0, 1fr);
   align-items: stretch;
   transition: grid-template-columns 0.22s ease;
 }
@@ -137,7 +137,7 @@
 }
 
 .et-shell--pathway:not(.et-shell--sidebar-collapsed) .et-sidebar-toggle {
-  left: 274px;
+  left: 234px;
 }
 
 .et-sidebar-toggle__icon {
@@ -173,10 +173,6 @@
   scrollbar-color: var(--et-line-strong) transparent;
 }
 
-.et-sidebar__inner > * {
-  flex-shrink: 0;
-}
-
 .et-sidebar__brand {
   display: flex;
   align-items: center;
@@ -206,14 +202,14 @@
 }
 
 .et-sidebar__brand strong {
-  font-size: 20px;
+  font-size: 15px;
   line-height: 1.15;
   letter-spacing: -0.025em;
 }
 
 .et-sidebar__brand small {
-  color: var(--et-ink-soft);
-  font-size: 13px;
+  color: var(--et-ink-faint);
+  font-size: 9px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -249,7 +245,7 @@
   gap: 8px;
   margin: 0 0 9px;
   color: var(--et-orange-ink);
-  font-size: 14px;
+  font-size: 8.5px;
   font-weight: 750;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -265,7 +261,7 @@
   z-index: 1;
   margin: 0;
   color: var(--et-ink-strong);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 740;
   line-height: 1.16;
   letter-spacing: -0.035em;
@@ -276,7 +272,7 @@
   z-index: 1;
   margin: 8px 0 0;
   color: var(--et-ink-soft);
-  font-size: 14px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -290,8 +286,8 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
-  color: var(--et-ink-soft);
-  font-size: 14px;
+  color: var(--et-ink-faint);
+  font-size: 8.5px;
   font-weight: 750;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -310,9 +306,9 @@
   display: grid;
   grid-template-columns: 18px 23px minmax(0, 1fr);
   align-items: center;
-  min-height: 26px;
-  color: var(--et-ink-soft);
-  font-size: 16px;
+  min-height: 18px;
+  color: var(--et-ink-faint);
+  font-size: 8px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -362,7 +358,7 @@
 
 .et-lesson-progress__tick em {
   color: var(--et-orange-ink);
-  font-size: 13px;
+  font-size: 7.5px;
   font-style: normal;
   font-weight: 750;
   letter-spacing: 0.04em;
@@ -386,7 +382,7 @@
 
 .et-sidebar__set-copy > span {
   color: var(--et-ink-soft);
-  font-size: 15px;
+  font-size: 9px;
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -394,7 +390,7 @@
 
 .et-sidebar__set-copy strong {
   color: var(--et-orange-deep);
-  font-size: 25px;
+  font-size: 22.5px;
   line-height: 1;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
@@ -402,7 +398,7 @@
 
 .et-sidebar__set-copy small {
   color: var(--et-ink-faint);
-  font-size: 17px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -703,7 +699,7 @@
 .et-instruction {
   margin: 0;
   text-align: center;
-  font-size: 33px;
+  font-size: 31px;
   line-height: 1.28;
   font-weight: 700;
   letter-spacing: -0.023em;
@@ -1072,7 +1068,7 @@
     padding: 14px 15px;
   }
 
-  .et-sidebar__lesson h1 { font-size: 25px; }
+  .et-sidebar__lesson h1 { font-size: 19px; }
   .et-sidebar__focus { margin-top: 5px; }
 
   .et-sidebar__set {
@@ -1140,7 +1136,7 @@
   }
 
   .et-stage { padding: 26px 20px 44px; }
-  .et-instruction { font-size: 27px; }
+  .et-instruction { font-size: 23px; }
   .et-piece-progress { margin-top: -5px; }
   .et-cue { padding: 22px 20px 20px; }
   .et-verdict { padding: 16px 20px; }
@@ -1155,15 +1151,15 @@
   }
 
   .et-sidebar__brand { margin-bottom: 1px; }
-  .et-sidebar__brand strong { font-size: 18px; }
+  .et-sidebar__brand strong { font-size: 16px; }
 
   .et-sidebar__lesson {
     padding: 12px 13px;
     border-radius: 15px 15px 15px 6px;
   }
 
-  .et-sidebar__eyebrow { font-size: 11px; }
-  .et-sidebar__lesson h1 { font-size: 19px; }
+  .et-sidebar__eyebrow { font-size: 8.5px; }
+  .et-sidebar__lesson h1 { font-size: 17px; }
   .et-sidebar__focus { display: none; }
 
   .et-sidebar__set {
@@ -1838,32 +1834,6 @@
   place-items: center;
 }
 
-.et-spatial__comparison {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 16px;
-  align-items: center;
-  width: min(100%, 900px);
-}
-.et-spatial__direction { font-size: 36px; color: var(--et-orange-deep); }
-.et-spatial__reference-card > strong { text-align: center; font-size: 24px; }
-.et-spatial__target-card {
-  min-width: 0;
-  padding: 24px;
-  border: 2px dashed var(--et-orange-edge);
-  border-radius: 24px;
-  text-align: center;
-  background: var(--et-peach, #fff4ee);
-}
-.et-spatial__target-card small { font-size: 18px; font-weight: 750; }
-.et-spatial__target-card strong { display: block; font-size: 38px; margin: 12px 0; }
-.et-spatial__target-card p { font-size: 18px; line-height: 1.5; margin: 0; }
-@media (max-width: 600px) {
-  .et-spatial__comparison { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .et-spatial__direction { text-align: center; transform: rotate(90deg); }
-  .et-spatial__target-card { padding: 16px; }
-}
-
 .et-spatial__intro {
   display: grid;
   place-items: center;
@@ -1973,7 +1943,7 @@
 
 .et-spatial__reference-label {
   color: var(--et-orange-deep);
-  font-size: 15px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: .1em;
   text-align: center;
@@ -2519,9 +2489,9 @@
 .et-hand-requirement--both .et-hand-badge { width: 130px; }
 
 .et-orientation-gate {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483647;
+  z-index: 30;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -2530,30 +2500,23 @@
 }
 
 .et-orientation-tip {
-  position: fixed;
-  z-index: 2147483647;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(calc(100% - 32px), 640px);
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-  box-sizing: border-box;
-  font-family: var(--et-font);
+  position: relative;
+  width: min(100%, 520px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 54px minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   margin: 0;
-  padding: clamp(24px, 4vw, 40px);
+  padding: 24px;
   border: 2px solid rgba(239, 106, 71, 0.68);
-  border-radius: 24px;
+  border-radius: 12px 30px 30px 30px;
   color: var(--et-ink-strong);
   background: rgba(255, 252, 249, 0.98);
   box-shadow:
     0 28px 70px rgba(16, 13, 30, 0.3),
     inset 6px 0 0 var(--et-orange);
   text-align: left;
+  animation: et-orientation-arrive 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .et-orientation-tip__pointer {
@@ -2581,21 +2544,19 @@
   font-weight: 900;
 }
 
-.et-orientation-tip h2 {
-  margin: 0;
+.et-orientation-tip strong {
   display: block;
   color: var(--et-orange-deep);
-  font-size: clamp(24px, 3vw, 30px);
-  line-height: 1.2;
+  font-size: 23px;
   font-weight: 850;
 }
 
 .et-orientation-tip p {
   margin: 3px 0 0;
   color: var(--et-ink-soft);
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.55;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
 }
 
 .et-orientation-tip button {
@@ -2900,6 +2861,23 @@
    timeline. The dashed middle segment reads as travel, not a third phrase. */
 .et-exercise--mode-anchor-shift .et-cue { padding: 18px; }
 .et-exercise--mode-anchor-shift .et-cue__content { height: 100%; }
+
+/* Below 1100px the two hand-position panels stack vertically instead of
+   sitting side by side (see the matching breakpoint in
+   anchor-shift-cue.css) — an iPad in portrait lands squarely in this
+   range. The shared --et-cue-h is tuned for one row of notation; split
+   across three stacked rows it left each staff only ~80px tall, tiny and
+   swimming in leftover white space. Give anchor-shift its own taller cue
+   box exactly when it stacks, so each notation half keeps a legible
+   height. Landscape widths (iPad included) stay above 1100px and are
+   untouched. */
+@media (max-width: 1100px) {
+  .et-exercise--mode-anchor-shift .et-cue { height: 510px; }
+}
+
+@media (max-width: 760px) {
+  .et-exercise--mode-anchor-shift .et-cue { height: 420px; }
+}
 
 .et-shift-map {
   position: absolute;
