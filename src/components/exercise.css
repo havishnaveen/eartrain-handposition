@@ -1836,6 +1836,32 @@
   place-items: center;
 }
 
+.et-spatial__comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  width: min(100%, 900px);
+}
+.et-spatial__direction { font-size: 36px; color: var(--et-orange-deep); }
+.et-spatial__reference-card > strong { text-align: center; font-size: 24px; }
+.et-spatial__target-card {
+  min-width: 0;
+  padding: 24px;
+  border: 2px dashed var(--et-orange-edge);
+  border-radius: 24px;
+  text-align: center;
+  background: var(--et-peach, #fff4ee);
+}
+.et-spatial__target-card small { font-size: 18px; font-weight: 750; }
+.et-spatial__target-card strong { display: block; font-size: 38px; margin: 12px 0; }
+.et-spatial__target-card p { font-size: 18px; line-height: 1.5; margin: 0; }
+@media (max-width: 600px) {
+  .et-spatial__comparison { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .et-spatial__direction { text-align: center; transform: rotate(90deg); }
+  .et-spatial__target-card { padding: 16px; }
+}
+
 .et-spatial__intro {
   display: grid;
   place-items: center;
