@@ -26,6 +26,13 @@
   background: rgba(247, 245, 255, 0.72);
 }
 
+/* Keep the music near its position label in portrait, rather than low in
+   each panel. This changes placement, not the card or engraving size. */
+@media (max-width: 1100px) and (orientation: portrait) {
+  .et-anchor-cue__half .et-staff { align-items: flex-start; }
+  .et-exercise--mode-anchor-shift { gap: 14px; }
+}
+
 .et-anchor-cue[data-active-position='from'] .et-anchor-cue__half--from,
 .et-anchor-cue[data-active-position='to'] .et-anchor-cue__half--to {
   border-color: rgba(239, 106, 71, 0.38);

@@ -415,7 +415,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <div className="et-spatial__target-card">
               <small>{isComplete ? 'Matched' : 'Your turn'}</small>
               <strong>{isComplete ? '✓' : '?'}</strong>
-              <p>{isComplete ? 'Chord found.' : 'Listen, then find the hidden chord on your piano.'}</p>
+              <p>{isComplete ? spatialChord.chordName : 'Listen, then find the hidden chord on your piano.'}</p>
             </div>
             </div>
 

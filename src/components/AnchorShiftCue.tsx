@@ -116,7 +116,8 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
             <b className="et-anchor-cue__step">1</b>
             <span><small>Play here first</small><strong>{shift.fromPositionName}</strong></span>
           </header>
-          <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} notationScale={notationScale} compact />
+          <StaffCue ref={firstRef} cue={firstCue} accentColor={accentColor} inkColor={inkColor} notationScale={notationScale}
+            noteGlyphScale={firstCue.staves[0].notes.filter((note) => !note.duration.endsWith('r')).length >= 4 ? 56 : undefined} compact />
         </section>
 
         <div
@@ -140,7 +141,8 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
             <b className="et-anchor-cue__step">3</b>
             <span><small>Land here</small><strong>{shift.toPositionName}</strong></span>
           </header>
-          <StaffCue ref={secondRef} cue={secondCue} accentColor={accentColor} inkColor={inkColor} notationScale={notationScale} compact />
+          <StaffCue ref={secondRef} cue={secondCue} accentColor={accentColor} inkColor={inkColor} notationScale={notationScale}
+            noteGlyphScale={secondCue.staves[0].notes.filter((note) => !note.duration.endsWith('r')).length >= 4 ? 56 : undefined} compact />
         </section>
       </div>
     );
