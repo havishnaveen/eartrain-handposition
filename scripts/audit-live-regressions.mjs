@@ -82,6 +82,12 @@ try {
   assert.deepEqual(polyphonicTargetsForPlan(heldBassPlan).sort((a, b) => a - b), [48, 64, 65, 67, 69],
     'Every melody attack above a held bass needs independent polyphonic analysis.');
   const openingSlots = new Set(heldBassPlan.expectedNotes.flatMap((slot, index) => slot.beat === 0 ? [index] : []));
+  assert.equal(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 64]), 0,
+    new Set(), new Map([[48, 0], [64, 2]])), null,
+    'A ringing bass must not pull a much later melody attack into the opening chord.');
+  assert.ok(findCompletePolyphonicGroup(heldBassPlan, new Set([48, 64]), 0.1,
+    new Set(), new Map([[48, 0], [64, 0.1]])),
+    'Ordinary two-hand attack spread must still be accepted.');
   const partialEvidence = freshPolyphonicEvidence(new Set([64]), new Map([[64, 10]]), new Map());
   const partialHints = withPitchOrderSlotHints(heldBassPlan, partialEvidence);
   assert.equal(partialHints.length, 1, 'A missing LH note must not discard the independently heard RH note.');

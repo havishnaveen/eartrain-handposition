@@ -1021,7 +1021,11 @@ export function findCompletePolyphonicGroup(
       candidate.slots.every(({ midi }) => heard.has(midi)) &&
       candidate.slots.some(({ index }) => !occupied.has(index)) &&
       (!arrivalBeats || candidate.slots.every(({ index, midi }) => occupied.has(index) ||
-        (arrivalBeats.has(midi) && arrivalBeats.get(midi)! > (consumedArrivalBeats.get(midi) ?? -Infinity)))) &&
+        (arrivalBeats.has(midi) &&
+          arrivalBeats.get(midi)! > (consumedArrivalBeats.get(midi) ?? -Infinity) &&
+          // Every new tone must fit this beat, not merely the earliest one.
+          // Otherwise a held bass can attach a later attack to an old chord.
+          Math.abs(candidate.beat - arrivalBeats.get(midi)!) <= 0.75))) &&
       Math.abs(candidate.beat - candidateBeat(candidate)) <= 0.75,
     )
     .sort((a, b) => Math.abs(a.beat - candidateBeat(a)) - Math.abs(b.beat - candidateBeat(b)))[0] ?? null;
