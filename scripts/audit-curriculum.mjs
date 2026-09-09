@@ -203,14 +203,14 @@ try {
       ['standard', 'blind-memory', 'standard', 'blind-memory'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'prove-it'],
-      ['prove-it', 'standard', 'blind-memory', 'prove-it'],
-      ['standard', 'blind-memory', 'standard', 'blind-memory'],
+      ['prove-it', 'standard', 'blind-memory', 'anchor-shift'],
+      ['standard', 'blind-memory', 'standard', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
-      ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
-      ['prove-it', 'prove-it', 'prove-it', 'chord-reading'],
-      ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'],
+      ['standard', 'chord-reading', 'blind-memory', 'anchor-shift'],
+      ['standard', 'prove-it', 'prove-it', 'chord-reading'],
+      ['standard', 'chord-reading', 'blind-memory', 'anchor-shift'],
       ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'],
       ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
       ['spatial-chord', 'chord-reading', 'chord-reading', 'spatial-chord'],
@@ -278,6 +278,31 @@ try {
     ));
 
   const openingQuestions = baseQuestionsFor(1);
+  for (let lesson = 1; lesson <= 24; lesson++) {
+    const questions = baseQuestionsFor(lesson);
+    if (lesson < 11 || lesson >= 20) assert.ok(questions.every((q) => !q.anchorShift));
+    if (lesson === 11 || lesson === 12) assert.ok(questions.some((q) => q.anchorShift));
+    if (lesson >= 16 && lesson <= 19) {
+      const proof = questions.find((q) => q.advancedProof);
+      assert.ok(proof, `Lesson ${lesson} needs its advanced placement check.`);
+      assert.equal(proof.handScope, 'both');
+      assert.equal(proof.cue.timeSignature, '4/4');
+      const rests = proof.cue.staves.map((staff) => {
+        let beat = 0;
+        return staff.notes.flatMap((note) => {
+          const start = beat; beat += beatsForDuration(note.duration);
+          return note.duration === 'wr' ? [start] : [];
+        });
+      });
+      assert.deepEqual(rests[0], rests[1]);
+      assert.equal(rests[0].length, 1);
+      assert.equal(rests[0][0] % 4, 0);
+    }
+    if (lesson >= 20) questions.filter((q) => q.exerciseMode === 'standard').forEach((q) => {
+      assert.ok(q.cue.staves.every((staff) => staff.notes.some((note) => note.positionChange)),
+        `Lesson ${lesson} must move both hands inside its normal music.`);
+    });
+  }
   for (let lessonIndex = 7; lessonIndex <= 24; lessonIndex++) {
     assert.ok(baseQuestionsFor(lessonIndex).some((question) =>
       question.exerciseMode === 'standard' && question.handScope === 'both' &&
@@ -327,8 +352,8 @@ try {
   for (let lessonIndex = 13; lessonIndex <= 18; lessonIndex += 1) {
     if (lessonIndex === 17) continue;
     const questions = baseQuestionsFor(lessonIndex);
-    assert.equal(questions[0].exerciseMode, 'anchor-shift');
-    assert.equal(questions[0].handScope, 'right');
+    assert.equal(questions[0].exerciseMode, lessonIndex >= 16 ? 'standard' : 'anchor-shift');
+    assert.equal(questions[0].handScope, lessonIndex >= 16 ? 'both' : 'right');
     assert.equal(questions[3].exerciseMode, 'anchor-shift');
     assert.equal(questions[3].handScope, 'left');
   }
@@ -882,7 +907,7 @@ try {
     if (concept.index >= 5 && concept.index <= 12) {
       assert.ok(generatedModes.has('blind-memory') && generatedModes.has('standard'),
         `Lesson ${concept.index} must mix memory with complementary reading work.`);
-      assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, [8, 12].includes(concept.index) ? 2 : 1,
+      assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, concept.index === 8 ? 2 : 1,
         `Lesson ${concept.index} must keep its authored memory slots.`);
     }
     if (concept.index <= 5) assert.equal(rhythms.eighth + rhythms.sixteenth, 0);
@@ -931,7 +956,7 @@ try {
     );
     assert.deepEqual(
       lesson17.map((question) => question.handScope),
-      ['right', 'left', 'right', 'both'],
+      ['both', 'left', 'right', 'both'],
     );
   }
 

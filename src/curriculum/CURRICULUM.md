@@ -1,5 +1,26 @@
 # Fixed, referral-ready curriculum
 
+## September 9 progression
+
+- Lessons 1–10 retain their existing hand-position foundations.
+- Lessons 11–12 introduce standalone Move Your Hand (C–G, then G–D).
+  Lessons 13–15 continue the explicit single-hand shifts.
+- Lessons 16–19 include Advanced Prove It: a real two-staff phrase, one
+  complete 4/4 rest bar, then a new hand position. Lessons 16–17 move RH
+  while LH keeps its position; 18–19 move both hands. The rest is written
+  into both voices and uses the same uninterrupted audio-clock metronome.
+- From Lesson 20 onward there are no standalone Move Your Hand drills.
+  Every normal score preserves its authored rhythm and melody contour but
+  transfers the second phrase to a new position at a barline. These transfers
+  progress from a step to a fourth and then a fifth; both hands move. No
+  artificial extra pause is added. Fingering moves with the complete shape,
+  and the destination is labelled on the score.
+- There is no final aggregate score sheet. Completion offers a neutral end
+  screen and the existing return link; individual reports and teacher
+  telemetry remain intact. All 96 slots remain fixed and unique.
+
+This progression supersedes the older phase descriptions below where noted.
+
 The live pathway is both progressive and directly addressable. A student may
 start at Lesson 1 and climb normally, or arrive at one lesson because an
 instructor identified a specific problem. Therefore each lesson is a complete
@@ -32,15 +53,15 @@ Difficulty uses a challenge budget, not simultaneous escalation on every axis.
 Lessons 1-5 establish quarter-note pulse; Lessons 6-12 add eighth-note
 subdivision. Lessons 13-18 retain that rhythm vocabulary while movement and
 deep-key placement become the new challenge. Lesson 17 is deliberately a
-five-event LH bridge with a held RH anchor and one closing chord before Lesson 18 adds the
-timed B-to-F-sharp move. From Lesson 19 onward, polyphony and independent chord
+five-event LH bridge with a held RH anchor and one closing chord, alongside
+the new rest-bar position check. From Lesson 19 onward, polyphony and independent chord
 hearing are the new load.
 
 Every lesson from 7 onward includes an authored hands-together reading slot.
 The short memory and position drills remain hand-specific; the normal reading
 slot shows both staves and includes overlapping attacks or held accompaniment.
 
-Hand-shift travel is beat-aligned. Every shift owns one complete, steady 4/4
+Standalone hand-shift travel is beat-aligned. Each owns one complete, steady 4/4
 rest measure: move on beats 1-2, settle on 3-4, and play on the following
 downbeat. The metronome never inserts a digital countdown or a stray READY
 beat. Both written positions remain visible before Start and throughout the
@@ -70,10 +91,9 @@ in a blocking acknowledgement rather than presenting both positions at once.
 | 5-6 | G-major orientation, then fluent use | one-sharp position, key signature, position memory |
 | 7-8 | D-major orientation, then fluent use | two-sharp position, turns/skips, position memory |
 | 9-10 | A-major orientation, then longer phrases | three-sharp position, subdivision, two-hand stability |
-| 11-12 | E-major orientation, then longer phrases | four-sharp position, subdivision, two-hand stability |
-| 13-16 | One fixed fifth-shift per lesson, right hand then left hand | exact position pair, dominant/non-dominant hand shift, landing in time |
-| 17 | B and F-sharp maps before movement | five/six-sharp placement and finger mapping |
-| 18 | B-to-F-sharp shift | advanced exact-pair landing with an instantaneous destination reveal |
+| 11-12 | E-major phrases plus first C–G and G–D shifts | four-sharp position, subdivision, hand shift |
+| 13-15 | Fixed fifth-shifts with both destinations visible | exact position pair, hand shift, landing in time |
+| 16-19 | Advanced two-hand position checks with a rest bar, plus established lesson work | coordination, repositioning, five/six-sharp placement |
 | 19-20 | Visible known chord to a nearby same-shape target | chord anchor, shell, reading, simultaneous chord attack |
 | 21 | Same-root major/minor middle-tone contrast | chord-quality hearing and spacing |
 | 22 | Transfer the visible shape by a fifth | chord-by-ear, anchor matching, shape transfer |

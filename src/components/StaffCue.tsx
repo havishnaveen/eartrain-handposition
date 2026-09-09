@@ -561,6 +561,11 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
             staffSpec.hand === 'right'
               ? Annotation.VerticalJustify.TOP
               : Annotation.VerticalJustify.BOTTOM;
+          if (cueNote.positionChange) {
+            note.addModifier(new Annotation(cueNote.positionChange)
+              .setVerticalJustification(Annotation.VerticalJustify.TOP)
+              .setFont('Inter, Roboto, sans-serif', 11, '700'), 0);
+          }
           const addFingerAnnotation = (label: number, keyIndex: number) => {
             const annotation = new Annotation(String(label))
               .setVerticalJustification(placement)

@@ -13,6 +13,7 @@ import type { Question } from '../curriculum/types';
 import '../index.css';
 
 type AuditFrame =
+  | 'advanced-proof' | 'moving-reading'
   | 'notice'
   | 'memory-prompt' | 'memory-look' | 'memory-play'
   | 'shift-overview' | 'shift-rest' | 'shift-land'
@@ -28,6 +29,8 @@ function question(lessonIndex: number, questionNumber: number): Question {
 function Frame() {
   const shiftRef = useRef<StaffCueHandle>(null);
   const config = useMemo(() => {
+    if (FRAME === 'advanced-proof') return { question: question(18, 1), lesson: 18 };
+    if (FRAME === 'moving-reading') return { question: question(24, 1), lesson: 24 };
     if (FRAME.startsWith('memory')) return { question: question(9, 3), lesson: 9 };
     if (FRAME.startsWith('shift')) return { question: question(14, 1), lesson: 14 };
     return { question: question(19, 1), lesson: 19 };

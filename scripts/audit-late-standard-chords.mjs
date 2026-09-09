@@ -51,12 +51,17 @@ try {
     } else {
       assert.deepEqual(
         questions.slice(0, lesson.baseQuestionCount).map(({ exerciseMode }) => exerciseMode),
-        ['prove-it', 'prove-it', 'prove-it', 'standard'],
+        ['standard', 'prove-it', 'prove-it', 'standard'],
         'Lesson 17 must restore its three position proofs before the chord phrase.',
       );
     }
 
     standard.forEach((question) => {
+      if (question.advancedProof) {
+        assert.equal(question.cue.staves.length, 2);
+        assert.ok(question.cue.staves.every((staff) => staff.notes.some((note) => note.duration === 'wr')));
+        return;
+      }
       const chordNotes = question.cue.staves
         .flatMap((staff) => staff.notes)
         .filter((note) => !note.duration.endsWith('r') && note.keys.length >= 2);
@@ -137,7 +142,7 @@ try {
       makeRandom(20260826 + lessonIndex),
       0.5,
       'normal',
-      1,
+      lessonIndex >= 16 ? 4 : 1,
     );
     assert.equal(question.exerciseMode, 'anchor-shift');
     assert.equal(

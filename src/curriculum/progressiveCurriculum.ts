@@ -260,7 +260,8 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: [3],
     contours: [...FIVE_FINGER_PATHS, ...MUSICAL_BEGINNER], meters: [4],
     showKeySignature: true, tempoEasy: 13.5, tempoHard: 12,
-    drills: ['prove-it', 'standard', 'blind-memory', 'prove-it'], difficultyBase: 0.44,
+    drills: ['prove-it', 'standard', 'blind-memory', 'anchor-shift'], difficultyBase: 0.44,
+    shiftPairs: [[C, G]],
   },
   {
     id: 'c12-e-major-phrases', index: 12, phase: 2, phaseLabel: 'Four sharps',
@@ -270,7 +271,8 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [E], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13, tempoHard: 11.5,
-    drills: ['standard', 'blind-memory', 'standard', 'blind-memory'], difficultyBase: 0.48,
+    drills: ['standard', 'blind-memory', 'standard', 'anchor-shift'], difficultyBase: 0.48,
+    shiftPairs: [[G, D]],
   },
   {
     id: 'c13-shift-c-to-g', index: 13, phase: 3, phaseLabel: 'Anchor and shift',
@@ -310,7 +312,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [A, E],
     rightOctaves: TREBLE, leftOctaves: BASS, contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.3, tempoHard: 10.7,
-    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.64,
+    drills: ['standard', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.64,
     shiftPairs: [[A, E]],
   },
   {
@@ -322,7 +324,7 @@ const LESSONS: readonly LessonRecipe[] = [
     positions: [B, B, FS, FS], rightOctaves: [4], leftOctaves: [3],
     contours: FIVE_FINGER_PATHS, meters: [4],
     showKeySignature: true, tempoEasy: 15, tempoHard: 14,
-    drills: ['prove-it', 'prove-it', 'prove-it', 'chord-reading'], difficultyBase: 0.68,
+    drills: ['standard', 'prove-it', 'prove-it', 'chord-reading'], difficultyBase: 0.68,
   },
   {
     id: 'c18-shift-b-to-fsharp', index: 18, phase: 5, phaseLabel: 'Five and six sharps',
@@ -331,7 +333,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'anchor-shift', hands: BOTH_HANDS, positions: [B, FS],
     rightOctaves: [4], leftOctaves: [3], contours: MUSICAL_LATE,
     meters: [4], showKeySignature: true, tempoEasy: 12.8, tempoHard: 11.2,
-    drills: ['anchor-shift', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.72,
+    drills: ['standard', 'chord-reading', 'blind-memory', 'anchor-shift'], difficultyBase: 0.72,
     shiftPairs: [[B, FS]],
   },
   {
@@ -500,13 +502,13 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Place both hands in E-major position and include all four sharps automatically.',
     coreProblems: ['e-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'position-memory', 'register-placement'],
-    drillPurposes: ['Build the right-hand E frame', 'Read the left-hand E map', 'Recall the right-hand pattern', 'Verify the left-hand E frame'],
+    drillPurposes: ['Build the right-hand E frame', 'Read the left-hand E map', 'Recall the right-hand pattern', 'Introduce the C-to-G hand shift'],
   },
   'c12-e-major-phrases': {
     learningOutcome: 'Maintain E-major orientation through longer phrases, skips, and controlled subdivisions.',
     coreProblems: ['e-major-position', 'position-memory', 'hand-coordination', 'rapid-subdivision'],
     supportingProblems: ['key-signature-orientation', 'clef-differentiation', 'skip-and-turn-reading'],
-    drillPurposes: ['Read E major on both staves', 'Chunk and recall the pattern', 'Apply it to a longer phrase', 'Recall a contrasting left-hand motif'],
+    drillPurposes: ['Read E major on both staves', 'Chunk and recall the pattern', 'Apply it to a longer phrase', 'Practise the G-to-D hand shift'],
   },
   'c13-shift-c-to-g': {
     learningOutcome: 'Move either hand from C to G while both destination phrases remain visible.',
@@ -527,28 +529,28 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     drillPurposes: ['Learn the right-hand reveal-and-land routine', 'Stabilize both positions', 'Recall the destination map', 'Repeat the routine with the left hand'],
   },
   'c16-shift-a-to-e': {
-    learningOutcome: 'Move either hand from A to E after a 3.5-second preview and retain a compact E chord shape.',
+    learningOutcome: 'Coordinate both hands through a written shift-rest bar, then apply the A-to-E hand shift.',
     coreProblems: ['a-to-e-shift', 'hand-shift', 'right-hand-shift', 'left-hand-shift', 'dominant-hand-shift', 'non-dominant-hand-shift'],
     supportingProblems: ['a-major-position', 'e-major-position', 'key-signature-orientation', 'chord-reading', 'chord-simultaneity'],
-    drillPurposes: ['Shift the right hand after reveal', 'Secure the left-hand destination chord', 'Recall the destination map', 'Shift the left hand after reveal'],
+    drillPurposes: ['Prove a RH shift inside two-hand music with a full rest bar', 'Secure the left-hand destination chord', 'Recall the destination map', 'Shift the left hand after reveal'],
   },
   'c17-b-fsharp-orientation': {
-    learningOutcome: 'Place both hands in B and F-sharp positions before any jump between them is required.',
+    learningOutcome: 'Establish B and F-sharp positions and keep LH stable while RH shifts during a written rest bar.',
     coreProblems: ['b-major-position', 'f-sharp-major-position', 'key-signature-orientation', 'right-hand-position', 'left-hand-position'],
     supportingProblems: ['finger-number-mapping', 'register-placement', 'chord-reading', 'chord-simultaneity'],
-    drillPurposes: ['Build the right-hand B frame', 'Build the left-hand B frame', 'Build the right-hand F-sharp frame', 'Read a left-hand F-sharp phrase beneath a held right-hand anchor'],
+    drillPurposes: ['Prove a RH position change above LH accompaniment', 'Build the left-hand B frame', 'Build the right-hand F-sharp frame', 'Read a left-hand F-sharp phrase beneath a held right-hand anchor'],
   },
   'c18-shift-b-to-fsharp': {
-    learningOutcome: 'Move either hand from B to F-sharp after a two-second destination preview.',
+    learningOutcome: 'Shift both hands during a full written rest bar and apply the B-to-F-sharp move.',
     coreProblems: ['b-to-f-sharp-shift', 'hand-shift', 'right-hand-shift', 'left-hand-shift', 'dominant-hand-shift', 'non-dominant-hand-shift'],
     supportingProblems: ['b-major-position', 'f-sharp-major-position', 'key-signature-orientation', 'chord-reading', 'chord-simultaneity'],
-    drillPurposes: ['Shift the right hand after reveal', 'Secure the left-hand destination chord', 'Recall the destination map', 'Shift the left hand after reveal'],
+    drillPurposes: ['Prove a two-hand shift with a full rest bar', 'Secure the left-hand destination chord', 'Recall the destination map', 'Shift the left hand after reveal'],
   },
   'c19-anchor-and-shell': {
     learningOutcome: 'Use a supplied root to build and recognize a complete major 1-3-5 chord.',
     coreProblems: ['chord-anchor', 'chord-shell', 'chord-by-ear'],
     supportingProblems: ['chord-reading', 'chord-simultaneity', 'right-hand-position', 'left-hand-position'],
-    drillPurposes: ['Hear and build from a shown root', 'Read the same 1-3-5 shape', 'Transfer the heard shape to a new root', 'Verify it as a simultaneous written chord'],
+    drillPurposes: ['Hear and build from a shown root', 'Prove a chord phrase with a two-hand rest-bar shift', 'Transfer the heard shape to a new root', 'Verify it as a simultaneous written chord'],
   },
   'c20-complete-the-frame': {
     learningOutcome: 'Read, hear, and play all three tones of a 1-3-5 chord at the same time.',
@@ -586,9 +588,22 @@ function interventionProblems(intervention: LessonIntervention): RemediationProb
   return [...new Set([...intervention.coreProblems, ...intervention.supportingProblems])];
 }
 
+function interventionForLesson(lesson: LessonRecipe): LessonIntervention {
+  const base = LESSON_INTERVENTIONS[lesson.id];
+  if (lesson.index < 11) return base;
+  const purpose = (index: number) => lesson.index >= 20 &&
+    ['standard', 'chord-reading'].includes(lesson.drills[index])
+      ? `${base.drillPurposes[index]}; shift position within the music` : base.drillPurposes[index];
+  return { ...base,
+    supportingProblems: [...new Set([...base.supportingProblems, 'hand-shift' as RemediationProblem])],
+    learningOutcome: lesson.index >= 20 ? `${base.learningOutcome} Change hand positions within the written phrase.` : base.learningOutcome,
+    drillPurposes: [purpose(0), purpose(1), purpose(2), purpose(3)],
+  };
+}
+
 /** Public, testable contract used by routing, audits, and external assignment tooling. */
 export const CURRICULUM_BLUEPRINT = LESSONS.map((lesson) => {
-  const intervention = LESSON_INTERVENTIONS[lesson.id];
+  const intervention = interventionForLesson(lesson);
   return {
     lesson: lesson.index,
     id: lesson.id,
@@ -1071,6 +1086,49 @@ function expectedFromAuthoredStaves(staves: Question['cue']['staves']): string[]
     .flatMap((event) => event.pitches);
 }
 
+/** Preserve authored rhythm/contour; move complete hand shapes at a barline. */
+function withMusicalPositionChange(question: Question, lesson: number, advanced: boolean): Question {
+  if (!advanced && lesson < 20) return question;
+  const meter = Number(question.cue.timeSignature?.split('/')[0] ?? 4);
+  const total = Math.max(...question.cue.staves.map((staff) => staff.notes.reduce(
+    (sum, note) => sum + beatsForDuration(note.duration), 0)));
+  const boundary = Math.max(meter, Math.floor(total / 2 / meter) * meter);
+  const both = lesson >= 18;
+  const distance = lesson <= 20 ? 2 : lesson <= 22 ? 5 : 7;
+  const staves = question.cue.staves.map((staff) => {
+    let beat = 0;
+    let inserted = false;
+    let labelled = false;
+    const moving = staff.hand === 'right' || both;
+    const notes: CueNote[] = [];
+    for (const original of staff.notes) {
+      if (advanced && beat >= boundary && !inserted) {
+        notes.push({ keys: [staff.clef === 'bass' ? 'd/3' : 'b/4'], duration: 'wr',
+          ...(moving ? { positionChange: `${staff.hand === 'left' ? 'LH' : 'RH'}: shift up ${distance === 2 ? 'a step' : distance === 5 ? 'a fourth' : 'a fifth'}` } : {}) });
+        inserted = true;
+      }
+      const shifted = moving && beat >= boundary && !original.duration.endsWith('r');
+      notes.push(shifted ? { ...original,
+        keys: original.keys.map((key) => {
+          const [name, octave] = key.split('/');
+          return scientificToVex(transposePitch(`${name[0].toUpperCase()}${name.slice(1)}${octave}`, distance));
+        }),
+        ...(!labelled && !advanced ? { positionChange: `${staff.hand === 'left' ? 'LH' : 'RH'}: up ${distance === 2 ? 'a step' : distance === 5 ? 'a fourth' : 'a fifth'}` } : {}),
+      } : { ...original });
+      if (shifted) labelled = true;
+      beat += beatsForDuration(original.duration);
+    }
+    return { ...staff, notes };
+  });
+  return { ...question, advancedProof: advanced,
+    materialId: `${question.materialId}-shift-${lesson}`,
+    instruction: advanced ? 'Advanced Prove It — play, shift during the rest bar, then continue.' : question.instruction,
+    cue: { ...question.cue, keySignature: 'C', staves, measuresPerSystem: advanced ? 3 : 2 },
+    expectedSequence: expectedFromAuthoredStaves(staves),
+    positionLabel: `${question.positionLabel} → ${both ? 'both hands' : 'RH'} up ${distance} semitones`,
+  };
+}
+
 function authoredStandardQuestion(
   lesson: LessonRecipe,
   score: AuthoredReadingScore,
@@ -1110,7 +1168,7 @@ function authoredStandardQuestion(
   const bothHands = staves.length === 2;
   const rightProof = positionProofForPosition(rightPosition, 'right');
   const leftProof = positionProofForPosition(leftPosition, 'left');
-  return {
+  const question: Question = {
     id: `${lesson.id}#${ordinal}`,
     materialId: score.id,
     conceptId: lesson.id,
@@ -1134,6 +1192,9 @@ function authoredStandardQuestion(
     ),
     ...(bothHands ? { positionProofs: [rightProof, leftProof] as const } : {}),
   };
+  return withMusicalPositionChange(question, lesson.index,
+    (lesson.index >= 16 && lesson.index <= 18 && localRep === 0) ||
+    (lesson.index === 19 && localRep === 1));
 }
 
 /**
@@ -1151,6 +1212,7 @@ function chordalStandardQuestion(
   hand: Hand,
 ): Question {
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
+
   const positionTemplate = cyclePick(lesson.positions, questionNumber - 1);
   const octave = cyclePick(
     octavePool,
@@ -1326,6 +1388,14 @@ function questionFor(
   const clef = hand === 'right' ? 'treble' : 'bass';
   const octavePool = hand === 'right' ? lesson.rightOctaves : lesson.leftOctaves;
 
+  if (lesson.index >= 16 && lesson.index <= 18 && localRep === 0) {
+    return authoredStandardQuestion(lesson, {
+      id: `advanced-proof-${lesson.index}`, title: 'Across to the new position', meter: 4,
+      right: lesson.index === 16 ? '0q 1q 2h | 2q 1q 0h' : '0q 2q 1q 3q | 4q 2q 1q 0q',
+      left: lesson.index === 16 ? '0w | 0w' : '0h 4h | 0h 4h',
+    }, lesson.positions[0], ordinal, localRep, hand, fixedDifficulty, mode, modeDifficulty);
+  }
+
   if (drillKind === 'chord-reading') {
     const authoredScore = authoredReadingScore(lesson.index, localRep);
     if (authoredScore) {
@@ -1397,7 +1467,7 @@ function questionFor(
     // gradually, never jumping straight to a dense six-note landing.
     const landingLength = lesson.index <= 13 ? 3 : lesson.index <= 15 ? 4 : 5;
     const landingPool = fullLandingPool.map((contour) => contour.slice(0, landingLength));
-    const opening = difficultyOrderedContour(openingPool, localRep);
+    const opening = difficultyOrderedContour(openingPool, lesson.index < 13 ? lesson.index - 11 : localRep);
     const landing = difficultyOrderedContour(landingPool, localRep);
     let splitIndex = opening.length;
     const degrees = [...opening, ...landing];
@@ -1648,7 +1718,7 @@ function questionFor(
 }
 
 export const PROGRESSIVE_CONCEPTS: LessonDefinition[] = LESSONS.map((lesson) => {
-  const intervention = LESSON_INTERVENTIONS[lesson.id];
+  const intervention = interventionForLesson(lesson);
   return {
     id: lesson.id,
     index: lesson.index,

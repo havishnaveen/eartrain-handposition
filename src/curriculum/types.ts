@@ -20,6 +20,8 @@ export interface CueNote {
   fingers?: number[];
   /** Anchor note the drill is built around — drawn in accent color. */
   anchor?: boolean;
+  /** Brief, printed position-change instruction above this event. */
+  positionChange?: string;
 }
 
 export interface StaffSpec {
@@ -208,6 +210,8 @@ export interface Question {
   id: string;
   /** Stable authored-material id; present on reviewed normal-reading scores. */
   materialId?: string;
+  /** Hands-together placement check with a written repositioning rest bar. */
+  advancedProof?: boolean;
   conceptId: string;
   exerciseMode: ExerciseMode;
   /** Hands used across this lesson, even when one rep displays one staff. */

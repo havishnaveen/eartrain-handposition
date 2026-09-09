@@ -7,7 +7,6 @@ import type {
   OrientationNotice,
   OrientationNoticeKind,
 } from './ExerciseView';
-import SessionComplete from './SessionComplete';
 import AnchorShiftCue from './AnchorShiftCue';
 import StaffCue from './StaffCue';
 import type { StaffCueHandle } from './StaffCue';
@@ -25,10 +24,8 @@ import type { PerformanceSignal } from '../curriculum/curriculum';
 import { makeRandom } from '../curriculum/positions';
 import {
   adaptiveProfile,
-  buildReport,
   positionKeyOf,
   telemetry,
-  useAttempts,
 } from '../curriculum/telemetry';
 import type { AttemptRecord } from '../curriculum/telemetry';
 import type { Question } from '../curriculum/types';
@@ -660,14 +657,7 @@ export function PathwayRouter({
     { seed, cap: resolvedCap, initialLesson, initialProofCompleted },
     createInitialPathwayState,
   );
-  const attempts = useAttempts();
-  const sessionStartSeq = useRef(telemetry.peekSeq()).current;
   const activeStudentId = learningProfileStore.getSnapshot().activeStudentId;
-  const sessionAttempts = attempts.filter(
-    (attempt) =>
-      attempt.seq > sessionStartSeq &&
-      (attempt.studentId === undefined || attempt.studentId === activeStudentId),
-  );
   const concept = getConcept(state.lesson);
   const question = state.current;
   const activePositionProof =
@@ -1197,22 +1187,14 @@ export function PathwayRouter({
   }, [state.status]);
 
   if (state.finished) {
-    const passes = sessionAttempts.filter((a) => a.passed).length;
-    const scoredAttempts = sessionAttempts.filter(
-      (attempt) => attempt.exerciseMode !== 'spatial-chord',
-    );
-    const report = buildReport(sessionAttempts);
     return (
-      <SessionComplete
-        meanScores={scoredAttempts.length === 0 ? null : report.meanScores}
-        weakestPosition={report.positions[0]?.positionKey ?? null}
-        questionsAnswered={state.questionsServed}
-        passRate={sessionAttempts.length === 0 ? 0 : passes / sessionAttempts.length}
-        lessonsReached={state.lessonsReached}
-        totalLessons={TOTAL_CONCEPTS}
-        endedOnCap={state.endedOnCap}
-        returnUrl={returnUrl}
-      />
+      <main className="et-stage">
+        <section className="et-cue" aria-label="Practice complete">
+          <div><h1>Practice complete</h1><p>Choose another lesson whenever you’re ready.</p>
+            {returnUrl ? <a className="et-start" href={returnUrl}>Back to sight-reading</a> : null}
+          </div>
+        </section>
+      </main>
     );
   }
 
