@@ -198,11 +198,11 @@ try {
       ['prove-it', 'standard', 'standard', 'blind-memory'],
       ['standard', 'blind-memory', 'blind-memory', 'standard'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
-      ['standard', 'blind-memory', 'standard', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'blind-memory'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
       ['standard', 'blind-memory', 'standard', 'blind-memory'],
       ['prove-it', 'standard', 'blind-memory', 'prove-it'],
-      ['standard', 'blind-memory', 'standard', 'prove-it'],
+      ['standard', 'blind-memory', 'standard', 'blind-memory'],
       ['prove-it', 'standard', 'blind-memory', 'anchor-shift'],
       ['standard', 'blind-memory', 'standard', 'anchor-shift'],
       ['anchor-shift', 'standard', 'blind-memory', 'anchor-shift'],
@@ -213,7 +213,7 @@ try {
       ['standard', 'chord-reading', 'blind-memory', 'anchor-shift'],
       ['spatial-chord', 'chord-reading', 'spatial-chord', 'chord-reading'],
       ['chord-reading', 'spatial-chord', 'chord-reading', 'spatial-chord'],
-      ['spatial-chord', 'chord-reading', 'chord-reading', 'spatial-chord'],
+      ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'],
       ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'],
       ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'],
       ['chord-reading', 'spatial-chord', 'spatial-chord', 'spatial-chord'],
@@ -286,6 +286,10 @@ try {
       const proof = questions.find((q) => q.advancedProof);
       assert.ok(proof, `Lesson ${lesson} needs its advanced placement check.`);
       assert.equal(proof.handScope, 'both');
+      if (lesson === 17 || lesson === 18) {
+        assert.ok(proof.positionLabel.endsWith('up 5 semitones'),
+          'Advanced B-position work must transfer to E, not seven-sharp C-sharp.');
+      }
       assert.equal(proof.cue.timeSignature, '4/4');
       const rests = proof.cue.staves.map((staff) => {
         let beat = 0;
@@ -304,6 +308,10 @@ try {
     });
   }
   for (let lessonIndex = 7; lessonIndex <= 24; lessonIndex++) {
+    for (const question of baseQuestionsFor(lessonIndex).filter((q) => q.exerciseMode === 'standard')) {
+      assert.equal(question.handScope, 'both', `Lesson ${lessonIndex}: normal exercises must not revert to one hand.`);
+      assert.equal(question.cue.staves.length, 2);
+    }
     assert.ok(baseQuestionsFor(lessonIndex).some((question) =>
       question.exerciseMode === 'standard' && question.handScope === 'both' &&
       question.cue.staves.length === 2),
@@ -360,7 +368,8 @@ try {
   for (let lessonIndex = 19; lessonIndex <= 24; lessonIndex += 1) {
     const questions = baseQuestionsFor(lessonIndex);
     assert.ok(questions.every(({ exerciseMode }) =>
-      exerciseMode === 'standard' || exerciseMode === 'spatial-chord'),
+      exerciseMode === 'standard' || exerciseMode === 'spatial-chord' ||
+      (lessonIndex === 21 && exerciseMode === 'blind-memory')),
     `Lesson ${lessonIndex} must spend all four slots on chord reading or chord-by-ear.`);
     assert.equal(questions.filter(({ exerciseMode }) => exerciseMode === 'spatial-chord').length, lessonIndex >= 22 ? 3 : 2,
       `Lesson ${lessonIndex} must retain its prescribed ear-chord majority.`);
@@ -907,7 +916,7 @@ try {
     if (concept.index >= 5 && concept.index <= 12) {
       assert.ok(generatedModes.has('blind-memory') && generatedModes.has('standard'),
         `Lesson ${concept.index} must mix memory with complementary reading work.`);
-      assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, concept.index === 8 ? 2 : 1,
+      assert.equal(baseModes.filter((mode) => mode === 'blind-memory').length, [6, 8, 10].includes(concept.index) ? 2 : 1,
         `Lesson ${concept.index} must keep its authored memory slots.`);
     }
     if (concept.index <= 5) assert.equal(rhythms.eighth + rhythms.sixteenth, 0);

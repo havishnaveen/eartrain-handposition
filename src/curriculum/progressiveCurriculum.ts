@@ -210,7 +210,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [G], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 14, tempoHard: 12.4,
-    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.24,
+    drills: ['standard', 'blind-memory', 'standard', 'blind-memory'], difficultyBase: 0.24,
   },
   {
     id: 'c07-d-major-orientation', index: 7, phase: 1, phaseLabel: 'Two sharps',
@@ -250,7 +250,7 @@ const LESSONS: readonly LessonRecipe[] = [
     hands: BOTH_HANDS, positions: [A], rightOctaves: TREBLE, leftOctaves: BASS,
     contours: [...MUSICAL_BEGINNER, ...MUSICAL_REPEATED, ...MUSICAL_GENTLE_SKIPS],
     meters: [4, 3], showKeySignature: true, tempoEasy: 13.2, tempoHard: 11.8,
-    drills: ['standard', 'blind-memory', 'standard', 'prove-it'], difficultyBase: 0.40,
+    drills: ['standard', 'blind-memory', 'standard', 'blind-memory'], difficultyBase: 0.40,
   },
   {
     id: 'c11-e-major-orientation', index: 11, phase: 2, phaseLabel: 'Four sharps',
@@ -371,7 +371,7 @@ const LESSONS: readonly LessonRecipe[] = [
     exerciseMode: 'spatial-chord', hands: BOTH_HANDS, positions: [C, G, D, A],
     rightOctaves: TREBLE, leftOctaves: [3], contours: FIVE_FINGER_PATHS,
     meters: [4], showKeySignature: true, tempoEasy: 13, tempoHard: 12,
-    drills: ['spatial-chord', 'chord-reading', 'chord-reading', 'spatial-chord'], difficultyBase: 0.84,
+    drills: ['spatial-chord', 'chord-reading', 'blind-memory', 'spatial-chord'], difficultyBase: 0.84,
     spatialChord: {
       questionNumbers: [1, 2, 3], roots: [C, G, D, A], qualities: ['major', 'minor'], rootSupport: 'shown',
       layers: [], progressionLength: 1, targetRepeats: 2,
@@ -472,7 +472,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Keep the G-major hand map stable through reading, memory, and two-hand phrase work.',
     coreProblems: ['g-major-position', 'position-memory', 'hand-coordination', 'rhythm-pulse'],
     supportingProblems: ['key-signature-orientation', 'clef-differentiation', 'skip-and-turn-reading'],
-    drillPurposes: ['Read G major on both staves', 'Recall the G map', 'Apply it to a new two-hand phrase', 'Verify the left-hand frame'],
+    drillPurposes: ['Read G major on both staves', 'Recall the G map', 'Apply it to a new two-hand phrase', 'Recall a contrasting left-hand motif'],
   },
   'c07-d-major-orientation': {
     learningOutcome: 'Place both hands in D-major position and use F-sharp and C-sharp securely.',
@@ -496,7 +496,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Maintain A-major orientation through longer phrases and controlled subdivisions.',
     coreProblems: ['a-major-position', 'position-memory', 'hand-coordination', 'rapid-subdivision'],
     supportingProblems: ['key-signature-orientation', 'clef-differentiation', 'rhythm-pulse'],
-    drillPurposes: ['Read A major on both staves', 'Chunk and recall the pattern', 'Apply it to a longer phrase', 'Verify the left-hand frame'],
+    drillPurposes: ['Read A major on both staves', 'Chunk and recall the pattern', 'Apply it to a longer phrase', 'Recall a contrasting left-hand motif'],
   },
   'c11-e-major-orientation': {
     learningOutcome: 'Place both hands in E-major position and include all four sharps automatically.',
@@ -562,7 +562,7 @@ const LESSON_INTERVENTIONS: Readonly<Record<string, LessonIntervention>> = {
     learningOutcome: 'Differentiate major from minor by hearing and moving the middle chord tone.',
     coreProblems: ['major-minor-hearing', 'chord-quality-spacing', 'chord-by-ear'],
     supportingProblems: ['chord-shell', 'chord-reading', 'chord-simultaneity', 'chord-shape-transfer'],
-    drillPurposes: ['Hear and build the first quality', 'Read its spacing', 'Read the contrasting spacing', 'Hear and build the contrasting quality'],
+    drillPurposes: ['Hear and build the first quality', 'Read its spacing', 'Recall a short D-position motif between chord-quality comparisons', 'Hear and build the contrasting quality'],
   },
   'c22-match-anchor-in-texture': {
     learningOutcome: 'Match an isolated piano anchor inside light texture and transfer its chord shape.',
@@ -1094,7 +1094,9 @@ function withMusicalPositionChange(question: Question, lesson: number, advanced:
     (sum, note) => sum + beatsForDuration(note.duration), 0)));
   const boundary = Math.max(meter, Math.floor(total / 2 / meter) * meter);
   const both = lesson >= 18;
-  const distance = lesson <= 20 ? 2 : lesson <= 22 ? 5 : 7;
+  // B to C-sharp would add a seven-sharp key without teaching a new skill.
+  // Keep the authored coordination challenge, but transfer B to E instead.
+  const distance = lesson === 17 || lesson === 18 ? 5 : lesson <= 20 ? 2 : lesson <= 22 ? 5 : 7;
   const staves = question.cue.staves.map((staff) => {
     let beat = 0;
     let inserted = false;

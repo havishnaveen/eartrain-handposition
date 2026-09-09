@@ -2,6 +2,16 @@
 
 ## September 9 progression
 
+- Normal exercises from Lesson 7 onward are exclusively hands-together;
+  single-hand Memory, Chord by Ear and separate placement gates are unchanged.
+- Lessons 6 and 10 replace the last placement drill with a contrasting Memory
+  motif; Lesson 21 replaces its second reading slot with short D-position recall.
+  The four-slot blueprint stays deterministic and all 96 exercises stay unique.
+- Most material stays within five sharps. The existing occasional F-sharp
+  position remains, but advanced B-position transfers now go to E, not
+  seven-sharp C-sharp. Later difficulty comes from independent voices, rhythm,
+  chord changes and position transfers rather than increasing key signatures.
+
 - Lessons 1–10 retain their existing hand-position foundations.
 - Lessons 11–12 introduce standalone Move Your Hand (C–G, then G–D).
   Lessons 13–15 continue the explicit single-hand shifts.
