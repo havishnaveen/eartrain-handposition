@@ -491,6 +491,24 @@ class PitchProcessor extends AudioWorkletProcessor {
       if (data.type === 'debug') {
         this.debug = Boolean(data.enabled);
       } else if (data.type === 'listen') {
+        if (data.mode === 'proof' && this.rmsCount > 0) {
+          // A previous note/chime can occupy the 1.5-second idle history.
+          // Prove It has no count-in to let that history expire: calibrate
+          // from the most recent quiet-start window, not the previous take.
+          // Keep actual room measurements and the existing noise multipliers;
+          // never replace the baseline with an assumed silent microphone.
+          const count = Math.min(this.rmsCount, Math.ceil(0.26 / this.hopSeconds));
+          const recent = new Float32Array(count);
+          for (let i = 0; i < count; i++) {
+            recent[i] = this.rmsHistory[(this.rmsWrite - count + i + RMS_HISTORY) % RMS_HISTORY];
+          }
+          this.rmsHistory.fill(0);
+          this.rmsHistory.set(recent);
+          this.rmsCount = count;
+          this.rmsWrite = count % RMS_HISTORY;
+          this.noiseFloor = Math.max(1e-5, median(recent, count));
+          this.noiseCeiling = Math.max(this.noiseFloor, percentile(recent, count, 0.9));
+        }
         this.listening = true;
         this.lastOnsetTime = -Infinity;
         this.lastCandidateTime = -Infinity;

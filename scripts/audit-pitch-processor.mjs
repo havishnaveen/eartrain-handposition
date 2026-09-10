@@ -80,6 +80,28 @@ function makeProcessor(
   return { context, messages, processor };
 }
 
+// A Prove It begins without a musical count-in. Old ringing notes must not
+// determine its starting gate, while every other mode keeps its full history.
+for (const mode of [undefined, 'proof']) {
+  const { processor } = makeProcessor();
+  processor.rmsHistory.fill(.04);
+  processor.rmsHistory.fill(.0002, 100);
+  processor.rmsCount = processor.rmsHistory.length;
+  processor.rmsWrite = 0;
+  processor.noiseCeiling = .04;
+  processor.port.onmessage({ data: { type: 'listen', mode } });
+  if (mode === 'proof') {
+    assert.ok(processor.noiseCeiling < .00021, 'Proof must use recent room noise, not the previous piano decay.');
+    assert.ok(processor.rmsCount >= 12, 'Proof must retain measured calibration evidence.');
+    processor.rmsHistory.fill(.012);
+    processor.port.onmessage({ data: { type: 'listen', mode } });
+    assert.ok(processor.noiseCeiling > .011, 'Actual background noise must not be reset to silence.');
+  } else {
+    assert.equal(processor.noiseCeiling, .04, 'Normal/chord/memory calibration must remain unchanged.');
+    assert.equal(processor.rmsCount, processor.rmsHistory.length);
+  }
+}
+
 function pianoSample(strikes, time) {
   let sample = 0;
   for (const strike of strikes) {
