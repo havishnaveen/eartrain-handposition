@@ -54,8 +54,10 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
         0,
       );
       return {
-        firstCue: { ...cue, staves: [{ ...staff, notes: firstNotes }] },
-        secondCue: { ...cue, staves: [{ ...staff, notes: secondNotes }] },
+        // These are measured phrases even when a half note leaves only three
+        // attacks. Do not let the short unmetered-Prove-It heuristic hide 4/4.
+        firstCue: { ...cue, showTimeSignature: true, staves: [{ ...staff, notes: firstNotes }] },
+        secondCue: { ...cue, showTimeSignature: true, staves: [{ ...staff, notes: secondNotes }] },
         firstBeats: firstDuration,
       };
     }, [cue, split, staff]);
