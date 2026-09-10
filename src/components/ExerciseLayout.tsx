@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import './exercise.css';
 
 export interface ExerciseLayoutProps {
@@ -48,12 +48,41 @@ export function ExerciseLayout({
   // focus of the page — a first-time student's attention belongs on the
   // staff, and this keeps the stage uncluttered until they ask for context.
   const [collapsed, setCollapsed] = useState(true);
+  const [clicks, setClicks] = useState<number[]>([]);
+  const [locked, setLocked] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+
+  // Automatically unlocks after the next exercise/question begins
+  useEffect(() => {
+    setLocked(false);
+    setShowWarning(false);
+    setClicks([]);
+  }, [questionNumber, lessonNumber]);
+
+  const handleToggle = () => {
+    if (locked) return;
+    const now = Date.now();
+    // 5 clicks in rapid succession (6–7 seconds window)
+    const recent = clicks.filter((time) => now - time < 6500);
+    recent.push(now);
+    if (recent.length >= 5) {
+      setLocked(true);
+      setShowWarning(true);
+      setCollapsed(true);
+      setClicks([]);
+    } else {
+      setClicks(recent);
+      setCollapsed((isCollapsed) => !isCollapsed);
+    }
+  };
+
   return (
     <div className={`et-shell et-shell--pathway${collapsed ? ' et-shell--sidebar-collapsed' : ''}`}>
       <button
         type="button"
         className="et-sidebar-toggle"
-        onClick={() => setCollapsed((current) => !current)}
+        disabled={locked}
+        onClick={handleToggle}
         aria-expanded={!collapsed}
         aria-label={collapsed ? 'Show learning pathway' : 'Hide learning pathway'}
       >
@@ -62,6 +91,67 @@ export function ExerciseLayout({
         </span>
         <span className="et-sidebar-toggle__chevron" aria-hidden="true">{collapsed ? '›' : '‹'}</span>
       </button>
+      {showWarning ? (
+        <div
+          className="et-sidebar-warning-modal"
+          role="alert"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            className="et-sidebar-warning-modal__backdrop"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              backgroundColor: 'rgba(36, 34, 55, 0.35)',
+            }}
+          />
+          <div
+            className="et-sidebar-warning-modal__content"
+            style={{
+              position: 'relative',
+              backgroundColor: 'white',
+              padding: '28px 36px',
+              borderRadius: '16px',
+              boxShadow: '0 16px 48px rgba(36, 34, 55, 0.18)',
+              textAlign: 'center',
+              maxWidth: '380px',
+              width: '90%',
+            }}
+          >
+            <h2 style={{ color: '#ef6a47', margin: '0 0 12px 0', fontSize: '20px', fontWeight: 750 }}>
+              Too many clicks
+            </h2>
+            <p style={{ fontSize: '15px', color: '#4a4659', margin: '0 0 20px 0', lineHeight: 1.45 }}>
+              Please focus on the exercise. The sidebar is locked and will unlock on the next exercise.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowWarning(false)}
+              style={{
+                backgroundColor: '#ef6a47',
+                color: 'white',
+                border: 'none',
+                padding: '10px 24px',
+                borderRadius: '8px',
+                fontSize: '15px',
+                cursor: 'pointer',
+                fontWeight: 700,
+              }}
+            >
+              Acknowledge
+            </button>
+          </div>
+        </div>
+      ) : null}
       <aside className="et-sidebar" aria-label="Current learning pathway" aria-hidden={collapsed}>
         <div className="et-sidebar__inner">
           <div className="et-sidebar__brand">
