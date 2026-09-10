@@ -1189,6 +1189,16 @@ export function PathwayRouter({
   if (state.finished) {
     return (
       <main className="et-stage">
+        <div
+          className="et-collab-tag"
+          role="note"
+          aria-label="Created by Havish Naveen in collaboration with Oclef"
+        >
+          <span className="et-collab-tag__dot" aria-hidden="true" />
+          <span className="et-collab-tag__label">
+            Created by <strong className="et-collab-tag__name">Havish Naveen</strong> in collaboration with <strong className="et-collab-tag__partner">Oclef</strong>
+          </span>
+        </div>
         <section className="et-cue" aria-label="Practice complete">
           <div><h1>Practice complete</h1><p>Choose another lesson whenever you’re ready.</p>
             {returnUrl ? <a className="et-start" href={returnUrl}>Back to sight-reading</a> : null}

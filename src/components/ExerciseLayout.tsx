@@ -158,7 +158,7 @@ export function ExerciseLayout({
             <span className="et-sidebar__mark"><NoteMark /></span>
             <span>
               <strong>EarTrain</strong>
-              <small>Sight-reading studio</small>
+              <small>Sight-reading studio · Oclef</small>
             </span>
           </div>
 
@@ -217,10 +217,26 @@ export function ExerciseLayout({
               })}
             </div>
           </section>
+
+          <footer className="et-sidebar__credit">
+            <span>Created by <strong>Havish Naveen</strong></span>
+            <small>in collaboration with <strong>Oclef</strong></small>
+          </footer>
         </div>
       </aside>
 
       <main className="et-stage">
+        <div
+          className="et-collab-tag"
+          role="note"
+          aria-label="Created by Havish Naveen in collaboration with Oclef"
+        >
+          <span className="et-collab-tag__dot" aria-hidden="true" />
+          <span className="et-collab-tag__label">
+            Created by <strong className="et-collab-tag__name">Havish Naveen</strong> in collaboration with <strong className="et-collab-tag__partner">Oclef</strong>
+          </span>
+        </div>
+
         <div className="et-stage__ambient" aria-hidden="true">
           <span className="et-stage__shape et-stage__shape--rhythm" />
           <span className="et-stage__shape et-stage__shape--pebble" />
