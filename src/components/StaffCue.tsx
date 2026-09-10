@@ -301,6 +301,59 @@ function distributeNotesByTime(
   return { startX: firstX, endX, totalBeats };
 }
 
+/** Directions occupy their own layout row, never the note/fingering lanes. */
+export function positionDirections(cue: CueSpec): string[] {
+  const rows = new Map<number, string[]>();
+  const meter = beatsPerBarOf(cue);
+  for (const staff of cue.staves) {
+    let beat = 0;
+    for (const note of staff.notes) {
+      if (note.positionChange) {
+        const bar = Math.floor((beat + 1e-6) / meter) + 1;
+        const labels = rows.get(bar) ?? [];
+        if (!labels.includes(note.positionChange)) labels.push(note.positionChange);
+        rows.set(bar, labels);
+      }
+      beat += beatsForDuration(note.duration);
+    }
+  }
+  return [...rows].sort(([a], [b]) => a - b).map(([bar, labels]) => {
+    const right = labels.find((label) => label.startsWith('RH: '));
+    const left = labels.find((label) => label.startsWith('LH: '));
+    const text = right && left && right.slice(4) === left.slice(4)
+      ? `Both hands: ${right.slice(4)}` : labels.join(' · ');
+    return `Bar ${bar} — ${text}`;
+  });
+}
+
+/** VexFlow's chord annotation rows can be closer than the actual font height. */
+function separateFingerAnnotations(group: SVGGElement, hand: StaffSpec['hand']) {
+  const gap = 4;
+  const texts = [...group.querySelectorAll<SVGTextElement>('.vf-annotation text')];
+  const obstacles = [...group.querySelectorAll<SVGGraphicsElement>(
+    '.vf-notehead > path, .vf-accidental > path, .vf-beam > path, .vf-stem > path',
+  )].map((element) => element.getBBox());
+  // Work outward from the staff so chord finger order is preserved.
+  texts.sort((a, b) => hand === 'right' ? b.getBBox().y - a.getBBox().y : a.getBBox().y - b.getBBox().y);
+  for (const text of texts) {
+    let box = text.getBBox();
+    let dy = 0;
+    for (let pass = 0; pass <= obstacles.length; pass++) {
+      const collisions = obstacles.filter((other) =>
+        box.x < other.x + other.width + gap && box.x + box.width + gap > other.x &&
+        box.y < other.y + other.height + gap && box.y + box.height + gap > other.y);
+      if (!collisions.length) break;
+      const step = hand === 'right'
+        ? Math.min(...collisions.map((other) => other.y - gap - box.y - box.height))
+        : Math.max(...collisions.map((other) => other.y + other.height + gap - box.y));
+      dy += step;
+      box = { ...box, x: box.x, y: box.y + step, width: box.width, height: box.height } as DOMRect;
+    }
+    if (dy) text.setAttribute('y', String(Number(text.getAttribute('y')) + dy));
+    obstacles.push(box);
+  }
+}
+
 export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function StaffCue(
   {
     cue,
@@ -561,11 +614,6 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
             staffSpec.hand === 'right'
               ? Annotation.VerticalJustify.TOP
               : Annotation.VerticalJustify.BOTTOM;
-          if (cueNote.positionChange) {
-            note.addModifier(new Annotation(cueNote.positionChange)
-              .setVerticalJustification(Annotation.VerticalJustify.TOP)
-              .setFont('Inter, Roboto, sans-serif', 11, '700'), 0);
-          }
           const addFingerAnnotation = (label: number, keyIndex: number) => {
             const annotation = new Annotation(String(label))
               .setVerticalJustification(placement)
@@ -608,8 +656,11 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         if (timeline && sharedTimelineStartX === undefined) {
           sharedTimelineStartX = timeline.startX;
         }
+        const voiceGroup = context.openGroup();
         voice.draw(context, stave);
         beams.forEach((beam) => beam.setContext(context).draw());
+        context.closeGroup();
+        if (voiceGroup instanceof SVGGElement) separateFingerAnnotations(voiceGroup, staffSpec.hand);
 
         // Barlines.
         //
@@ -873,12 +924,21 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     };
   }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats, resolvedNoteGlyphScale, resolvedNotationScale]);
 
-  return (
+  const engraving = (
     <div
       className={`et-staff${resolvedNotationScale > 1 ? ' et-staff--scaled' : ''}`}
       ref={hostRef}
     />
   );
+  const directions = positionDirections(cue);
+  return directions.length ? (
+    <div className="et-staff-with-directions">
+      <div className="et-staff-directions" aria-label="Hand position changes">
+        {directions.map((direction) => <p key={direction}>{direction}</p>)}
+      </div>
+      {engraving}
+    </div>
+  ) : engraving;
 });
 
 export default StaffCue;

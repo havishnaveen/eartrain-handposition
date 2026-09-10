@@ -60,6 +60,7 @@ try {
     splitNotesIntoSystems,
     recommendedClefForStaff,
     shouldShowTimeSignature,
+    positionDirections,
   } = await server.ssrLoadModule(
     '/src/components/StaffCue.tsx',
   );
@@ -306,6 +307,37 @@ try {
       assert.ok(q.cue.staves.every((staff) => staff.notes.some((note) => note.positionChange)),
         `Lesson ${lesson} must move both hands inside its normal music.`);
     });
+    for (const q of questions.filter((q) => q.exerciseMode === 'standard')) {
+      const meter = Number(q.cue.timeSignature.split('/')[0]);
+      const totals = q.cue.staves.map((staff) => staff.notes.reduce((sum, n) => sum + beatsForDuration(n.duration), 0));
+      assert.equal(new Set(totals).size, 1, 'Both voices must end together.');
+      assert.ok(totals.every((total) => total % meter === 0), 'Reading phrases must fill complete bars.');
+      for (const staff of q.cue.staves) {
+        const proof = (q.positionProofs ?? [q.positionProof]).find((p) => p.hand === staff.hand);
+        assert.ok(proof);
+        const root = Math.min(...proof.proofNotes.map((n) => pitchToMidi(n.pitch)));
+        let beat = 0;
+        let shift = 0;
+        for (const note of staff.notes) {
+          const duration = beatsForDuration(note.duration);
+          assert.ok(beat % meter + duration <= meter + 1e-6, 'No unsplit note may cross a barline.');
+          if (note.positionChange) {
+            assert.equal(beat % meter, 0, 'Position changes must begin at a barline.');
+            shift = note.positionChange.includes('step') ? 2 : note.positionChange.includes('fourth') ? 5 : 7;
+            assert.ok(positionDirections(q.cue).some((label) => label.startsWith(`Bar ${beat / meter + 1} —`)));
+          }
+          if (!note.duration.endsWith('r')) note.keys.forEach((key, index) => {
+            const finger = note.fingers?.[index] ?? note.finger;
+            if (finger === undefined) return;
+            const degree = staff.hand === 'right' ? finger - 1 : 5 - finger;
+            const [name, octave] = key.split('/');
+            assert.equal(pitchToMidi(name[0].toUpperCase() + name.slice(1) + octave), root + [0, 2, 4, 5, 7][degree] + shift,
+              `Lesson ${lesson}: finger ${finger} must map to its actual key before/after the shift.`);
+          });
+          beat += duration;
+        }
+      }
+    }
   }
   for (let lessonIndex = 7; lessonIndex <= 24; lessonIndex++) {
     for (const question of baseQuestionsFor(lessonIndex).filter((q) => q.exerciseMode === 'standard')) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
-import { beatsForDuration } from '../audio/timing';
+import { beatsForDuration, gradeSequence, planForQuestion } from '../audio/timing';
 import AnchorShiftCue from '../components/AnchorShiftCue';
 import ExerciseLayout from '../components/ExerciseLayout';
 import ExerciseView from '../components/ExerciseView';
@@ -13,6 +13,7 @@ import type { Question } from '../curriculum/types';
 import '../index.css';
 
 type AuditFrame =
+  | 'proof-prompt' | 'proof-play' | 'proof-success' | 'grading' | 'report' | 'normal-prompt'
   | 'advanced-proof' | 'moving-reading'
   | 'notice'
   | 'memory-prompt' | 'memory-look' | 'memory-play'
@@ -29,6 +30,10 @@ function question(lessonIndex: number, questionNumber: number): Question {
 function Frame() {
   const shiftRef = useRef<StaffCueHandle>(null);
   const config = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const lesson = Number(params.get('lesson'));
+    const slot = Number(params.get('slot')) || 1;
+    if (lesson >= 1 && lesson <= 24 && slot >= 1 && slot <= 4) return { question: question(lesson, slot), lesson };
     if (FRAME === 'advanced-proof') return { question: question(18, 1), lesson: 18 };
     if (FRAME === 'moving-reading') return { question: question(24, 1), lesson: 24 };
     if (FRAME.startsWith('memory')) return { question: question(9, 3), lesson: 9 };
@@ -36,7 +41,12 @@ function Frame() {
     return { question: question(19, 1), lesson: 19 };
   }, []);
   const active = config.question;
-  const status = FRAME === 'memory-prompt' || FRAME === 'shift-overview' || FRAME === 'chord-reference'
+  const status = FRAME === 'proof-prompt' ? 'position-prompt'
+    : FRAME === 'proof-play' ? 'proving'
+    : FRAME === 'proof-success' ? 'proof-success'
+    : FRAME === 'grading' ? 'grading'
+    : FRAME === 'report' ? 'report'
+    : FRAME === 'normal-prompt' || FRAME === 'memory-prompt' || FRAME === 'shift-overview' || FRAME === 'chord-reference'
     ? 'prompt'
     : FRAME === 'memory-look'
       ? 'memory-preview'
@@ -73,6 +83,11 @@ function Frame() {
         status={status}
         instruction={active.instruction}
         exerciseMode={active.exerciseMode}
+        positionProof={active.positionProof}
+        handScope={active.handScope}
+        proofProgress={FRAME === 'proof-success' ? 3 : 0}
+        analysisProgress={0.67}
+        report={FRAME === 'report' ? gradeSequence(active.expectedSequence, [], { plan: planForQuestion(active, 75), playStartTime: 10 }) : undefined}
         blindMemory={active.blindMemory}
         anchorShift={active.anchorShift}
         spatialChord={active.spatialChord}
