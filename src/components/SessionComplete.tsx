@@ -70,7 +70,7 @@ export function SessionComplete({
                 </div>
                 <div className="et-done__score">
                   <span>Clean</span>
-                  <strong>{meanScores.cleanliness.toFixed(1)}</strong>
+                  <strong>{meanScores.cleanliness === null ? '—' : meanScores.cleanliness.toFixed(1)}</strong>
                 </div>
               </div>
             ) : null}

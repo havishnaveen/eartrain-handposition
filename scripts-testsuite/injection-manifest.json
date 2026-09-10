@@ -1,0 +1,645 @@
+{
+  "seed": 20260802,
+  "runs": [
+    {
+      "lesson": 1,
+      "freshLoad": true,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "prove-it",
+          "expectedSequence": [
+            "C4",
+            "D4",
+            "E4",
+            "F4",
+            "G4"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson1-slot1-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C4",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "E4",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G4",
+                      "finger": 5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson1-slot1-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "standard",
+          "expectedSequence": [
+            "C4",
+            "D4",
+            "E4",
+            "F4",
+            "G4",
+            "E4",
+            "C4"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson1-slot2-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C4",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "E4",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G4",
+                      "finger": 5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson1-slot2-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "standard",
+          "expectedSequence": [
+            "C4",
+            "E4",
+            "D4",
+            "F4",
+            "E4",
+            "D4",
+            "C4"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson1-slot3-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C4",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "E4",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G4",
+                      "finger": 5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson1-slot3-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "blind-memory",
+          "expectedSequence": [
+            "G4",
+            "E4",
+            "F4",
+            "E4",
+            "G4"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson1-slot4-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C4",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "E4",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G4",
+                      "finger": 5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson1-slot4-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "lesson": 13,
+      "freshLoad": false,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "prompt",
+          "exerciseMode": "anchor-shift",
+          "expectedSequence": [
+            "C4",
+            "D4",
+            "E4",
+            "G4",
+            "A4",
+            "B4"
+          ],
+          "injections": [
+            {
+              "kind": "listening",
+              "file": "lesson13-slot1-main.wav",
+              "recordSeconds": 9.600000000000001
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "standard",
+          "expectedSequence": [
+            "G4",
+            "G3",
+            "B4",
+            "A4",
+            "B4",
+            "C5",
+            "C5",
+            "D4",
+            "B4",
+            "A4",
+            "G3",
+            "G4"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson13-slot2-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "G4",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "B4",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "D5",
+                      "finger": 5
+                    }
+                  ]
+                },
+                {
+                  "file": "lesson13-slot2-proof1.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "G3",
+                      "finger": 5
+                    },
+                    {
+                      "pitch": "B3",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "D4",
+                      "finger": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson13-slot2-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "blind-memory",
+          "expectedSequence": [
+            "G5",
+            "F5",
+            "G5",
+            "E5",
+            "F5",
+            "D5",
+            "E5",
+            "G5"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson13-slot3-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C5",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "E5",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G5",
+                      "finger": 5
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson13-slot3-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "anchor-shift",
+          "expectedSequence": [
+            "E3",
+            "C3",
+            "D3",
+            "G3",
+            "C4",
+            "B3"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson13-slot4-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C3",
+                      "finger": 5
+                    },
+                    {
+                      "pitch": "E3",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G3",
+                      "finger": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson13-slot4-main.wav",
+              "recordSeconds": 9.600000000000001
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "lesson": 19,
+      "freshLoad": false,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "prompt",
+          "exerciseMode": "spatial-chord",
+          "expectedSequence": [
+            "G4",
+            "B4",
+            "D5"
+          ],
+          "injections": [
+            {
+              "kind": "spatial",
+              "file": "lesson19-slot1-spatial.wav",
+              "chordPitches": [
+                "G4",
+                "B4",
+                "D5"
+              ]
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "standard",
+          "expectedSequence": [
+            "G4",
+            "B4",
+            "D5",
+            "G3",
+            "A4",
+            "B4",
+            "A4",
+            "E5",
+            "E4",
+            "A4",
+            "C#5",
+            "E5",
+            "A3"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson19-slot2-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "G4",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "B4",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "D5",
+                      "finger": 5
+                    }
+                  ]
+                },
+                {
+                  "file": "lesson19-slot2-proof1.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "G3",
+                      "finger": 5
+                    },
+                    {
+                      "pitch": "B3",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "D4",
+                      "finger": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson19-slot2-main.wav",
+              "recordSeconds": 9.600000000000001
+            }
+          ]
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "prompt",
+          "exerciseMode": "spatial-chord",
+          "expectedSequence": [
+            "F4",
+            "A4",
+            "C5"
+          ],
+          "injections": [
+            {
+              "kind": "spatial",
+              "file": "lesson19-slot3-spatial.wav",
+              "chordPitches": [
+                "F4",
+                "A4",
+                "C5"
+              ]
+            }
+          ]
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "position-prompt",
+          "exerciseMode": "standard",
+          "expectedSequence": [
+            "C4",
+            "E4",
+            "G4",
+            "C3",
+            "C4",
+            "E4",
+            "G4",
+            "D4",
+            "G3",
+            "E4",
+            "C4",
+            "G4",
+            "C3",
+            "C4",
+            "E4",
+            "G4"
+          ],
+          "injections": [
+            {
+              "kind": "proof",
+              "proofs": [
+                {
+                  "file": "lesson19-slot4-proof0.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C4",
+                      "finger": 1
+                    },
+                    {
+                      "pitch": "E4",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G4",
+                      "finger": 5
+                    }
+                  ]
+                },
+                {
+                  "file": "lesson19-slot4-proof1.wav",
+                  "proofNotes": [
+                    {
+                      "pitch": "C3",
+                      "finger": 5
+                    },
+                    {
+                      "pitch": "E3",
+                      "finger": 3
+                    },
+                    {
+                      "pitch": "G3",
+                      "finger": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "listening",
+              "file": "lesson19-slot4-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "lesson": 23,
+      "freshLoad": false,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "prompt",
+          "exerciseMode": "standard",
+          "expectedSequence": [
+            "C4",
+            "E4",
+            "G4",
+            "C3",
+            "G3",
+            "E3",
+            "G3",
+            "C4",
+            "G4",
+            "C3",
+            "G3",
+            "E3",
+            "G3",
+            "A4",
+            "G3",
+            "D4",
+            "B4",
+            "B3",
+            "D4",
+            "G4",
+            "B4",
+            "D5",
+            "G3"
+          ],
+          "injections": [
+            {
+              "kind": "listening",
+              "file": "lesson23-slot1-main.wav",
+              "recordSeconds": 6.4
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "prompt",
+          "exerciseMode": "spatial-chord",
+          "expectedSequence": [
+            "A3",
+            "C#4",
+            "E4"
+          ],
+          "injections": [
+            {
+              "kind": "spatial",
+              "file": "lesson23-slot2-spatial.wav",
+              "chordPitches": [
+                "A3",
+                "C#4",
+                "E4"
+              ]
+            }
+          ]
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "prompt",
+          "exerciseMode": "spatial-chord",
+          "expectedSequence": [
+            "F4",
+            "A4",
+            "C5"
+          ],
+          "injections": [
+            {
+              "kind": "spatial",
+              "file": "lesson23-slot3-spatial.wav",
+              "chordPitches": [
+                "F4",
+                "A4",
+                "C5"
+              ]
+            }
+          ]
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "prompt",
+          "exerciseMode": "spatial-chord",
+          "expectedSequence": [
+            "Bb3",
+            "D4",
+            "F4"
+          ],
+          "injections": [
+            {
+              "kind": "spatial",
+              "file": "lesson23-slot4-spatial.wav",
+              "chordPitches": [
+                "Bb3",
+                "D4",
+                "F4"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

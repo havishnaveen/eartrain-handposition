@@ -398,7 +398,7 @@ export interface PositionStats {
   passRate: number;
   meanPitch: number;
   meanTiming: number | null;
-  meanCleanliness: number;
+  meanCleanliness: number | null;
   meanOverall: number;
   /** Hardest rung cleared on this shape, and the easiest one missed. */
   highestDifficultyPassed: number | null;
@@ -428,16 +428,17 @@ export function summarisePositions(records: readonly AttemptRecord[]): PositionS
       const passed = group.filter((r) => r.passed);
       const failed = group.filter((r) => !r.passed);
       const timed = group.filter((r) => r.scores.timing !== null);
+      const cleaned = group.filter((r) => r.scores.cleanliness !== null);
 
       const meanPitch = mean(group.map((r) => r.scores.pitch));
       const meanTiming = timed.length === 0 ? null : mean(timed.map((r) => r.scores.timing as number));
-      const meanCleanliness = mean(group.map((r) => r.scores.cleanliness));
+      const meanCleanliness = cleaned.length === 0 ? null : mean(cleaned.map((r) => r.scores.cleanliness as number));
 
       const axes: [PositionStats['weakestAxis'], number][] = [
         ['pitch', meanPitch],
-        ['cleanliness', meanCleanliness],
       ];
       if (meanTiming !== null) axes.push(['timing', meanTiming]);
+      if (meanCleanliness !== null) axes.push(['cleanliness', meanCleanliness]);
       const weakestAxis = axes.sort((a, b) => a[1] - b[1])[0][0];
 
       return {
@@ -644,10 +645,11 @@ export function buildReport(records: readonly AttemptRecord[]): InstructorReport
   // conventional Pitch/Timing/Cleanliness averages.
   const scoredRecords = records.filter((r) => r.exerciseMode !== 'spatial-chord');
   const timed = scoredRecords.filter((r) => r.scores.timing !== null);
+  const cleaned = scoredRecords.filter((r) => r.scores.cleanliness !== null);
   const meanScores: ScoreBreakdown = {
     pitch: mean(scoredRecords.map((r) => r.scores.pitch)),
     timing: timed.length === 0 ? null : mean(timed.map((r) => r.scores.timing as number)),
-    cleanliness: mean(scoredRecords.map((r) => r.scores.cleanliness)),
+    cleanliness: cleaned.length === 0 ? null : mean(cleaned.map((r) => r.scores.cleanliness as number)),
     overall: mean(scoredRecords.map((r) => r.scores.overall)),
   };
 

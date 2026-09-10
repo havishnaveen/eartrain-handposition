@@ -362,11 +362,17 @@ export interface RhythmReport {
 export interface ScoreBreakdown {
   /** Did the right notes come out, in order? The core skill. */
   pitch: number;
-  /** Did they land on the beat? null for untimed drills. */
+  /** Did they land on the beat? null for untimed drills, or when too few
+   *  notes were recognized to honestly judge rhythm (see hasTimingEvidence
+   *  in gradeSequence) -- distinct from a real, graded, low score. */
   timing: number | null;
-  /** Was the performance free of wrong and stray notes? */
-  cleanliness: number;
-  /** Weighted combination, 0-5. */
+  /** Was the performance free of wrong and stray notes? null when too few
+   *  notes were recognized to honestly judge cleanliness (see
+   *  hasPerformanceEvidence in gradeSequence) -- distinct from a real,
+   *  graded, low score. */
+  cleanliness: number | null;
+  /** Weighted combination, 0-5. Always a number: Pitch alone is enough to
+   *  anchor the weighted mean even when Timing and/or Cleanliness are null. */
   overall: number;
 }
 
@@ -1179,7 +1185,7 @@ export function passesOverallScore(overall: number): boolean {
 export function calculateOverallScore(
   pitch: number,
   timing: number | null,
-  cleanliness: number,
+  cleanliness: number | null,
   weights: { pitch: number; timing: number; cleanliness: number } = {
     pitch: 0.5,
     timing: 0.2,
@@ -1189,7 +1195,7 @@ export function calculateOverallScore(
   const categories = [
     { value: pitch, weight: weights.pitch },
     ...(timing === null ? [] : [{ value: timing, weight: weights.timing }]),
-    { value: cleanliness, weight: weights.cleanliness },
+    ...(cleanliness === null ? [] : [{ value: cleanliness, weight: weights.cleanliness }]),
   ].filter(({ value, weight }) => Number.isFinite(value) && weight > 0);
   const totalWeight = categories.reduce((sum, category) => sum + category.weight, 0);
   if (totalWeight <= 0) return 0;
@@ -1208,13 +1214,16 @@ export function capOverallByWeakestCategory(
   weightedOverall: number,
   pitch: number,
   timing: number | null,
-  cleanliness: number,
+  cleanliness: number | null,
   isMemory = false,
 ): number {
   if (isMemory) return weightedOverall;
-  const visibleCategoryFloor = timing === null
-    ? Math.min(pitch, cleanliness)
-    : Math.min(pitch, timing, cleanliness);
+  // Pitch is always graded; only fold Timing/Cleanliness into the floor
+  // when they were actually scored (not null for lack of evidence).
+  const visibleCategories = [pitch, timing, cleanliness].filter(
+    (value): value is number => value !== null,
+  );
+  const visibleCategoryFloor = Math.min(...visibleCategories);
   return Math.min(weightedOverall, visibleCategoryFloor + 1.5);
 }
 
@@ -1804,11 +1813,21 @@ export function gradeSequence(
   const transitionWeight = measuredTransition
     ? mix(0.35, 0.85, clamp01((3 - measuredTransition.score) / 3))
     : 0.35;
+  // Too little played evidence means we cannot honestly judge rhythm at
+  // all -- that is different from judging it and finding it bad. Report
+  // "not enough data" (null, same as an untimed drill) rather than a
+  // confident-looking 0 that a student reasonably reads as "you failed
+  // this," even when the notes that WERE heard could have been perfectly
+  // on the beat. Reproduced empirically (scripts-testsuite/unit-grade-
+  // repro-2.mjs): on an otherwise-identical 7-note take, matched=5/7 gave
+  // a perfect Timing 5.0, while matched=4/7 (a difference attributable to
+  // ordinary recognition variance, not worse playing) cratered straight
+  // to a hard 0.0.
   const timingScore =
     !hasPerformanceEvidence
-      ? 0
+      ? null
       : !hasTimingEvidence
-        ? 0
+        ? null
       : timingMastery
         ? 5
         : baseTimingScore === null
@@ -1819,10 +1838,24 @@ export function gradeSequence(
 
   // Cleanliness: penalises only what the student actually did. Echoes and
   // resonances are the room's doing and cost nothing.
-  // Nothing played is not a clean performance — it is no performance.
+  // Nothing played is not a clean performance — it is no performance, so
+  // report "not enough data" rather than a graded 0 (mirrors Timing above).
+  //
+  // Repeats mirror Pitch's own allowance (excessiveRepeatPitchErrors,
+  // above): an occasional re-strike of an otherwise correct key is a
+  // fluency issue, not a wrong pitch OR an unlimited-cost cleanliness
+  // failure. The previous formula charged every played-repeat extra at
+  // full weight with no allowance and no floor -- reproduced empirically
+  // (scripts-testsuite/unit-grade-repro.mjs) that on a 23-note phrase, 4
+  // benign, zero-hard-error "repeat" extras alone crash this from a
+  // perfect 5.0 to an exact 0.0, even though Pitch and Timing both stay
+  // perfect for the identical take. Applying the same allowance keeps
+  // genuinely excessive repeat-chatter (beyond the allowance) costly,
+  // without an unearned cliff to zero for ordinary re-triggers.
+  const significantCleanlinessExtraCount = hard + hesitations * 0.75 + excessiveRepeatPitchErrors;
   const cleanScore =
     !hasPerformanceEvidence
-      ? 0
+      ? null
       : completeAndClean
         // Quiet-room recoveries, sympathetic resonance, and harmless
         // detector debris are not student mistakes. A complete ordered take
@@ -1832,8 +1865,8 @@ export function gradeSequence(
         // affect Cleanliness. Echoes, resonances, faint detections and quick
         // self-corrections must not make a correct take look dirty.
         : clamp5(5 - (polyphonicTake
-          ? 5 * significantExtraCount / Math.max(1, expectedCount)
-          : 1.3 * significantExtraCount));
+          ? 5 * significantCleanlinessExtraCount / Math.max(1, expectedCount)
+          : 1.3 * significantCleanlinessExtraCount));
 
   // Pitch carries the most weight: this app exists to verify hand position.
   const wPitch = isMemory ? 0.7 : 0.43;
@@ -1855,7 +1888,17 @@ export function gradeSequence(
     cleanScore,
     isMemory,
   );
-  const extraNoteCap = significantExtraCount >= 0.7 ? 4.1 : 5;
+  // Use the same allowance-adjusted count Cleanliness itself now uses
+  // (significantCleanlinessExtraCount), not the raw, zero-allowance
+  // significantExtraCount -- otherwise this cap contradicted the visible
+  // breakdown outright: reproduced empirically (scripts-testsuite/unit-
+  // grade-repro.mjs) that a handful of benign, allowance-covered "repeat"
+  // extras left Pitch/Timing/Cleanliness all showing a perfect 5.0/5.0/5.0
+  // while Overall was still hard-capped at 4.1, which makes no visible
+  // sense to a student and is the same "confident but unearned number"
+  // problem as the categories themselves. Genuine excess extras (beyond
+  // the same allowance already applied to Cleanliness) still trip this.
+  const extraNoteCap = significantCleanlinessExtraCount >= 0.7 ? 4.1 : 5;
   const overall = Math.min(
     extraNoteCap,
     weaknessAwareOverall,

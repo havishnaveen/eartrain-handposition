@@ -1,11 +1,14 @@
 /* StaffCue container.
-   Glyph coloring is set through VexFlow's setStyle API in StaffCue.tsx,
-   never overridden here — no !important fights with inline attributes.
-   PathwayRouter passes accentColor / inkColor as props.
+   Notation is rendered by OpenSheetMusicDisplay (OSMD) from a generated
+   MusicXML document (src/notation/cueSpecToMusicXML.ts) — OSMD owns layout,
+   spacing, and accidental/rest collision avoidance internally. Per-note
+   coloring is baked into that XML via MusicXML's `color` attribute rather
+   than set post-hoc, so nothing here needs to fight inline attributes.
+   PathwayRouter passes accentColor / inkColor as props consumed by the
+   converter.
 
-   The viewBox is computed from measured content bounds after render, so
-   this container only has to give it room. overflow stays visible on
-   purpose: if bounds math is ever wrong, it shows rather than crops. */
+   overflow stays visible on purpose: if OSMD's own sizing is ever
+   unexpectedly tight, content shows rather than crops. */
 
 .et-staff {
   width: 100%;
@@ -41,29 +44,30 @@
 .et-staff-directions p { margin: 0; }
 .et-staff-with-directions > .et-staff { flex: 1 1 0; height: auto; }
 
+.et-staff__osmd-host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+}
+
 .et-staff svg {
   display: block;
-  /* Explicit width/height attributes (set in StaffCue.tsx) give every score
-   * one shared, intentionally enlarged engraving scale. auto+max-width+max-height
-   * only shrinks it — proportionally, aspect ratio preserved — when a
-   * genuinely wide exercise would not otherwise fit the card; it never
-   * stretches a short exercise up or squeezes a long one down by default. */
-  width: auto;
-  height: auto;
+  /* The SVG's own width/height attributes (set in StaffCue.tsx, after OSMD
+   * renders) already equal its measured content size times `notationScale`
+   * — a deliberately zoomed engraving (e.g. Prove It) is therefore already
+   * the right intrinsic size and these rules only ever shrink it further,
+   * proportionally, when a genuinely wide exercise would not otherwise fit
+   * the card; they never stretch a short exercise up or squeeze a zoomed
+   * one down by default. */
   max-width: 100%;
   max-height: 100%;
   overflow: visible;
 }
 
-/* Keeps stems and staff lines crisp at whatever scale the viewBox lands on. */
+/* Keeps stems and staff lines crisp regardless of `notationScale`. */
 .et-staff svg path {
   vector-effect: non-scaling-stroke;
-}
-
-/* Prove It deliberately zooms the complete engraving. Its staff and ledger
-   lines must gain stroke weight with the clef, time signature, and notes. */
-.et-staff--scaled svg path {
-  vector-effect: none;
 }
 
 /* Scrubber. Injected into the SVG by StaffCue so it shares the notation's
@@ -78,10 +82,6 @@
 .et-scrub__trail {
   opacity: 0.07;
 }
-
-/* Barlines are drawn directly into the SVG by StaffCue: VexFlow 4's BarNote
-   emits no element when added to a non-strict voice. */
-.et-barline { shape-rendering: crispEdges; }
 
 /* The position-change zone sits in the rhythmic gap between the last note in
    Position 1 and the landing note in Position 2. It is deliberately purple so
