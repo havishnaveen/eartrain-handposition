@@ -48,20 +48,59 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* OSMD wraps its rendered <svg> in its own internal, unstyled page div
+   (id="osmdCanvasPage1", position:relative;z-index:0 inline and nothing
+   else) between `.et-staff__osmd-host` and the SVG itself. Left unsized,
+   that div shrink-wraps to the SVG's intrinsic default size (~300x150),
+   and the SVG's own width/height="100%" (set in StaffCue.tsx) then
+   resolves against THAT undersized box instead of the real host — a
+   circular reference one level deeper than the host/SVG sizing bug this
+   file's other rules already guard against. Sizing this wrapper to fill
+   the host gives the SVG's percentage sizing something real to resolve
+   against. */
+.et-staff__osmd-host > div {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 .et-staff svg {
   display: block;
-  /* The SVG's own width/height attributes (set in StaffCue.tsx, after OSMD
-   * renders) already equal its measured content size times `notationScale`
-   * — a deliberately zoomed engraving (e.g. Prove It) is therefore already
-   * the right intrinsic size and these rules only ever shrink it further,
-   * proportionally, when a genuinely wide exercise would not otherwise fit
-   * the card; they never stretch a short exercise up or squeeze a zoomed
-   * one down by default. */
-  max-width: 100%;
-  max-height: 100%;
+  /* Sizing here is deliberately NOT plain CSS max-width/max-height (nor
+   * CSS object-fit — confirmed via an isolated repro that Chromium's
+   * object-fit does not reliably apply to a root <svg> sized by percentage
+   * width/height: it stretched a circle's bounding box to fill a
+   * differently-proportioned box without preserving its aspect ratio).
+   * Both were tried and both let a large exercise (e.g. lesson 24's
+   * multi-measure grand staff) render taller than its card even after its
+   * width correctly fit, because Chromium constrains only the axis a
+   * max-* rule binds first and derives the other purely from the
+   * intrinsic ratio.
+   *
+   * The reliable fix is SVG's own viewport-fitting: StaffCue.tsx sets the
+   * SVG's `width`/`height` ATTRIBUTES to "100%" (not a pixel size) and
+   * `preserveAspectRatio="xMidYMid meet"`, which are specified to do
+   * exactly "fit and center the viewBox inside the element's box,
+   * preserving its aspect ratio" — the SVG-native equivalent of
+   * object-fit:contain, verified empirically to hold on both axes
+   * simultaneously where the CSS-only approaches above did not. This CSS
+   * rule's job is only to make that element's own box actually equal to
+   * its container's box, so "100%" here has something correctly sized to
+   * fill. A `notationScale` zoom still comes through faithfully — it
+   * grows the cropped `viewBox` the width/height="100%" box is fit
+   * against, in StaffCue.tsx — but is then correctly scaled back down to
+   * the card by the same viewport fit as any other exercise. */
+  width: 100%;
+  height: 100%;
   overflow: visible;
 }
 

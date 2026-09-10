@@ -375,6 +375,21 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
           }],
         }],
       };
+      // Once the target chord is found, draw it out the same way as the
+      // reference chord — withheld until `isComplete` so the answer never
+      // leaks early (the student's job is to find it by ear/feel, not read it).
+      const targetCue: CueSpec = {
+        keySignature: spatialChord.chordName.split(' ')[0],
+        showTimeSignature: false,
+        staves: [{
+          clef: spatialChord.hand === 'right' ? 'treble' : 'bass',
+          hand: spatialChord.hand,
+          notes: [{
+            keys: spatialChord.chordPitches.map(proofPitchToStaffKey),
+            duration: 'w',
+          }],
+        }],
+      };
 
       const spatialHeaderText = status === 'prompt'
         ? 'Study the reference chord, then find the nearby hidden one by feel.'
@@ -414,8 +429,17 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             <span className="et-spatial__direction" aria-hidden="true">→</span>
             <div className="et-spatial__target-card">
               <small>{isComplete ? 'Matched' : 'Your turn'}</small>
-              <strong>{isComplete ? '✓' : '?'}</strong>
-              <p>{isComplete ? spatialChord.chordName : 'Listen, then find the hidden chord on your piano.'}</p>
+              {isComplete ? (
+                <>
+                  <strong>{spatialChord.chordName}</strong>
+                  <StaffCue cue={targetCue} compact notationScale={2.5} accentColor="#12794b" inkColor="#242237" />
+                </>
+              ) : (
+                <>
+                  <strong>?</strong>
+                  <p>Listen, then find the hidden chord on your piano.</p>
+                </>
+              )}
             </div>
             </div>
 

@@ -768,7 +768,22 @@ export function simultaneousGroupOrder(
   const order = expectedMidi.map((_, index) => index);
   if (!groupKeyOf) return order;
 
-  const GROUP_SCAN_SLACK = 3;
+  // Kept small on purpose. This used to be 3, which on a 2-note simultaneous
+  // group let the scan look 5 candidates deep — nearly a full extra group's
+  // worth of detected notes — past its own cursor position. On a real
+  // two-hand exercise with a genuinely undetected note in one hand's half of
+  // a beat, that reach let the group "borrow" a same-pitch note that
+  // actually belonged to a LATER beat (repeated pitches are routine in this
+  // curriculum's hand-position drills), shifting every group after it by one
+  // and turning a single missed note into several false misses plus false
+  // "extra"/hesitation entries — reproduced empirically
+  // (scripts-testsuite/unit-grade-repro-missed-note.mjs): removing 3 of 23
+  // notes from an otherwise-perfect two-hand take reported 6 misses and 3
+  // hesitations, cratering Cleanliness from an earned 5.0 to 2.1 even though
+  // zero wrong notes were played. A slack of 1 still absorbs one genuine
+  // stray echo/insertion ahead of the group's own notes, without reaching
+  // far enough to steal a whole neighboring group's attack.
+  const GROUP_SCAN_SLACK = 1;
   // A same-pitch retrigger this soon after, and markedly quieter than, an
   // attack this scan already passed is that earlier string still decaying —
   // not a fresh chord tone. Without this, a benign echo of the PREVIOUS

@@ -1859,6 +1859,15 @@
 .et-spatial__target-card small { font-size: 18px; font-weight: 750; }
 .et-spatial__target-card strong { display: block; font-size: 38px; margin: 12px 0; }
 .et-spatial__target-card p { font-size: 18px; line-height: 1.5; margin: 0; }
+/* Once the chord is found, the card swaps its "?" placeholder for real
+   notation (drawn the same way as the reference card) — give it the same
+   fixed, definite height so the notation has something real to size
+   against instead of the card's own auto height. */
+.et-spatial__target-card > .et-staff {
+  width: 100%;
+  height: 190px;
+  min-height: 0;
+}
 @media (max-width: 600px) {
   .et-spatial__comparison { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .et-spatial__direction { text-align: center; transform: rotate(90deg); }

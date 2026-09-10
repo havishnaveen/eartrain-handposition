@@ -1,0 +1,904 @@
+{
+  "results": [
+    {
+      "lesson": 1,
+      "slot": 1,
+      "exerciseMode": "prove-it",
+      "expectedSequence": [
+        "C4",
+        "D4",
+        "E4",
+        "F4",
+        "G4"
+      ],
+      "overallLabel": "Overall score 5.0 out of 5",
+      "overallScore": 5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": "Waiting for microphone permission…",
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 1,
+      "slot": 2,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "C4",
+        "D4",
+        "E4",
+        "F4",
+        "G4",
+        "E4",
+        "C4"
+      ],
+      "overallLabel": "Overall score 5.0 out of 5",
+      "overallScore": 5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 1,
+      "slot": 3,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "C4",
+        "E4",
+        "D4",
+        "F4",
+        "E4",
+        "D4",
+        "C4"
+      ],
+      "overallLabel": "Overall score 5.0 out of 5",
+      "overallScore": 5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 1,
+      "slot": 4,
+      "exerciseMode": "blind-memory",
+      "expectedSequence": [
+        "G4",
+        "E4",
+        "F4",
+        "E4",
+        "G4"
+      ],
+      "overallLabel": "Overall score 5.0 out of 5",
+      "overallScore": 5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "memory-preview",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 13,
+      "slot": 1,
+      "exerciseMode": "anchor-shift",
+      "expectedSequence": [
+        "C4",
+        "D4",
+        "E4",
+        "G4",
+        "A4",
+        "B4"
+      ],
+      "overallLabel": "Overall score 4.1 out of 5",
+      "overallScore": 4.1,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 4.2
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 3.7
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 13,
+      "slot": 2,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "G4",
+        "G3",
+        "B4",
+        "A4",
+        "B4",
+        "C5",
+        "C5",
+        "D4",
+        "B4",
+        "A4",
+        "G3",
+        "G4"
+      ],
+      "overallLabel": "Overall score 4.1 out of 5",
+      "overallScore": 4.1,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 4.6
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 13,
+      "slot": 3,
+      "exerciseMode": "blind-memory",
+      "expectedSequence": [
+        "G5",
+        "F5",
+        "G5",
+        "E5",
+        "F5",
+        "D5",
+        "E5",
+        "G5"
+      ],
+      "overallLabel": "Overall score 5.0 out of 5",
+      "overallScore": 5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "memory-preview",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 13,
+      "slot": 4,
+      "exerciseMode": "anchor-shift",
+      "expectedSequence": [
+        "E3",
+        "C3",
+        "D3",
+        "G3",
+        "C4",
+        "B3"
+      ],
+      "overallLabel": "Overall score 5.0 out of 5",
+      "overallScore": 5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 19,
+      "slot": 1,
+      "exerciseMode": "spatial-chord",
+      "expectedSequence": [
+        "G4",
+        "B4",
+        "D5"
+      ],
+      "overallLabel": null,
+      "overallScore": null,
+      "breakdown": null,
+      "completed": true,
+      "timedOut": false,
+      "micMessage": "We couldn't load the demonstration clearly.Play again",
+      "statusesSeen": [
+        "prompt",
+        "chord-cue",
+        "chord-root",
+        "chord-build",
+        "chord-complete"
+      ]
+    },
+    {
+      "lesson": 19,
+      "slot": 2,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "G4",
+        "B4",
+        "D5",
+        "G3",
+        "A4",
+        "B4",
+        "A4",
+        "E5",
+        "E4",
+        "A4",
+        "C#5",
+        "E5",
+        "A3"
+      ],
+      "overallLabel": "Overall score 4.1 out of 5",
+      "overallScore": 4.1,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 2.8
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 19,
+      "slot": 3,
+      "exerciseMode": "spatial-chord",
+      "expectedSequence": [
+        "F4",
+        "A4",
+        "C5"
+      ],
+      "overallLabel": null,
+      "overallScore": null,
+      "breakdown": null,
+      "completed": true,
+      "timedOut": false,
+      "micMessage": "We couldn't load the demonstration clearly.Play again",
+      "statusesSeen": [
+        "prompt",
+        "chord-cue",
+        "chord-root",
+        "chord-build",
+        "chord-complete"
+      ]
+    },
+    {
+      "lesson": 19,
+      "slot": 4,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "C4",
+        "E4",
+        "G4",
+        "C3",
+        "C4",
+        "E4",
+        "G4",
+        "D4",
+        "G3",
+        "E4",
+        "C4",
+        "G4",
+        "C3",
+        "C4",
+        "E4",
+        "G4"
+      ],
+      "overallLabel": "Overall score 4.2 out of 5",
+      "overallScore": 4.2,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 4.4
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 3.6
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 23,
+      "slot": 1,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "C4",
+        "E4",
+        "G4",
+        "C3",
+        "G3",
+        "E3",
+        "G3",
+        "C4",
+        "G4",
+        "C3",
+        "G3",
+        "E3",
+        "G3",
+        "A4",
+        "G3",
+        "D4",
+        "B4",
+        "B3",
+        "D4",
+        "G4",
+        "B4",
+        "D5",
+        "G3"
+      ],
+      "overallLabel": "Overall score 1.5 out of 5",
+      "overallScore": 1.5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 4.6
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 1.6
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 0
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "prompt",
+        "leadin",
+        "listening"
+      ]
+    },
+    {
+      "lesson": 23,
+      "slot": 2,
+      "exerciseMode": "spatial-chord",
+      "expectedSequence": [
+        "A3",
+        "C#4",
+        "E4"
+      ],
+      "overallLabel": null,
+      "overallScore": null,
+      "breakdown": null,
+      "completed": true,
+      "timedOut": false,
+      "micMessage": "We couldn't load the demonstration clearly.Play again",
+      "statusesSeen": [
+        "prompt",
+        "chord-cue",
+        "chord-root",
+        "chord-build",
+        "chord-complete"
+      ]
+    },
+    {
+      "lesson": 23,
+      "slot": 3,
+      "exerciseMode": "spatial-chord",
+      "expectedSequence": [
+        "F4",
+        "A4",
+        "C5"
+      ],
+      "overallLabel": null,
+      "overallScore": null,
+      "breakdown": null,
+      "completed": true,
+      "timedOut": false,
+      "micMessage": "We couldn't load the demonstration clearly.Play again",
+      "statusesSeen": [
+        "prompt",
+        "chord-cue",
+        "chord-root",
+        "chord-build",
+        "chord-complete"
+      ]
+    },
+    {
+      "lesson": 23,
+      "slot": 4,
+      "exerciseMode": "spatial-chord",
+      "expectedSequence": [
+        "Bb3",
+        "D4",
+        "F4"
+      ],
+      "overallLabel": null,
+      "overallScore": null,
+      "breakdown": null,
+      "completed": true,
+      "timedOut": false,
+      "micMessage": "We couldn't load the demonstration clearly.Play again",
+      "statusesSeen": [
+        "prompt",
+        "chord-cue",
+        "chord-root",
+        "chord-build",
+        "chord-complete"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "lesson": 13,
+      "slot": 1,
+      "exerciseMode": "anchor-shift",
+      "expectedSequence": [
+        "C4",
+        "D4",
+        "E4",
+        "G4",
+        "A4",
+        "B4"
+      ],
+      "overallLabel": "Overall score 4.1 out of 5",
+      "overallScore": 4.1,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 4.2
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 3.7
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "prompt",
+        "leadin",
+        "listening"
+      ],
+      "issue": "Perfect-performance take scored 4.1/5 (< 4.5 pass bar) on a clean, synthesized-but-real-pipeline correct performance."
+    },
+    {
+      "lesson": 13,
+      "slot": 2,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "G4",
+        "G3",
+        "B4",
+        "A4",
+        "B4",
+        "C5",
+        "C5",
+        "D4",
+        "B4",
+        "A4",
+        "G3",
+        "G4"
+      ],
+      "overallLabel": "Overall score 4.1 out of 5",
+      "overallScore": 4.1,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 4.6
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ],
+      "issue": "Perfect-performance take scored 4.1/5 (< 4.5 pass bar) on a clean, synthesized-but-real-pipeline correct performance."
+    },
+    {
+      "lesson": 19,
+      "slot": 2,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "G4",
+        "B4",
+        "D5",
+        "G3",
+        "A4",
+        "B4",
+        "A4",
+        "E5",
+        "E4",
+        "A4",
+        "C#5",
+        "E5",
+        "A3"
+      ],
+      "overallLabel": "Overall score 4.1 out of 5",
+      "overallScore": 4.1,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 5
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 2.8
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ],
+      "issue": "Perfect-performance take scored 4.1/5 (< 4.5 pass bar) on a clean, synthesized-but-real-pipeline correct performance."
+    },
+    {
+      "lesson": 19,
+      "slot": 4,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "C4",
+        "E4",
+        "G4",
+        "C3",
+        "C4",
+        "E4",
+        "G4",
+        "D4",
+        "G3",
+        "E4",
+        "C4",
+        "G4",
+        "C3",
+        "C4",
+        "E4",
+        "G4"
+      ],
+      "overallLabel": "Overall score 4.2 out of 5",
+      "overallScore": 4.2,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 4.4
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 3.6
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 5
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "position-prompt",
+        "proving",
+        "proof-success",
+        "prompt",
+        "leadin",
+        "listening"
+      ],
+      "issue": "Perfect-performance take scored 4.2/5 (< 4.5 pass bar) on a clean, synthesized-but-real-pipeline correct performance."
+    },
+    {
+      "lesson": 23,
+      "slot": 1,
+      "exerciseMode": "standard",
+      "expectedSequence": [
+        "C4",
+        "E4",
+        "G4",
+        "C3",
+        "G3",
+        "E3",
+        "G3",
+        "C4",
+        "G4",
+        "C3",
+        "G3",
+        "E3",
+        "G3",
+        "A4",
+        "G3",
+        "D4",
+        "B4",
+        "B3",
+        "D4",
+        "G4",
+        "B4",
+        "D5",
+        "G3"
+      ],
+      "overallLabel": "Overall score 1.5 out of 5",
+      "overallScore": 1.5,
+      "breakdown": [
+        {
+          "label": "Pitch",
+          "isNotScored": false,
+          "value": 4.6
+        },
+        {
+          "label": "Timing",
+          "isNotScored": false,
+          "value": 1.6
+        },
+        {
+          "label": "Cleanliness",
+          "isNotScored": false,
+          "value": 0
+        }
+      ],
+      "completed": true,
+      "timedOut": false,
+      "micMessage": null,
+      "statusesSeen": [
+        "prompt",
+        "leadin",
+        "listening"
+      ],
+      "issue": "Perfect-performance take scored 1.5/5 (< 4.5 pass bar) on a clean, synthesized-but-real-pipeline correct performance."
+    }
+  ]
+}

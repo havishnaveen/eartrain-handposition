@@ -115,6 +115,59 @@ interface MeasureBucket {
   notes: CueNote[];
 }
 
+/**
+ * MusicXML/OSMD does not auto-beam from duration alone the way VexFlow's own
+ * `Beam.generateBeams` did — every beamed group needs explicit per-note
+ * <beam type="begin|continue|end"> elements, or eighth/sixteenth notes render
+ * as individually-flagged notes even when they're rhythmically adjacent.
+ *
+ * Groups consecutive eighth-or-shorter, non-rest notes within one measure
+ * into beam runs, breaking at: a rest, a note too long to beam (quarter or
+ * longer), or a quarter-note beat boundary — the standard convention (and
+ * what the old VexFlow renderer produced by default) is to beam within a
+ * beat but not across it, so eighths on beats 1 and 2 (say) get two separate
+ * two-note beams rather than one four-note beam spanning the barline's
+ * strong pulse. Returns one beam-type slot per note in `notes` (undefined
+ * for a note that isn't part of any beam — either alone or too long).
+ */
+function computeBeamTypes(notes: readonly CueNote[]): (string | undefined)[] {
+  const types: (string | undefined)[] = new Array(notes.length).fill(undefined);
+  let beat = 0;
+  let runStart = -1; // index into `notes` where the current beam run began
+  let runStartBeatFloor = -1;
+
+  const closeRun = (endIndex: number) => {
+    if (runStart < 0) return;
+    if (endIndex - runStart >= 2) {
+      types[runStart] = 'begin';
+      for (let i = runStart + 1; i < endIndex - 1; i += 1) types[i] = 'continue';
+      types[endIndex - 1] = 'end';
+    }
+    runStart = -1;
+  };
+
+  notes.forEach((note, index) => {
+    const noteBeats = beatsForDuration(note.duration);
+    const isRest = note.duration.endsWith('r');
+    const beamable = !isRest && noteBeats < 1 - 1e-6;
+    const beatFloor = Math.floor(beat + 1e-6);
+
+    if (!beamable || (runStart >= 0 && beatFloor !== runStartBeatFloor)) {
+      closeRun(index);
+    }
+    if (beamable) {
+      if (runStart < 0) {
+        runStart = index;
+        runStartBeatFloor = beatFloor;
+      }
+    }
+    beat += noteBeats;
+  });
+  closeRun(notes.length);
+
+  return types;
+}
+
 /** Splits one staff's notes into real measures using written beats. */
 function splitIntoMeasures(notes: readonly CueNote[], beatsPerBar: number): MeasureBucket[] {
   const measures: MeasureBucket[] = [{ notes: [] }];
@@ -184,8 +237,9 @@ export function cueSpecToMusicXML(cue: CueSpec, options: CueSpecToMusicXMLOption
       const attributesXml = isFirst
         ? `      <attributes>\n        <divisions>${DIVISIONS}</divisions>\n        <key><fifths>${fifths}</fifths></key>\n        <time><beats>${beatsTop || 4}</beats><beat-type>${beatsBottom || 4}</beat-type></time>\n        <clef><sign>${clef.sign}</sign><line>${clef.line}</line></clef>\n      </attributes>\n`
         : '';
+      const beamTypes = computeBeamTypes(bucket.notes);
       const notesXml = bucket.notes.length > 0
-        ? bucket.notes.map((note) => noteToXml(note, staffIndex, cue.staves.length, inkColor, accentColor, successColor, completedMidi)).join('\n')
+        ? bucket.notes.map((note, noteIndex) => noteToXml(note, staffIndex, cue.staves.length, inkColor, accentColor, successColor, completedMidi, beamTypes[noteIndex])).join('\n')
         : `      <note>\n        <rest/>\n        <duration>${beatsPerBar * DIVISIONS}</duration>\n        <type>${BASE_TYPE[String(beatsPerBar)] ?? 'whole'}</type>\n      </note>`;
       measureXml.push(`    <measure number="${m + 1}">\n${attributesXml}${notesXml}\n    </measure>`);
     }
@@ -212,11 +266,17 @@ function noteToXml(
   accentColor: string,
   successColor: string,
   completedMidi: Set<number>,
+  beamType: string | undefined,
 ): string {
   const duration = parseDuration(note.duration);
   const color = resolveNoteColor(note, completedMidi, inkColor, accentColor, successColor);
   const colorAttr = ` color="${color}"`;
   const staffTag = staffCount > 1 ? `\n        <staff>${staffIndex + 1}</staff>` : '';
+  // MusicXML numbers beam levels independently (level 1 = eighth, level 2 =
+  // 16th, ...). Every duration this catalog beams (eighth/16th) only ever
+  // needs level 1: OSMD draws additional flag hooks per note type on its
+  // own, and this app's rhythms never mix eighths and 16ths within one run.
+  const beamXml = beamType ? `\n        <beam number="1">${beamType}</beam>` : '';
 
   if (duration.isRest || note.keys.length === 0) {
     return `      <note${colorAttr}>\n        <rest/>\n        <duration>${duration.divisions}</duration>\n        <type>${duration.type}</type>${'<dot/>'.repeat(duration.dots)}${staffTag}\n      </note>`;
@@ -235,6 +295,9 @@ function noteToXml(
     const accidentalXml = pitch && pitch.alter !== 0
       ? `\n        <accidental>${pitch.alter === 1 ? 'sharp' : pitch.alter === -1 ? 'flat' : pitch.alter === 2 ? 'double-sharp' : 'flat-flat'}</accidental>`
       : '';
-    return `      <note${colorAttr}>${chordTag}\n        ${pitchXml}\n        <duration>${duration.divisions}</duration>\n        <type>${duration.type}</type>${'<dot/>'.repeat(duration.dots)}${accidentalXml}${staffTag}${notationsXml}\n      </note>`;
+    // Per MusicXML's schema, <beam> is only valid on the first note of a
+    // chord (subsequent <chord/> notes share the first note's beam/stem).
+    const beamForThisKey = keyIndex === 0 ? beamXml : '';
+    return `      <note${colorAttr}>${chordTag}\n        ${pitchXml}\n        <duration>${duration.divisions}</duration>\n        <type>${duration.type}</type>${'<dot/>'.repeat(duration.dots)}${accidentalXml}${staffTag}${notationsXml}${beamForThisKey}\n      </note>`;
   }).join('\n');
 }

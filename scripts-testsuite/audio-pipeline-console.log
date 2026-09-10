@@ -1,0 +1,71 @@
+
+=== Lesson 1 (freshLoad=true) ===
+--- lesson1-slot1 (prove-it) ---
+  injected proof audio #0 (lesson1-slot1-proof0.wav)
+  injected main audio (lesson1-slot1-main.wav)
+  result: overall=Overall score 5.0 out of 5 completed=true timedOut=false
+--- lesson1-slot2 (standard) ---
+  injected proof audio #0 (lesson1-slot2-proof0.wav)
+  injected main audio (lesson1-slot2-main.wav)
+  result: overall=Overall score 5.0 out of 5 completed=true timedOut=false
+--- lesson1-slot3 (standard) ---
+  injected proof audio #0 (lesson1-slot3-proof0.wav)
+  injected main audio (lesson1-slot3-main.wav)
+  result: overall=Overall score 5.0 out of 5 completed=true timedOut=false
+--- lesson1-slot4 (blind-memory) ---
+  injected proof audio #0 (lesson1-slot4-proof0.wav)
+  injected main audio (lesson1-slot4-main.wav)
+  result: overall=Overall score 5.0 out of 5 completed=true timedOut=false
+
+=== Lesson 13 (freshLoad=false) ===
+--- lesson13-slot1 (anchor-shift) ---
+  injected main audio (lesson13-slot1-main.wav)
+  result: overall=Overall score 4.1 out of 5 completed=true timedOut=false
+--- lesson13-slot2 (standard) ---
+  acknowledged orientation callout: "Check each handCheck the right hand, then the left.Continue"
+  injected proof audio #0 (lesson13-slot2-proof0.wav)
+  injected proof audio #1 (lesson13-slot2-proof1.wav)
+  injected main audio (lesson13-slot2-main.wav)
+  result: overall=Overall score 4.1 out of 5 completed=true timedOut=false
+--- lesson13-slot3 (blind-memory) ---
+  acknowledged orientation callout: "Stop — find Treble CFind Treble C, right of Middle C.I found Treble C"
+  injected proof audio #0 (lesson13-slot3-proof0.wav)
+  injected main audio (lesson13-slot3-main.wav)
+  result: overall=Overall score 5.0 out of 5 completed=true timedOut=false
+--- lesson13-slot4 (anchor-shift) ---
+  acknowledged orientation callout: "Left handUse your left hand.Ready"
+  injected proof audio #0 (lesson13-slot4-proof0.wav)
+  injected main audio (lesson13-slot4-main.wav)
+  result: overall=Overall score 5.0 out of 5 completed=true timedOut=false
+
+=== Lesson 19 (freshLoad=false) ===
+--- lesson19-slot1 (spatial-chord) ---
+  injected spatial-chord audio (lesson19-slot1-spatial.wav)
+  result: overall=n/a completed=true timedOut=false
+--- lesson19-slot2 (standard) ---
+  injected proof audio #0 (lesson19-slot2-proof0.wav)
+  injected proof audio #1 (lesson19-slot2-proof1.wav)
+  injected main audio (lesson19-slot2-main.wav)
+  result: overall=Overall score 4.1 out of 5 completed=true timedOut=false
+--- lesson19-slot3 (spatial-chord) ---
+  injected spatial-chord audio (lesson19-slot3-spatial.wav)
+  result: overall=n/a completed=true timedOut=false
+--- lesson19-slot4 (standard) ---
+  injected proof audio #0 (lesson19-slot4-proof0.wav)
+  injected proof audio #1 (lesson19-slot4-proof1.wav)
+  injected main audio (lesson19-slot4-main.wav)
+  result: overall=Overall score 4.2 out of 5 completed=true timedOut=false
+
+=== Lesson 23 (freshLoad=false) ===
+--- lesson23-slot1 (standard) ---
+  injected main audio (lesson23-slot1-main.wav)
+  result: overall=Overall score 1.5 out of 5 completed=true timedOut=false
+--- lesson23-slot2 (spatial-chord) ---
+  injected spatial-chord audio (lesson23-slot2-spatial.wav)
+  result: overall=n/a completed=true timedOut=false
+--- lesson23-slot3 (spatial-chord) ---
+  injected spatial-chord audio (lesson23-slot3-spatial.wav)
+  result: overall=n/a completed=true timedOut=false
+--- lesson23-slot4 (spatial-chord) ---
+  injected spatial-chord audio (lesson23-slot4-spatial.wav)
+  result: overall=n/a completed=true timedOut=false

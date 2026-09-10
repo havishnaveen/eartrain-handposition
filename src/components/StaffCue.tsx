@@ -257,16 +257,40 @@ export function positionDirections(cue: CueSpec): string[] {
 }
 
 /**
+ * Convert a point in screen-pixel space (e.g. from getBoundingClientRect())
+ * into the given SVG element's own internal coordinate system (its current
+ * viewBox units), via the browser's real screen-to-user-space transform.
+ * This is the robust way to do this conversion: approximating it by
+ * subtracting a container element's own getBoundingClientRect() origin
+ * silently breaks whenever that container isn't pixel-aligned with the
+ * SVG's own coordinate origin — which is routine here, since the host is a
+ * flex-centered box (can be wider than the SVG) and OSMD's own viewBox does
+ * not start at (0,0). That mismatch was the confirmed root cause of the
+ * scrubber drifting away from the actual notes it was meant to track.
+ */
+function screenPointToSvgSpace(svg: SVGSVGElement, screenX: number, screenY: number): { x: number; y: number } | null {
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const inverse = ctm.inverse();
+  const point = svg.createSVGPoint();
+  point.x = screenX;
+  point.y = screenY;
+  const transformed = point.matrixTransform(inverse);
+  return { x: transformed.x, y: transformed.y };
+}
+
+/**
  * Flat, onset-ordered list of every sounded (non-rest) note across every
  * staff/measure in OSMD's own graphical layout, each with its real rendered
- * X position (from getSVGGElement + getBoundingClientRect, both confirmed
- * against the live runtime) and its beat position on the piece's single
- * continuous timeline. Used to drive the scrubber and the shift-region
- * overlay exactly as VexFlow tick-context positions did before.
+ * X position — converted into the SVG's own coordinate space via
+ * getScreenCTM(), so it lines up with everything else drawn in that space —
+ * and its beat position on the piece's single continuous timeline. Used to
+ * drive the scrubber and the shift-region overlay exactly as VexFlow tick-
+ * context positions did before.
  */
 function collectScrubPointsFromGraphic(
   osmd: OSMDInstance,
-  hostRect: DOMRect,
+  svg: SVGSVGElement,
   beatsPerBar: number,
 ): ScrubPoint[] {
   const measureList = osmd.GraphicSheet?.MeasureList;
@@ -291,7 +315,8 @@ function collectScrubPointsFromGraphic(
         const gEl = gNote.getSVGGElement();
         if (gEl) {
           const rect = gEl.getBoundingClientRect();
-          points.push({ beat: beat + beatInMeasure, x: rect.x - hostRect.x + rect.width / 2 });
+          const svgPoint = screenPointToSvgSpace(svg, rect.x + rect.width / 2, rect.y + rect.height / 2);
+          if (svgPoint) points.push({ beat: beat + beatInMeasure, x: svgPoint.x });
         }
       }
       beatInMeasure += durationBeats || 0.25;
@@ -424,22 +449,46 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       svg.setAttribute('role', 'img');
       svg.setAttribute('focusable', 'false');
 
-      // Read every real note position (via getSVGGElement + getBoundingClientRect,
-      // both confirmed against the live OSMD runtime) and append the scrubber
-      // BEFORE applying `notationScale`, so every coordinate — points, and
-      // the scrubber elements sized from them — lives in one consistent
-      // space: the SVG's own pre-scale viewBox units. `notationScale` is
-      // then applied uniformly afterwards by growing the SVG's own width/
-      // height attributes (which changes how big a viewBox unit renders on
-      // screen) rather than a CSS transform layered on top, so the
-      // scrubber — drawn in viewBox units like every note — scales with
-      // the notation instead of drifting out of sync with it.
-      const hostRect = container.getBoundingClientRect();
+      // Measure real drawn content BEFORE anything else touches the SVG:
+      // before the scrubber/shift-overlay elements are appended (they would
+      // otherwise inflate their own bounding box into this measurement —
+      // circular), and before notationScale changes width/height. This is
+      // the same crop-to-measured-content approach the old VexFlow renderer
+      // used via its own getBBox() pass: OSMD's own viewBox spans a full
+      // printed-page layout with generous margins, and scaling THAT by
+      // notationScale blew a "zoomed" card up far past its actual content
+      // (confirmed: a 2.3x card rendered 780px tall against a ~300px card,
+      // spilling the staff and fingering numbers over neighboring text).
+      const rawViewBox = svg.getAttribute('viewBox');
+      const [rawVbX, rawVbY, rawVbW, rawVbH] = (rawViewBox ?? '0 0 0 0').split(/\s+/).map(Number);
+      let box = { x: rawVbX || 0, y: rawVbY || 0, width: rawVbW || 0, height: rawVbH || 0 };
+      try {
+        const measured = svg.getBBox();
+        if (measured.width > 0 && measured.height > 0) box = measured;
+      } catch {
+        // getBBox needs a live layout (unavailable in SSR/jsdom); the raw
+        // (uncropped) viewBox above is a safe superset — over-wide, never
+        // clipped — for both the crop below and collectScrubPointsFromGraphic's
+        // own fallback.
+      }
+
+      // Convert each real note's on-screen position (getSVGGElement +
+      // getBoundingClientRect, both confirmed against the live OSMD
+      // runtime) into the SVG's OWN coordinate space via getScreenCTM(),
+      // rather than approximating it by subtracting the flex host's origin
+      // — the host can be wider than the SVG (flex-centered) and the SVG's
+      // un-cropped viewBox does not start at (0,0), so that approximation
+      // was the root cause of the scrubber drifting from the actual notes.
       const beatsPerBar = beatsPerBarOf(cue);
-      const points = collectScrubPointsFromGraphic(osmd, hostRect, beatsPerBar || totalBeats);
-      const svgRect = svg.getBoundingClientRect();
-      const top = 0 - SCRUB_OVERHANG;
-      const bottom = svgRect.height + SCRUB_OVERHANG;
+      const points = collectScrubPointsFromGraphic(osmd, svg, beatsPerBar || totalBeats);
+
+      const cropPadX = 12;
+      const cropX = box.x - cropPadX;
+      const cropTop = box.y - SCRUB_OVERHANG - 4;
+      const cropWidth = box.width + cropPadX * 2;
+      const cropHeight = box.height + SCRUB_OVERHANG * 2 + 8;
+      const top = cropTop;
+      const bottom = cropTop + cropHeight;
 
       if (points.length > 0) {
         const first = points[0];
@@ -447,7 +496,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         const pixelsPerBeat = last.beat > first.beat ? (last.x - first.x) / (last.beat - first.beat) : 0;
         const startX = first.x;
         const endX = pixelsPerBeat > 0
-          ? Math.min(svgRect.width, first.x + pixelsPerBeat * totalBeats)
+          ? Math.min(cropX + cropWidth, first.x + pixelsPerBeat * totalBeats)
           : first.x;
 
         const layout = { startX, endX: Math.max(startX + 1, endX), totalBeats, top, bottom };
@@ -522,28 +571,46 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         }
       }
 
-      // Expand the viewBox to cover the scrubber's overhang above/below the
-      // staff (SCRUB_OVERHANG on each side), then scale the SVG's own
-      // intrinsic width/height by `notationScale` — growing how large a
-      // viewBox unit renders on screen — rather than a CSS transform, so
-      // the scrubber and every note stay in the exact same coordinate
-      // space at every zoom level.
-      const baseViewBox = svg.getAttribute('viewBox');
-      const [vbX, vbY, vbW, vbH] = (baseViewBox ?? `0 0 ${svgRect.width} ${svgRect.height}`)
-        .split(/\s+/).map(Number);
-      const expandedY = vbY - SCRUB_OVERHANG;
-      const expandedH = vbH + SCRUB_OVERHANG * 2;
-      svg.setAttribute('viewBox', `${vbX} ${expandedY} ${vbW} ${expandedH}`);
-      svg.setAttribute('width', String(vbW * resolvedNotationScale));
-      svg.setAttribute('height', String(expandedH * resolvedNotationScale));
+      // Apply the crop computed above (before the scrubber/shift-overlay
+      // elements were appended, so their own geometry never fed back into
+      // it). The viewBox stays the FULL measured content — it must never be
+      // shrunk around notationScale, which was tried and tested wrong: it
+      // silently cropped away real musical content (confirmed empirically
+      // on a two-hand, two-staff phrase at notationScale 2.3 — shrinking the
+      // viewBox to fit "zoomed" lost the entire bass staff, which had
+      // genuinely fallen outside the cropped region, not just a rendering
+      // artifact). `notationScale` was never meant to mean "show less of
+      // the phrase" — every call site applies the same scale uniformly to
+      // phrases from a single chord to a full two-hand passage — so the
+      // element must always show 100% of what was written.
+      //
+      // Sizing is width/height ATTRIBUTES of "100%" (a CSS-relative size,
+      // not a pixel one) plus `preserveAspectRatio="xMidYMid meet"`, which
+      // together are the SVG-native equivalent of object-fit:contain: fit
+      // and center the WHOLE viewBox inside the element's box, preserving
+      // its aspect ratio, on both axes at once — confirmed empirically to
+      // hold where plain CSS max-width/max-height and CSS object-fit did
+      // not (see staff-cue.css's `.et-staff svg` comment for the full
+      // story). `notationScale` no longer feeds sizing math at all: with
+      // the element always filling its container via "contain", a card
+      // with a smaller, dedicated height (compact chord/proof cards use a
+      // shorter `.et-staff` box than a full phrase's card) naturally
+      // renders its one or two notes larger simply by filling more of a
+      // smaller box — the same practical effect `notationScale` used to
+      // chase by inflating pixel size, without the cropping bug.
+      svg.setAttribute('viewBox', `${cropX} ${cropTop} ${cropWidth} ${cropHeight}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '100%');
       svg.style.removeProperty('width');
       svg.style.removeProperty('height');
       // `container.style.width` was only ever a lower bound so OSMD had a
-      // real width to lay out into (see estimateStaveWidth's comment).
-      // Clearing it now lets the host shrink-wrap the SVG's real, possibly
-      // notationScale-enlarged size, so the flex host's own max-width:100%
-      // does not clamp a deliberately zoomed engraving back down.
-      container.style.removeProperty('width');
+      // real width to lay out into (see estimateStaveWidth's comment) —
+      // clear it now that layout is done so it stops forcing the host to
+      // that width. The host now sizes from CSS alone (width/height:100% in
+      // staff-cue.css against `.et-staff`'s real card height), and the SVG
+      // in turn always fills the host completely, so nothing here needs the
+      // host to shrink-wrap the SVG's own size.
     }).catch((error) => {
       // Surface loading/parsing failures in dev rather than leaving a blank
       // card — a malformed CueSpec should be visibly wrong, not silent.

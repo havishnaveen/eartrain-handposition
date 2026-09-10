@@ -1,0 +1,1528 @@
+{
+  "seed": 20260802,
+  "runs": [
+    {
+      "lesson": 1,
+      "freshLoad": true,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c01-rh-c-position#0",
+            "exerciseMode": "prove-it",
+            "positionLabel": "C position (C4)",
+            "expectedSequence": [
+              "C4",
+              "D4",
+              "E4",
+              "F4",
+              "G4"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G4",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  60,
+                  64,
+                  67
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "C4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 60
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 62
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 2,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "F4",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 65
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 4,
+                  "beats": 4,
+                  "midi": 67
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c01-rh-c-position#1",
+            "exerciseMode": "standard",
+            "positionLabel": "C position (C4)",
+            "expectedSequence": [
+              "C4",
+              "D4",
+              "E4",
+              "F4",
+              "G4",
+              "E4",
+              "C4"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G4",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  60,
+                  64,
+                  67
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "C4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 60
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 62
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 2,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "F4",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 65
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 4,
+                  "beats": 2,
+                  "midi": 67
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 6,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "C4",
+                  "beat": 7,
+                  "beats": 1,
+                  "midi": 60
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c01-rh-c-position#2",
+            "exerciseMode": "standard",
+            "positionLabel": "C position (C4)",
+            "expectedSequence": [
+              "C4",
+              "E4",
+              "D4",
+              "F4",
+              "E4",
+              "D4",
+              "C4"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G4",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  60,
+                  64,
+                  67
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "C4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 60
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 2,
+                  "beats": 1,
+                  "midi": 62
+                },
+                {
+                  "pitch": "F4",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 65
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 4,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 5,
+                  "beats": 1,
+                  "midi": 62
+                },
+                {
+                  "pitch": "C4",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 60
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c01-rh-c-position#3",
+            "exerciseMode": "blind-memory",
+            "positionLabel": "C position (C4)",
+            "expectedSequence": [
+              "G4",
+              "E4",
+              "F4",
+              "E4",
+              "G4"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G4",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  60,
+                  64,
+                  67
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "G4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 67
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "F4",
+                  "beat": 2,
+                  "beats": 1,
+                  "midi": 65
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 4,
+                  "beats": 4,
+                  "midi": 67
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "lesson": 13,
+      "freshLoad": false,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "prompt",
+          "question": {
+            "id": "c13-shift-c-to-g#0",
+            "exerciseMode": "anchor-shift",
+            "positionLabel": "C position (C4) → G position (G4)",
+            "expectedSequence": [
+              "C4",
+              "D4",
+              "E4",
+              "G4",
+              "A4",
+              "B4"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G4",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  60,
+                  64,
+                  67
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 9.600000000000001,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "C4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 60
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 62
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 2,
+                  "beats": 2,
+                  "midi": 64
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 8,
+                  "beats": 1,
+                  "midi": 67
+                },
+                {
+                  "pitch": "A4",
+                  "beat": 9,
+                  "beats": 1,
+                  "midi": 69
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 10,
+                  "beats": 2,
+                  "midi": 71
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c13-shift-c-to-g#1",
+            "exerciseMode": "standard",
+            "positionLabel": "G position (G4) — both hands",
+            "expectedSequence": [
+              "G4",
+              "G3",
+              "B4",
+              "A4",
+              "B4",
+              "C5",
+              "C5",
+              "D4",
+              "B4",
+              "A4",
+              "G3",
+              "G4"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "G4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "B4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "D5",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  67,
+                  71,
+                  74
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              },
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "G3",
+                    "finger": 5
+                  },
+                  {
+                    "pitch": "B3",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "D4",
+                    "finger": 1
+                  }
+                ],
+                "proofMidi": [
+                  55,
+                  59,
+                  62
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "G4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 67
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 0,
+                  "beats": 4,
+                  "midi": 55
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 71
+                },
+                {
+                  "pitch": "A4",
+                  "beat": 2,
+                  "beats": 0.5,
+                  "midi": 69
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 2.5,
+                  "beats": 0.5,
+                  "midi": 71
+                },
+                {
+                  "pitch": "C5",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 72
+                },
+                {
+                  "pitch": "C5",
+                  "beat": 4,
+                  "beats": 1,
+                  "midi": 72
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 4,
+                  "beats": 2,
+                  "midi": 62
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 5,
+                  "beats": 1,
+                  "midi": 71
+                },
+                {
+                  "pitch": "A4",
+                  "beat": 6,
+                  "beats": 1,
+                  "midi": 69
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 55
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 7,
+                  "beats": 1,
+                  "midi": 67
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c13-shift-c-to-g#2",
+            "exerciseMode": "blind-memory",
+            "positionLabel": "C position (C5)",
+            "expectedSequence": [
+              "G5",
+              "F5",
+              "G5",
+              "E5",
+              "F5",
+              "D5",
+              "E5",
+              "G5"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C5",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E5",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G5",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  72,
+                  76,
+                  79
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "G5",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 79
+                },
+                {
+                  "pitch": "F5",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 77
+                },
+                {
+                  "pitch": "G5",
+                  "beat": 2,
+                  "beats": 1,
+                  "midi": 79
+                },
+                {
+                  "pitch": "E5",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 76
+                },
+                {
+                  "pitch": "F5",
+                  "beat": 4,
+                  "beats": 0.5,
+                  "midi": 77
+                },
+                {
+                  "pitch": "D5",
+                  "beat": 4.5,
+                  "beats": 0.5,
+                  "midi": 74
+                },
+                {
+                  "pitch": "E5",
+                  "beat": 5,
+                  "beats": 1,
+                  "midi": 76
+                },
+                {
+                  "pitch": "G5",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 79
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c13-shift-c-to-g#3",
+            "exerciseMode": "anchor-shift",
+            "positionLabel": "C position (C3) → G position (G3)",
+            "expectedSequence": [
+              "E3",
+              "C3",
+              "D3",
+              "G3",
+              "C4",
+              "B3"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C3",
+                    "finger": 5
+                  },
+                  {
+                    "pitch": "E3",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G3",
+                    "finger": 1
+                  }
+                ],
+                "proofMidi": [
+                  48,
+                  52,
+                  55
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 9.600000000000001,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "E3",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 52
+                },
+                {
+                  "pitch": "C3",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 48
+                },
+                {
+                  "pitch": "D3",
+                  "beat": 2,
+                  "beats": 2,
+                  "midi": 50
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 8,
+                  "beats": 1,
+                  "midi": 55
+                },
+                {
+                  "pitch": "C4",
+                  "beat": 9,
+                  "beats": 1,
+                  "midi": 60
+                },
+                {
+                  "pitch": "B3",
+                  "beat": 10,
+                  "beats": 2,
+                  "midi": 59
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "lesson": 19,
+      "freshLoad": false,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "prompt",
+          "question": {
+            "id": "c19-anchor-and-shell#0",
+            "exerciseMode": "spatial-chord",
+            "positionLabel": "G Major chord (G4)",
+            "expectedSequence": [
+              "G4",
+              "B4",
+              "D5"
+            ],
+            "hasPositionProof": false,
+            "spatialChord": {
+              "chordPitches": [
+                "G4",
+                "B4",
+                "D5"
+              ],
+              "chordMidi": [
+                67,
+                71,
+                74
+              ],
+              "rootSearchSeconds": 9,
+              "shapeSearchSeconds": 11
+            }
+          }
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c19-anchor-and-shell#1",
+            "exerciseMode": "standard",
+            "positionLabel": "G position (G4) — both hands → both hands up 2 semitones",
+            "expectedSequence": [
+              "G4",
+              "B4",
+              "D5",
+              "G3",
+              "A4",
+              "B4",
+              "A4",
+              "E5",
+              "E4",
+              "A4",
+              "C#5",
+              "E5",
+              "A3"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "G4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "B4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "D5",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  67,
+                  71,
+                  74
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              },
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "G3",
+                    "finger": 5
+                  },
+                  {
+                    "pitch": "B3",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "D4",
+                    "finger": 1
+                  }
+                ],
+                "proofMidi": [
+                  55,
+                  59,
+                  62
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 9.600000000000001,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "G4",
+                  "beat": 0,
+                  "beats": 2,
+                  "midi": 67
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 0,
+                  "beats": 2,
+                  "midi": 71
+                },
+                {
+                  "pitch": "D5",
+                  "beat": 0,
+                  "beats": 2,
+                  "midi": 74
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 0,
+                  "beats": 4,
+                  "midi": 55
+                },
+                {
+                  "pitch": "A4",
+                  "beat": 2,
+                  "beats": 1,
+                  "midi": 69
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 71
+                },
+                {
+                  "pitch": "A4",
+                  "beat": 8,
+                  "beats": 2,
+                  "midi": 69
+                },
+                {
+                  "pitch": "E5",
+                  "beat": 8,
+                  "beats": 2,
+                  "midi": 76
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 8,
+                  "beats": 2,
+                  "midi": 64
+                },
+                {
+                  "pitch": "A4",
+                  "beat": 10,
+                  "beats": 2,
+                  "midi": 69
+                },
+                {
+                  "pitch": "C#5",
+                  "beat": 10,
+                  "beats": 2,
+                  "midi": 73
+                },
+                {
+                  "pitch": "E5",
+                  "beat": 10,
+                  "beats": 2,
+                  "midi": 76
+                },
+                {
+                  "pitch": "A3",
+                  "beat": 10,
+                  "beats": 2,
+                  "midi": 57
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "prompt",
+          "question": {
+            "id": "c19-anchor-and-shell#2",
+            "exerciseMode": "spatial-chord",
+            "positionLabel": "F Major chord (F4)",
+            "expectedSequence": [
+              "F4",
+              "A4",
+              "C5"
+            ],
+            "hasPositionProof": false,
+            "spatialChord": {
+              "chordPitches": [
+                "F4",
+                "A4",
+                "C5"
+              ],
+              "chordMidi": [
+                65,
+                69,
+                72
+              ],
+              "rootSearchSeconds": 9,
+              "shapeSearchSeconds": 11
+            }
+          }
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "position-prompt",
+          "question": {
+            "id": "c19-anchor-and-shell#3",
+            "exerciseMode": "standard",
+            "positionLabel": "C position (C4) — both hands",
+            "expectedSequence": [
+              "C4",
+              "E4",
+              "G4",
+              "C3",
+              "C4",
+              "E4",
+              "G4",
+              "D4",
+              "G3",
+              "E4",
+              "C4",
+              "G4",
+              "C3",
+              "C4",
+              "E4",
+              "G4"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G4",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  60,
+                  64,
+                  67
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              },
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C3",
+                    "finger": 5
+                  },
+                  {
+                    "pitch": "E3",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G3",
+                    "finger": 1
+                  }
+                ],
+                "proofMidi": [
+                  48,
+                  52,
+                  55
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "C4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 60
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 0,
+                  "beats": 1,
+                  "midi": 67
+                },
+                {
+                  "pitch": "C3",
+                  "beat": 0,
+                  "beats": 2,
+                  "midi": 48
+                },
+                {
+                  "pitch": "C4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 60
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 1,
+                  "beats": 1,
+                  "midi": 67
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 2,
+                  "beats": 1,
+                  "midi": 62
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 2,
+                  "beats": 2,
+                  "midi": 55
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 3,
+                  "beats": 1,
+                  "midi": 64
+                },
+                {
+                  "pitch": "C4",
+                  "beat": 4,
+                  "beats": 2,
+                  "midi": 60
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 4,
+                  "beats": 2,
+                  "midi": 67
+                },
+                {
+                  "pitch": "C3",
+                  "beat": 4,
+                  "beats": 4,
+                  "midi": 48
+                },
+                {
+                  "pitch": "C4",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 60
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 64
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 67
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "lesson": 23,
+      "freshLoad": false,
+      "slots": [
+        {
+          "slot": 1,
+          "statusOnEntry": "prompt",
+          "question": {
+            "id": "c23-separate-background-piano#0",
+            "exerciseMode": "standard",
+            "positionLabel": "C position (C4) — both hands → both hands up 7 semitones",
+            "expectedSequence": [
+              "C4",
+              "E4",
+              "G4",
+              "C3",
+              "G3",
+              "E3",
+              "G3",
+              "C4",
+              "G4",
+              "C3",
+              "G3",
+              "E3",
+              "G3",
+              "A4",
+              "G3",
+              "D4",
+              "B4",
+              "B3",
+              "D4",
+              "G4",
+              "B4",
+              "D5",
+              "G3"
+            ],
+            "hasPositionProof": true,
+            "positionProofs": [
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C4",
+                    "finger": 1
+                  },
+                  {
+                    "pitch": "E4",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G4",
+                    "finger": 5
+                  }
+                ],
+                "proofMidi": [
+                  60,
+                  64,
+                  67
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              },
+              {
+                "proofNotes": [
+                  {
+                    "pitch": "C3",
+                    "finger": 5
+                  },
+                  {
+                    "pitch": "E3",
+                    "finger": 3
+                  },
+                  {
+                    "pitch": "G3",
+                    "finger": 1
+                  }
+                ],
+                "proofMidi": [
+                  48,
+                  52,
+                  55
+                ],
+                "requireHeld": false,
+                "acceptWindowMs": 7000
+              }
+            ],
+            "plan": {
+              "bpm": 75,
+              "secondsPerBeat": 0.8,
+              "recordSeconds": 6.4,
+              "countInSeconds": 6.4,
+              "guideNote": false,
+              "expectedNotes": [
+                {
+                  "pitch": "C4",
+                  "beat": 0,
+                  "beats": 2,
+                  "midi": 60
+                },
+                {
+                  "pitch": "E4",
+                  "beat": 0,
+                  "beats": 2,
+                  "midi": 64
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 0,
+                  "beats": 2,
+                  "midi": 67
+                },
+                {
+                  "pitch": "C3",
+                  "beat": 0,
+                  "beats": 0.5,
+                  "midi": 48
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 0.5,
+                  "beats": 0.5,
+                  "midi": 55
+                },
+                {
+                  "pitch": "E3",
+                  "beat": 1,
+                  "beats": 0.5,
+                  "midi": 52
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 1.5,
+                  "beats": 0.5,
+                  "midi": 55
+                },
+                {
+                  "pitch": "C4",
+                  "beat": 2,
+                  "beats": 2,
+                  "midi": 60
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 2,
+                  "beats": 2,
+                  "midi": 67
+                },
+                {
+                  "pitch": "C3",
+                  "beat": 2,
+                  "beats": 0.5,
+                  "midi": 48
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 2.5,
+                  "beats": 0.5,
+                  "midi": 55
+                },
+                {
+                  "pitch": "E3",
+                  "beat": 3,
+                  "beats": 0.5,
+                  "midi": 52
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 3.5,
+                  "beats": 0.5,
+                  "midi": 55
+                },
+                {
+                  "pitch": "A4",
+                  "beat": 4,
+                  "beats": 1,
+                  "midi": 69
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 4,
+                  "beats": 0.5,
+                  "midi": 55
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 4.5,
+                  "beats": 0.5,
+                  "midi": 62
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 5,
+                  "beats": 1,
+                  "midi": 71
+                },
+                {
+                  "pitch": "B3",
+                  "beat": 5,
+                  "beats": 0.5,
+                  "midi": 59
+                },
+                {
+                  "pitch": "D4",
+                  "beat": 5.5,
+                  "beats": 0.5,
+                  "midi": 62
+                },
+                {
+                  "pitch": "G4",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 67
+                },
+                {
+                  "pitch": "B4",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 71
+                },
+                {
+                  "pitch": "D5",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 74
+                },
+                {
+                  "pitch": "G3",
+                  "beat": 6,
+                  "beats": 2,
+                  "midi": 55
+                }
+              ]
+            }
+          }
+        },
+        {
+          "slot": 2,
+          "statusOnEntry": "prompt",
+          "question": {
+            "id": "c23-separate-background-piano#1",
+            "exerciseMode": "spatial-chord",
+            "positionLabel": "A Major chord (A3)",
+            "expectedSequence": [
+              "A3",
+              "C#4",
+              "E4"
+            ],
+            "hasPositionProof": false,
+            "spatialChord": {
+              "chordPitches": [
+                "A3",
+                "C#4",
+                "E4"
+              ],
+              "chordMidi": [
+                57,
+                61,
+                64
+              ],
+              "rootSearchSeconds": 7.5,
+              "shapeSearchSeconds": 9
+            }
+          }
+        },
+        {
+          "slot": 3,
+          "statusOnEntry": "prompt",
+          "question": {
+            "id": "c23-separate-background-piano#2",
+            "exerciseMode": "spatial-chord",
+            "positionLabel": "F Major chord (F4)",
+            "expectedSequence": [
+              "F4",
+              "A4",
+              "C5"
+            ],
+            "hasPositionProof": false,
+            "spatialChord": {
+              "chordPitches": [
+                "F4",
+                "A4",
+                "C5"
+              ],
+              "chordMidi": [
+                65,
+                69,
+                72
+              ],
+              "rootSearchSeconds": 7.5,
+              "shapeSearchSeconds": 9
+            }
+          }
+        },
+        {
+          "slot": 4,
+          "statusOnEntry": "prompt",
+          "question": {
+            "id": "c23-separate-background-piano#3",
+            "exerciseMode": "spatial-chord",
+            "positionLabel": "Bb Major chord (Bb3)",
+            "expectedSequence": [
+              "Bb3",
+              "D4",
+              "F4"
+            ],
+            "hasPositionProof": false,
+            "spatialChord": {
+              "chordPitches": [
+                "Bb3",
+                "D4",
+                "F4"
+              ],
+              "chordMidi": [
+                58,
+                62,
+                65
+              ],
+              "rootSearchSeconds": 7.5,
+              "shapeSearchSeconds": 9
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
