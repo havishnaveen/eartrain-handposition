@@ -58,6 +58,7 @@ const staffCue = readFileSync(new URL('components/StaffCue.tsx', sourceRoot), 'u
 for (const engravingGuard of [
   "svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')",
   "svg.setAttribute('width', '100%')",
+  "svg.setAttribute('height', '100%')",
   "container.style.removeProperty('width')",
   "svg.style.removeProperty('height')",
 ]) {

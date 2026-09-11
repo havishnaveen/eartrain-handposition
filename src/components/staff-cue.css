@@ -109,6 +109,10 @@
   vector-effect: none;
 }
 
+.et-staff--scaled svg path {
+  vector-effect: none;
+}
+
 /* Scrubber. Injected into the SVG by StaffCue so it shares the notation's
    coordinate space — it scales with the staff and needs no unit conversion.
    No CSS transition: position is written every animation frame from the

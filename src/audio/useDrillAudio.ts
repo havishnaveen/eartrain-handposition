@@ -1089,6 +1089,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const generalChordMonitorRef = useRef<number[]>([]);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const clickGainRef = useRef<GainNode | null>(null);
+  const silentSinkRef = useRef<GainNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingUrlRef = useRef<string | null>(null);
@@ -1401,6 +1402,9 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
 
     clickGainRef.current?.disconnect();
     clickGainRef.current = null;
+
+    silentSinkRef.current?.disconnect();
+    silentSinkRef.current = null;
 
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -2391,6 +2395,17 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       workletRef.current = worklet;
       chordWorkletRef.current = chordWorklet;
       graphConnectedAtRef.current = performance.now();
+
+      // iPad/Safari AudioWorklet keep-alive:
+      // WebKit's audio rendering graph throttles or pauses AudioWorkletProcessor.process()
+      // if the node's outputs do not connect to AudioContext.destination. Route worklet
+      // outputs through a zero-gain node so WebKit runs process() continuously on iOS/Safari without feedback.
+      const silentSink = ctx.createGain();
+      silentSink.gain.value = 0;
+      worklet.connect(silentSink);
+      chordWorklet.connect(silentSink);
+      silentSink.connect(ctx.destination);
+      silentSinkRef.current = silentSink;
 
       // Metronome output bus.
       const clickGain = ctx.createGain();

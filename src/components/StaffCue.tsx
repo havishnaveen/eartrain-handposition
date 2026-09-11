@@ -24,6 +24,7 @@ interface OSMDInstance {
     MeasureList?: unknown[][];
   };
   EngravingRules?: Record<string, unknown>;
+  rules?: Record<string, unknown>;
 }
 
 export interface StaffCueProps {
@@ -90,6 +91,22 @@ export function shiftRegionFromOnsets(
     endX: Math.max(startX + 1, endX),
     centerX: (before.x + after.x) / 2,
   };
+}
+
+/** Extrapolates timeline start/end X from the first and last rendered notehead onsets. */
+export function scrubberBoundsFromOnsets(
+  points: readonly ScrubPoint[],
+  totalBeats: number,
+  fallbackStartX: number,
+  fallbackEndX: number,
+): { startX: number; endX: number } {
+  if (points.length === 0) return { startX: fallbackStartX, endX: fallbackEndX };
+  const first = points[0];
+  const last = points[points.length - 1];
+  const pixelsPerBeat = last.beat > first.beat ? (last.x - first.x) / (last.beat - first.beat) : 0;
+  const startX = first.x;
+  const endX = pixelsPerBeat > 0 ? Math.min(fallbackEndX, first.x + pixelsPerBeat * totalBeats) : first.x;
+  return { startX, endX: Math.max(startX + 1, endX) };
 }
 
 /** Print meter only when the learner is actually reading a measure. */
@@ -246,6 +263,46 @@ export function engravedXForBeat(points: readonly ScrubPoint[], beat: number): n
   return points[points.length - 1].x;
 }
 
+/** Piecewise interpolation between rendered notehead X positions for exact notehead alignment. */
+export function timelineXForBeatFromPoints(
+  points: readonly ScrubPoint[],
+  fallbackStartX: number,
+  fallbackEndX: number,
+  totalBeats: number,
+  beat: number,
+): number {
+  if (!points || points.length === 0) {
+    return timelineXForBeat(fallbackStartX, fallbackEndX, totalBeats, beat);
+  }
+  if (points.length === 1) {
+    return points[0].x;
+  }
+  if (beat <= points[0].beat) {
+    if (points[0].beat === 0 || beat <= 0) return points[0].x;
+    const slope = (points[1].x - points[0].x) / (points[1].beat - points[0].beat || 1);
+    return Math.max(fallbackStartX, points[0].x - (points[0].beat - beat) * slope);
+  }
+  const last = points[points.length - 1];
+  if (beat >= last.beat) {
+    if (beat >= totalBeats && totalBeats > last.beat) {
+      const slope = (last.x - points[points.length - 2].x) / (last.beat - points[points.length - 2].beat || 1);
+      return Math.min(fallbackEndX, last.x + (beat - last.beat) * slope);
+    }
+    return last.x;
+  }
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    if (beat >= p0.beat && beat <= p1.beat) {
+      const span = p1.beat - p0.beat;
+      if (span <= 1e-6) return p0.x;
+      const t = (beat - p0.beat) / span;
+      return p0.x + t * (p1.x - p0.x);
+    }
+  }
+  return last.x;
+}
+
 /** Directions occupy their own layout row, never the note/fingering lanes. */
 export function positionDirections(cue: CueSpec): string[] {
   const rows = new Map<number, string[]>();
@@ -310,46 +367,90 @@ function collectScrubPointsFromGraphic(
 ): ScrubPoint[] {
   const measureList = osmd.GraphicSheet?.MeasureList;
   if (!measureList || measureList.length === 0) return [];
-  const points: ScrubPoint[] = [];
-  const soundedBeats = new Set<number>();
-  let beat = 0;
-  for (const measureRow of measureList) {
-    // Include attacks in either hand, preferring a sounded key over a rest.
-    for (const staffMeasure of measureRow) {
-    const measure = staffMeasure as
-      | { staffEntries?: { relInMeasureTimestamp?: { realValue?: number }; graphicalVoiceEntries?: { notes?: unknown[] }[] }[] }
-      | undefined;
-    const staffEntries = measure?.staffEntries ?? [];
-    let beatInMeasure = 0;
-    for (const entry of staffEntries) {
-      const gNote = entry.graphicalVoiceEntries?.[0]?.notes?.[0] as
-        | { sourceNote?: { isRestFlag?: boolean; length?: { realValue?: number } }; getSVGGElement?: () => SVGGraphicsElement | undefined }
-        | undefined;
-      const durationBeats = (gNote?.sourceNote?.length?.realValue ?? 0.25) * 4;
-      const entryBeat = (entry.relInMeasureTimestamp?.realValue ?? beatInMeasure / 4) * 4;
-      if (gNote?.getSVGGElement) {
-        const gEl = gNote.getSVGGElement();
-        if (gEl) {
-          // Stems, accidentals and finger labels are not the note's onset X.
-          const head = gEl.querySelector('.vf-notehead > path') ?? gEl;
-          const rect = head.getBoundingClientRect();
-          const svgPoint = screenPointToSvgSpace(svg, rect.x + rect.width / 2, rect.y + rect.height / 2);
-          const onsetBeat = beat + entryBeat;
-          const existing = points.find(point => Math.abs(point.beat - onsetBeat) < 1e-6);
-          const sounded = !gNote.sourceNote?.isRestFlag;
-          if (svgPoint && (!existing || (sounded && !soundedBeats.has(onsetBeat)))) {
-            if (existing) existing.x = svgPoint.x;
-            else points.push({ beat: onsetBeat, x: svgPoint.x });
-            if (sounded) soundedBeats.add(onsetBeat);
+  const rawPoints: { beat: number; x: number }[] = [];
+
+  for (let measureIdx = 0; measureIdx < measureList.length; measureIdx++) {
+    const measureRow = measureList[measureIdx];
+    if (!measureRow) continue;
+
+    const measures = Array.isArray(measureRow) ? measureRow : [measureRow];
+    for (const measure of measures as any[]) {
+      if (!measure) continue;
+      const staffEntries = measure.staffEntries ?? [];
+      let fallbackBeatInMeasure = 0;
+
+      for (const entry of staffEntries) {
+        let beatInMeasure: number | null = null;
+        if (typeof entry.getAbsoluteTimestamp === 'function') {
+          const ts = entry.getAbsoluteTimestamp();
+          const rv = ts?.RealValue ?? ts?.realValue;
+          if (typeof rv === 'number') {
+            beatInMeasure = rv * 4;
           }
         }
+        if (beatInMeasure === null && entry.relInMeasureTimestamp) {
+          const rel = entry.relInMeasureTimestamp.RealValue ?? entry.relInMeasureTimestamp.realValue;
+          if (typeof rel === 'number') {
+            beatInMeasure = measureIdx * beatsPerBar + rel * 4;
+          }
+        }
+        if (beatInMeasure === null) {
+          beatInMeasure = measureIdx * beatsPerBar + fallbackBeatInMeasure;
+        }
+
+        let entryDuration = 0.25;
+        const voiceEntries = entry.graphicalVoiceEntries ?? [];
+        for (const gve of voiceEntries) {
+          for (const gNote of gve.notes ?? []) {
+            const dur = ((gNote?.sourceNote?.length?.RealValue ?? gNote?.sourceNote?.length?.realValue) ?? 0.25) * 4;
+            if (dur > entryDuration) entryDuration = dur;
+            const isRest = Boolean(gNote?.sourceNote?.isRestFlag || gNote?.sourceNote?.isRest?.());
+            if (!isRest && typeof gNote?.getSVGGElement === 'function') {
+              const gEl = gNote.getSVGGElement();
+              if (gEl) {
+                const head = gEl.querySelector('.vf-notehead > path') ?? gEl;
+                const rect = head.getBoundingClientRect();
+                const svgPoint = screenPointToSvgSpace(svg, rect.x + rect.width / 2, rect.y + rect.height / 2);
+                if (svgPoint) {
+                  rawPoints.push({ beat: beatInMeasure, x: svgPoint.x });
+                }
+              }
+            }
+          }
+        }
+        fallbackBeatInMeasure += entryDuration;
       }
-      beatInMeasure += durationBeats || 0.25;
     }
-    }
-    beat += beatsPerBar;
   }
-  return points.sort((a, b) => a.beat - b.beat);
+
+  if (rawPoints.length === 0) return [];
+
+  rawPoints.sort((a, b) => a.beat - b.beat);
+  const consolidated: ScrubPoint[] = [];
+  let currentGroup: { beat: number; xSum: number; count: number } | null = null;
+
+  for (const pt of rawPoints) {
+    if (!currentGroup) {
+      currentGroup = { beat: pt.beat, xSum: pt.x, count: 1 };
+    } else if (Math.abs(pt.beat - currentGroup.beat) < 0.01) {
+      currentGroup.xSum += pt.x;
+      currentGroup.count += 1;
+    } else {
+      consolidated.push({
+        beat: currentGroup.beat,
+        x: currentGroup.xSum / currentGroup.count,
+      });
+      currentGroup = { beat: pt.beat, xSum: pt.x, count: 1 };
+    }
+  }
+  if (currentGroup) {
+    consolidated.push({
+      beat: currentGroup.beat,
+      x: currentGroup.xSum / currentGroup.count,
+    });
+  }
+
+  return consolidated;
 }
 
 export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function StaffCue(
@@ -368,6 +469,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
 ) {
   const hostRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<{ startX: number; endX: number; totalBeats: number; top: number; bottom: number; points: ScrubPoint[] } | null>(null);
+  const pointsRef = useRef<readonly ScrubPoint[]>([]);
   const lineRef = useRef<SVGLineElement | null>(null);
   const trailRef = useRef<SVGRectElement | null>(null);
   const successPitchKey = [...successPitches].sort().join('|');
@@ -398,7 +500,10 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           return;
         }
 
-        const x = engravedXForBeat(layout.points, beat);
+        const points = layout.points || pointsRef.current;
+        const x = points && points.length > 0
+          ? timelineXForBeatFromPoints(points, layout.startX, layout.endX, layout.totalBeats, beat)
+          : timelineXForBeat(layout.startX, layout.endX, layout.totalBeats, beat);
         line.setAttribute('opacity', '1');
         line.setAttribute('x1', String(x));
         line.setAttribute('x2', String(x));
@@ -465,6 +570,11 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       drawPartAbbreviations: false,
     });
 
+    const rules = (osmd as any).EngravingRules || (osmd as any).rules;
+    if (rules) {
+      rules.FingeringPositionFromXML = true;
+    }
+
     osmd.load(xml).then(() => {
       if (cancelled) return;
       osmd.render();
@@ -508,26 +618,27 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       const beatsPerBar = beatsPerBarOf(cue);
       const points = collectScrubPointsFromGraphic(osmd, svg, beatsPerBar || totalBeats);
 
+      const shiftHeadroom = shiftMarker ? 18 : 0;
       const cropPadX = 12;
       const cropX = box.x - cropPadX;
-      const cropTop = box.y - SCRUB_OVERHANG - 4;
+      const cropTop = box.y - SCRUB_OVERHANG - 4 - shiftHeadroom;
       const cropWidth = box.width + cropPadX * 2;
-      const cropHeight = box.height + SCRUB_OVERHANG * 2 + 8;
-      const top = cropTop;
-      const bottom = cropTop + cropHeight;
+      const cropHeight = box.height + SCRUB_OVERHANG * 2 + 8 + shiftHeadroom;
+      const top = box.y - SCRUB_OVERHANG - 4;
+      const bottom = top + box.height + SCRUB_OVERHANG * 2 + 8;
 
       if (points.length > 0) {
-        const first = points[0];
-        const last = points[points.length - 1];
-        const pixelsPerBeat = last.beat > first.beat ? (last.x - first.x) / (last.beat - first.beat) : 0;
-        const startX = first.x;
-        const endX = pixelsPerBeat > 0
-          ? Math.min(cropX + cropWidth, first.x + pixelsPerBeat * totalBeats)
-          : first.x;
-
-        const layout = { startX, endX: Math.max(startX + 1, endX), totalBeats, top, bottom,
-          points: [...points, { beat: totalBeats, x: cropX + cropWidth - cropPadX }] };
+        const bounds = scrubberBoundsFromOnsets(points, totalBeats, cropX + 10, cropX + cropWidth - 10);
+        const layout = {
+          startX: bounds.startX,
+          endX: bounds.endX,
+          totalBeats,
+          top,
+          bottom,
+          points: [...points, { beat: totalBeats, x: bounds.endX }],
+        };
         layoutRef.current = layout;
+        pointsRef.current = points;
 
         const trail = document.createElementNS(SVG_NS, 'rect');
         trail.setAttribute('x', String(layout.startX));
@@ -650,6 +761,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       cancelled = true;
       host.innerHTML = '';
       layoutRef.current = null;
+      pointsRef.current = [];
       lineRef.current = null;
       trailRef.current = null;
     };

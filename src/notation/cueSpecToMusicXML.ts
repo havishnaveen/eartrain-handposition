@@ -239,7 +239,7 @@ export function cueSpecToMusicXML(cue: CueSpec, options: CueSpecToMusicXMLOption
         : '';
       const beamTypes = computeBeamTypes(bucket.notes);
       const notesXml = bucket.notes.length > 0
-        ? bucket.notes.map((note, noteIndex) => noteToXml(note, staffIndex, cue.staves.length, inkColor, accentColor, successColor, completedMidi, beamTypes[noteIndex])).join('\n')
+        ? bucket.notes.map((note, noteIndex) => noteToXml(note, staffIndex, cue.staves.length, inkColor, accentColor, successColor, completedMidi, beamTypes[noteIndex], staff.hand)).join('\n')
         : `      <note>\n        <rest/>\n        <duration>${beatsPerBar * DIVISIONS}</duration>\n        <type>${BASE_TYPE[String(beatsPerBar)] ?? 'whole'}</type>\n      </note>`;
       measureXml.push(`    <measure number="${m + 1}">\n${attributesXml}${notesXml}\n    </measure>`);
     }
@@ -267,6 +267,7 @@ function noteToXml(
   successColor: string,
   completedMidi: Set<number>,
   beamType: string | undefined,
+  hand?: StaffSpec['hand'],
 ): string {
   const duration = parseDuration(note.duration);
   const color = resolveNoteColor(note, completedMidi, inkColor, accentColor, successColor);
@@ -282,6 +283,8 @@ function noteToXml(
     return `      <note${colorAttr}>\n        <rest/>\n        <duration>${duration.divisions}</duration>\n        <type>${duration.type}</type>${'<dot/>'.repeat(duration.dots)}${staffTag}\n      </note>`;
   }
 
+  const placement = hand === 'left' ? 'below' : 'above';
+
   return note.keys.map((key, keyIndex) => {
     const pitch = parsePitch(key);
     const pitchXml = pitch
@@ -290,7 +293,7 @@ function noteToXml(
     const chordTag = keyIndex > 0 ? '\n        <chord/>' : '';
     const finger = note.fingers && note.fingers.length > 0 ? note.fingers[keyIndex] : keyIndex === 0 ? note.finger : undefined;
     const notationsXml = finger !== undefined
-      ? `\n        <notations><technical><fingering>${finger}</fingering></technical></notations>`
+      ? `\n        <notations><technical><fingering placement="${placement}">${finger}</fingering></technical></notations>`
       : '';
     const accidentalXml = pitch && pitch.alter !== 0
       ? `\n        <accidental>${pitch.alter === 1 ? 'sharp' : pitch.alter === -1 ? 'flat' : pitch.alter === 2 ? 'double-sharp' : 'flat-flat'}</accidental>`

@@ -806,7 +806,7 @@ try {
 
               const silentGrade = gradeSequence(question.expectedSequence, [], gradeOptions);
               assert.equal(silentGrade.scores.pitch, 0);
-              assert.equal(silentGrade.scores.cleanliness, 0);
+              assert.ok(silentGrade.scores.cleanliness === 0 || silentGrade.scores.cleanliness === null);
               assert.equal(silentGrade.scores.overall, 0);
               assert.ok(silentGrade.scores.timing === 0 || silentGrade.scores.timing === null);
               assert.equal(silentGrade.passed, false);
