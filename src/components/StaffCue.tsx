@@ -231,6 +231,21 @@ export function timelineXForBeat(
   return startX + progress * (endX - startX);
 }
 
+/** Engraved spacing is not linear in musical time (especially dotted notes). */
+export function engravedXForBeat(points: readonly ScrubPoint[], beat: number): number {
+  if (!points.length) return 0;
+  if (beat <= points[0].beat) return points[0].x;
+  for (let i = 1; i < points.length; i++) {
+    const previous = points[i - 1];
+    const next = points[i];
+    if (beat <= next.beat) {
+      return previous.x + (next.x - previous.x) *
+        Math.max(0, Math.min(1, (beat - previous.beat) / Math.max(1e-6, next.beat - previous.beat)));
+    }
+  }
+  return points[points.length - 1].x;
+}
+
 /** Directions occupy their own layout row, never the note/fingering lanes. */
 export function positionDirections(cue: CueSpec): string[] {
   const rows = new Map<number, string[]>();
@@ -296,12 +311,13 @@ function collectScrubPointsFromGraphic(
   const measureList = osmd.GraphicSheet?.MeasureList;
   if (!measureList || measureList.length === 0) return [];
   const points: ScrubPoint[] = [];
+  const soundedBeats = new Set<number>();
   let beat = 0;
   for (const measureRow of measureList) {
-    // Column 0 (first staff / top voice) owns the authoritative timeline,
-    // matching the old VexFlow renderer's "first staff of this system" rule.
-    const measure = measureRow?.[0] as
-      | { staffEntries?: { graphicalVoiceEntries?: { notes?: unknown[] }[] }[] }
+    // Include attacks in either hand, preferring a sounded key over a rest.
+    for (const staffMeasure of measureRow) {
+    const measure = staffMeasure as
+      | { staffEntries?: { relInMeasureTimestamp?: { realValue?: number }; graphicalVoiceEntries?: { notes?: unknown[] }[] }[] }
       | undefined;
     const staffEntries = measure?.staffEntries ?? [];
     let beatInMeasure = 0;
@@ -310,18 +326,28 @@ function collectScrubPointsFromGraphic(
         | { sourceNote?: { isRestFlag?: boolean; length?: { realValue?: number } }; getSVGGElement?: () => SVGGraphicsElement | undefined }
         | undefined;
       const durationBeats = (gNote?.sourceNote?.length?.realValue ?? 0.25) * 4;
-      const isRest = Boolean(gNote?.sourceNote?.isRestFlag);
-      if (!isRest && gNote?.getSVGGElement) {
+      const entryBeat = (entry.relInMeasureTimestamp?.realValue ?? beatInMeasure / 4) * 4;
+      if (gNote?.getSVGGElement) {
         const gEl = gNote.getSVGGElement();
         if (gEl) {
-          const rect = gEl.getBoundingClientRect();
+          // Stems, accidentals and finger labels are not the note's onset X.
+          const head = gEl.querySelector('.vf-notehead > path') ?? gEl;
+          const rect = head.getBoundingClientRect();
           const svgPoint = screenPointToSvgSpace(svg, rect.x + rect.width / 2, rect.y + rect.height / 2);
-          if (svgPoint) points.push({ beat: beat + beatInMeasure, x: svgPoint.x });
+          const onsetBeat = beat + entryBeat;
+          const existing = points.find(point => Math.abs(point.beat - onsetBeat) < 1e-6);
+          const sounded = !gNote.sourceNote?.isRestFlag;
+          if (svgPoint && (!existing || (sounded && !soundedBeats.has(onsetBeat)))) {
+            if (existing) existing.x = svgPoint.x;
+            else points.push({ beat: onsetBeat, x: svgPoint.x });
+            if (sounded) soundedBeats.add(onsetBeat);
+          }
         }
       }
       beatInMeasure += durationBeats || 0.25;
     }
-    beat += beatsPerBar > 0 ? beatsPerBar : beatInMeasure;
+    }
+    beat += beatsPerBar;
   }
   return points.sort((a, b) => a.beat - b.beat);
 }
@@ -341,7 +367,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const layoutRef = useRef<{ startX: number; endX: number; totalBeats: number; top: number; bottom: number } | null>(null);
+  const layoutRef = useRef<{ startX: number; endX: number; totalBeats: number; top: number; bottom: number; points: ScrubPoint[] } | null>(null);
   const lineRef = useRef<SVGLineElement | null>(null);
   const trailRef = useRef<SVGRectElement | null>(null);
   const successPitchKey = [...successPitches].sort().join('|');
@@ -372,7 +398,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           return;
         }
 
-        const x = timelineXForBeat(layout.startX, layout.endX, layout.totalBeats, beat);
+        const x = engravedXForBeat(layout.points, beat);
         line.setAttribute('opacity', '1');
         line.setAttribute('x1', String(x));
         line.setAttribute('x2', String(x));
@@ -499,7 +525,8 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
           ? Math.min(cropX + cropWidth, first.x + pixelsPerBeat * totalBeats)
           : first.x;
 
-        const layout = { startX, endX: Math.max(startX + 1, endX), totalBeats, top, bottom };
+        const layout = { startX, endX: Math.max(startX + 1, endX), totalBeats, top, bottom,
+          points: [...points, { beat: totalBeats, x: cropX + cropWidth - cropPadX }] };
         layoutRef.current = layout;
 
         const trail = document.createElementNS(SVG_NS, 'rect');
@@ -604,6 +631,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       svg.setAttribute('height', '100%');
       svg.style.removeProperty('width');
       svg.style.removeProperty('height');
+      container.style.removeProperty('width');
       // `container.style.width` was only ever a lower bound so OSMD had a
       // real width to lay out into (see estimateStaveWidth's comment) —
       // clear it now that layout is done so it stops forcing the host to

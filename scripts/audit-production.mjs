@@ -56,8 +56,9 @@ if (!exerciseReport.includes('const AUTO_ADVANCE_MS = 10000')) {
 }
 const staffCue = readFileSync(new URL('components/StaffCue.tsx', sourceRoot), 'utf8');
 for (const engravingGuard of [
-  "svg.setAttribute('width', String(viewBoxWidth * resolvedNotationScale))",
-  "svg.setAttribute('height', String(viewBoxHeight * resolvedNotationScale))",
+  "svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')",
+  "svg.setAttribute('width', '100%')",
+  "container.style.removeProperty('width')",
   "svg.style.removeProperty('height')",
 ]) {
   if (!staffCue.includes(engravingGuard)) {
@@ -65,7 +66,7 @@ for (const engravingGuard of [
   }
 }
 const staffCueCss = readFileSync(new URL('components/staff-cue.css', sourceRoot), 'utf8');
-if (!staffCueCss.includes('.et-staff--scaled svg path') ||
+if (!staffCueCss.includes('.et-staff svg path') ||
     !staffCueCss.includes('vector-effect: none;')) {
   throw new Error('Scaled proof notation must scale staff and ledger-line stroke widths.');
 }

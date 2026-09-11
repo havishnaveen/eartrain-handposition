@@ -104,9 +104,9 @@
   overflow: visible;
 }
 
-/* Keeps stems and staff lines crisp regardless of `notationScale`. */
+/* Scale ledger lines and stems with the complete engraving. */
 .et-staff svg path {
-  vector-effect: non-scaling-stroke;
+  vector-effect: none;
 }
 
 /* Scrubber. Injected into the SVG by StaffCue so it shares the notation's

@@ -1113,6 +1113,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   const onsetsRef = useRef<DetectedNote[]>([]);
   const proofRef = useRef<ActiveProof | null>(null);
   const proofCompletionTimerRef = useRef(0);
+  const proofSilentSinkRef = useRef<GainNode | null>(null);
   const proofHoldByMidiRef = useRef(new Map<number, {
     detectorId: number;
     releasedAt: number | null;
@@ -1199,6 +1200,11 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   }, []);
 
   const clearProofCompletionTimer = useCallback(() => {
+    if (proofSilentSinkRef.current) {
+      try { workletRef.current?.disconnect(proofSilentSinkRef.current); } catch { /* already disconnected */ }
+      proofSilentSinkRef.current.disconnect();
+      proofSilentSinkRef.current = null;
+    }
     if (!proofCompletionTimerRef.current) return;
     window.clearTimeout(proofCompletionTimerRef.current);
     proofCompletionTimerRef.current = 0;
@@ -1579,6 +1585,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           // The third ordered anchor completes Prove It immediately. Chord
           // simultaneity is verified by the separate polyphonic chord lane.
           proofRef.current = null;
+          clearProofCompletionTimer();
           clearProofHolds();
           worklet.port.postMessage({ type: 'clear-watch-pitch' });
           worklet.port.postMessage({ type: 'idle' });
@@ -2645,6 +2652,18 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       safeSet(setProofProgress, 0);
       safeSet(setProofHoldFailure, null);
       safeSet(setPhase, 'playing' as DrillPhase);
+      // Prove It has no metronome output. Give its worklet an explicit render
+      // destination so silent graph pruning cannot stall iPad processing.
+      // The processor never writes microphone samples to its output; the
+      // additional zero-gain sink guarantees this connection stays silent.
+      const silentSink = ctx.createGain();
+      silentSink.gain.value = 0;
+      worklet.connect(silentSink);
+      silentSink.connect(ctx.destination);
+      proofSilentSinkRef.current = silentSink;
+      if (ctx.state !== 'running') await ctx.resume();
+      await new Promise<void>(resolve => window.setTimeout(resolve, PROOF_DETECTOR_WARMUP_MS));
+      if (!mountedRef.current || runTokenRef.current !== runToken || workletRef.current !== worklet) return false;
       worklet.port.postMessage({ type: 'listen', mode: 'proof' });
       worklet.port.postMessage({ type: 'watch-pitch', midi: targetMidi[0] });
       // Tell the UI only after the worklet is genuinely armed. Previously the
