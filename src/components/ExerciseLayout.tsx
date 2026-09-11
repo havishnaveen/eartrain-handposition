@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import BugReportButton from './BugReportButton';
 import './exercise.css';
 
 export interface ExerciseLayoutProps {
@@ -245,6 +246,12 @@ export function ExerciseLayout({
         </div>
         <div className="et-stage__inner">{children}</div>
       </main>
+
+      <BugReportButton
+        lessonNumber={lesson}
+        lessonTitle={lessonTitle}
+        questionNumber={current}
+      />
     </div>
   );
 }
