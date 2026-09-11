@@ -67,6 +67,7 @@ try {
     findCompletePolyphonicGroup,
     freshPolyphonicEvidence,
     hasCredibleProofAttack,
+    supportsProofPitch,
     updateSpatialChordPresence,
   } = await server.ssrLoadModule(
     '/src/audio/useDrillAudio.ts',
@@ -92,6 +93,14 @@ try {
   assert.equal(hasCredibleProofAttack(quietProofAttack, 'candidate'), true);
   assert.equal(hasCredibleProofAttack(quietProofAttack, 'strict'), true, 'The same supported proof attack must not be rejected merely because it came through the strict lane.');
   assert.equal(hasCredibleProofAttack({...quietProofAttack, novelty:0, pianoAttackConfidence:0}, 'strict'), false);
+  const acousticC = { source: 'yin', midi: 60, frequency: 261.63, frames: 6,
+    consensus: .9, clarity: .9, pitchMad: .12, tuningErrorCents: 12,
+    pitchRange: .5, maxPitchStep: .3, pitchSlope: 0 };
+  assert.equal(supportsProofPitch(acousticC, 60), true, 'Stable acoustic C must survive small attack pitch fluctuations.');
+  assert.equal(supportsProofPitch(acousticC, 61), false, 'A neighboring key cannot satisfy C.');
+  assert.equal(supportsProofPitch(acousticC, 72), false, 'An octave error cannot satisfy C.');
+  assert.equal(supportsProofPitch({...acousticC, consensus: .4}, 60), false, 'Unstable pitch remains rejected.');
+  assert.equal(supportsProofPitch({...acousticC, pitchRange: 1.2}, 60), false, 'A pitch glide remains rejected.');
   const cleanTwoHands = heldBassPlan.expectedNotes.map((slot, expectedSlot) => ({
     midi: ({ C3: 48, E4: 64, F4: 65, G4: 67, A4: 69 })[slot.pitch], expectedSlot,
     time: 10 + slot.beat * heldBassPlan.secondsPerBeat,

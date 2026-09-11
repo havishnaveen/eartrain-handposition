@@ -382,6 +382,20 @@ function supportsExpectedPitch(
   );
 }
 
+/** Acoustic piano unisons can beat during the attack. Prove It needs a
+ * stable key identity, not the tighter trajectory used for scored recovery.
+ * The caller still requires a physical attack and rejects voice/harmonic shadows.
+ */
+export function supportsProofPitch(hypothesis: PitchHypothesis, expectedMidi: number): boolean {
+  return supportsExpectedPitch(hypothesis, expectedMidi, false) || (
+    hypothesis.midi === expectedMidi &&
+    hypothesis.frames >= 4 && hypothesis.consensus >= 0.75 &&
+    hypothesis.clarity >= (hypothesis.source === 'yin' ? 0.65 : 0.4) &&
+    hypothesis.tuningErrorCents <= 40 && hypothesis.pitchMad <= 0.25 &&
+    hypothesis.pitchRange <= 0.7 && hypothesis.maxPitchStep <= 0.5
+  );
+}
+
 interface ContextualPitch {
   midi: number;
   slot: number | null;
@@ -1870,7 +1884,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
           if (proofRef.current) {
             const wanted = proofRef.current.targetMidi[proofRef.current.nextIndex];
             const alternative = hypotheses.find((hypothesis) =>
-              supportsExpectedPitch(hypothesis, wanted, !isCandidate),
+              supportsProofPitch(hypothesis, wanted),
             );
             if (midi !== wanted && alternative) {
               midi = wanted;
@@ -1890,7 +1904,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
               return;
             }
             const recoverySupported = !isCandidate || hypotheses.some(
-              (hypothesis) => supportsExpectedPitch(hypothesis, midi, false),
+              (hypothesis) => supportsProofPitch(hypothesis, midi),
             );
             if (isCandidate && (midi !== wanted || !recoverySupported)) {
               logProofVeto('candidate-not-recovery-supported', { midi, wanted, recoverySupported });
