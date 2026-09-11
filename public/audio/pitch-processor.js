@@ -494,6 +494,17 @@ class PitchProcessor extends AudioWorkletProcessor {
       if (data.type === 'debug') {
         this.debug = Boolean(data.enabled);
       } else if (data.type === 'listen') {
+        if (data.proof === true && this.rmsCount >= 12) {
+          // Setup can contain practice notes. Use the quiet portion of the
+          // measured room history, not its piano-contaminated upper tail.
+          // Preserve a real room baseline rather than resetting to silence.
+          const roomBaseline = Math.max(1e-5, percentile(this.rmsHistory, this.rmsCount, 0.1));
+          if (this.noiseCeiling > roomBaseline * 3) {
+            this.rmsHistory.fill(roomBaseline);
+            this.noiseFloor = roomBaseline;
+            this.noiseCeiling = roomBaseline;
+          }
+        }
         this.listening = true;
         this.lastOnsetTime = -Infinity;
         this.lastCandidateTime = -Infinity;

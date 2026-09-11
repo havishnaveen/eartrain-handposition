@@ -194,6 +194,7 @@ function runScenario({
   acceptedCandidateMidi = null,
   watchSequence = null,
   debug = false,
+  proof = false,
 }) {
   let watchIndex = 0;
   const wantedNow = () => watchSequence?.[watchIndex] ?? null;
@@ -262,7 +263,7 @@ function runScenario({
     context.currentTime = offset / sampleRate;
     if (!listening && context.currentTime >= listenAt) {
       listening = true;
-      processor.port.onmessage({ data: { type: 'listen' } });
+      processor.port.onmessage({ data: { type: 'listen', proof } });
       const initialWatchMidi = watchSequence?.[0] ?? watchMidi;
       if (Number.isFinite(initialWatchMidi)) {
         processor.port.onmessage({
@@ -668,6 +669,25 @@ assert.deepEqual(
   [60, 64, 67],
   'The worklet must preserve pitch and onset behaviour at a 48-kHz device sample rate.',
 );
+
+const contaminatedProof = noteEvents(runScenario({
+  seconds: 5,
+  proof: true,
+  listenAt: 1.7,
+  watchSequence: [60, 64, 67],
+  strikes: [
+    { midi: 60, time: 0.6, duration: 1.05, amplitude: 0.04 },
+    { midi: 60, time: 1.85, duration: 0.3, amplitude: 0.008 },
+    { midi: 64, time: 2.4, duration: 0.3, amplitude: 0.008 },
+    { midi: 67, time: 2.95, duration: 0.3, amplitude: 0.008 },
+  ],
+}));
+assert.deepEqual(contaminatedProof.map(midiOf), [60, 64, 67],
+  'A note played during Prove It setup must not become the room-noise threshold.');
+const noisyRoom = { seconds: 3, roomAmplitude: 0.003, watchSequence: [60], acceptedCandidateMidi: [60] };
+assert.deepEqual(noteEvents(runScenario({ ...noisyRoom, proof: true })).map(midiOf),
+  noteEvents(runScenario(noisyRoom)).map(midiOf),
+  'Steady room noise must keep the restored detector baseline and candidate behavior unchanged.');
 
 const captureMessages = runScenario({
   seconds: 2,
