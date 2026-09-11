@@ -220,7 +220,7 @@ export function ExerciseLayout({
 
           <footer className="et-sidebar__credit">
             <span>Created by <strong>Havish Naveen</strong></span>
-            <small>in collaboration with <strong>Oclef</strong></small>
+            <small>acquired by <strong>Oclef</strong></small>
           </footer>
         </div>
       </aside>
@@ -229,11 +229,11 @@ export function ExerciseLayout({
         <div
           className="et-collab-tag"
           role="note"
-          aria-label="Created by Havish Naveen in collaboration with Oclef"
+          aria-label="Created by Havish Naveen · Acquired by Oclef"
         >
           <span className="et-collab-tag__dot" aria-hidden="true" />
           <span className="et-collab-tag__label">
-            Created by <strong className="et-collab-tag__name">Havish Naveen</strong> in collaboration with <strong className="et-collab-tag__partner">Oclef</strong>
+            Created by <strong className="et-collab-tag__name">Havish Naveen</strong> · Acquired by <strong className="et-collab-tag__partner">Oclef</strong>
           </span>
         </div>
 
