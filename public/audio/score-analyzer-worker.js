@@ -11,8 +11,8 @@
 
 const FFT_SIZE = 2048;
 const HOP = 256;
-const MIN_FREQ = 32;
-const MAX_FREQ = 4200;
+const MIN_FREQ = 82;
+const MAX_FREQ = 1400;
 const HARMONIC_PARENT_INTERVALS = [7, 12, 19, 24, 28, 31, 34, 36];
 
 function clamp(value, low = 0, high = 1) {

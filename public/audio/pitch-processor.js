@@ -221,20 +221,23 @@ const RELEASE_PROFILE_BANDS = 6;
 /* YIN */
 const YIN_THRESHOLD = 0.2;
 /**
- * Include C1 for register diagnostics. Attack, speech, and harmonic gates
- * still apply: extending the search band must not turn mains hum into notes.
+ * 90Hz (F#2) is deliberately above mains hum and its second harmonic's
+ * useful range. Nothing in the curriculum sounds below G2, so this costs no
+ * real notes and removes the single worst failure mode: YIN locking onto a
+ * 60Hz hum, which reports every note in the room as B1.
  */
-const MIN_FREQ = 32;
+const MIN_FREQ = 65;
 /**
- * Include the upper piano register so a high-octave mistake can be identified.
+ * C#6 is the curriculum ceiling (1109Hz); this leaves headroom above it
+ * without opening the range to shrill artefacts.
  */
-const MAX_FREQ = 4200;
+const MAX_FREQ = 1250;
 const MIN_CLARITY = 0.38;
 
 /** High-pass cutoff applied before pitch analysis, to strip hum and rumble. */
-// Preserve C1-and-up fundamentals. Dedicated 50/60Hz notches upstream handle
+// Preserve C2-and-up fundamentals. Dedicated 50/60Hz notches upstream handle
 // mains hum without deleting the bass evidence YIN needs.
-const HPF_HZ = 28;
+const HPF_HZ = 50;
 
 /** Onset must fall back below this fraction of threshold before re-arming. */
 const REARM_FRACTION = 0.6;
@@ -491,24 +494,6 @@ class PitchProcessor extends AudioWorkletProcessor {
       if (data.type === 'debug') {
         this.debug = Boolean(data.enabled);
       } else if (data.type === 'listen') {
-        if (data.mode === 'proof' && this.rmsCount > 0) {
-          // A previous note/chime can occupy the 1.5-second idle history.
-          // Prove It has no count-in to let that history expire: calibrate
-          // from the most recent quiet-start window, not the previous take.
-          // Keep actual room measurements and the existing noise multipliers;
-          // never replace the baseline with an assumed silent microphone.
-          const count = Math.min(this.rmsCount, Math.ceil(0.26 / this.hopSeconds));
-          const recent = new Float32Array(count);
-          for (let i = 0; i < count; i++) {
-            recent[i] = this.rmsHistory[(this.rmsWrite - count + i + RMS_HISTORY) % RMS_HISTORY];
-          }
-          this.rmsHistory.fill(0);
-          this.rmsHistory.set(recent);
-          this.rmsCount = count;
-          this.rmsWrite = count % RMS_HISTORY;
-          this.noiseFloor = Math.max(1e-5, median(recent, count));
-          this.noiseCeiling = Math.max(this.noiseFloor, percentile(recent, count, 0.9));
-        }
         this.listening = true;
         this.lastOnsetTime = -Infinity;
         this.lastCandidateTime = -Infinity;

@@ -1045,7 +1045,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
   // reuse across deploys. Version the URL whenever its recognition contract
   // changes so students cannot keep an older detector in a long-lived tab.
   const {
-    workletUrl = '/audio/pitch-processor.js?v=proof-calibration-v22-2026-09-10',
+    workletUrl = '/audio/pitch-processor.js?v=acoustic-piano-working-v23-2026-09-10',
     chordWorkletUrl = '/audio/chord-processor.js?v=repeated-attacks-v8-2026-09-06',
   } = options;
 
@@ -2679,7 +2679,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
       if (ctx.state !== 'running') await ctx.resume();
       await new Promise<void>(resolve => window.setTimeout(resolve, PROOF_DETECTOR_WARMUP_MS));
       if (!mountedRef.current || runTokenRef.current !== runToken || workletRef.current !== worklet) return false;
-      worklet.port.postMessage({ type: 'listen', mode: 'proof' });
+      worklet.port.postMessage({ type: 'listen' });
       worklet.port.postMessage({ type: 'watch-pitch', midi: targetMidi[0] });
       // Tell the UI only after the worklet is genuinely armed. Previously the
       // highlighted first key appeared during graph setup/calibration, so a
