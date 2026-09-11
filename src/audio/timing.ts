@@ -949,7 +949,14 @@ function buildRhythm(
   // shift; the boundary crossing itself, and cross-boundary spacing, stay
   // out of this general-purpose metric entirely and are left to
   // `buildTransition`'s own allowance.
-  const shiftLandingIndex = options.anchorShift?.splitIndex;
+  // `plan.timedShift.splitIndex` (set by `planForQuestion`) is already
+  // converted to a sounded/expected-note index — matching `expectedIndex`
+  // below. `options.anchorShift.splitIndex` itself is a raw written-note
+  // index (it counts the rest-padding notes appended to round the departure
+  // phrase to a full bar; see `planForQuestion`'s comment) and must not be
+  // compared against `expectedIndex` directly, or notes right at the shift
+  // boundary get mis-classified as before/after the shift.
+  const shiftLandingIndex = plan.timedShift?.splitIndex ?? options.anchorShift?.splitIndex;
 
   const pushDeviation = ({ expectedIndex, time }: { expectedIndex: number; time: number }) => {
     // Guide-note cues draw fewer notes than are played; those fall back to
@@ -1708,7 +1715,13 @@ export function gradeSequence(
         // median-adjusted onBeat fraction here: subtracting a small negative
         // offset can push otherwise fluent +0.22-beat attacks over its edge.
         const clearlyOffBeat = matches.filter(({ expectedIndex, time }) => {
-          if (options.anchorShift && expectedIndex >= options.anchorShift.splitIndex) return false;
+          // See the comment on `shiftLandingIndex` in buildRhythm above:
+          // `options.anchorShift.splitIndex` is a raw written-note index and
+          // must not be compared against `expectedIndex` (a sounded-note
+          // index) directly — use the plan's already-converted value when
+          // it's available.
+          const shiftSplit = options.plan?.timedShift?.splitIndex ?? options.anchorShift?.splitIndex;
+          if (options.anchorShift && shiftSplit !== undefined && expectedIndex >= shiftSplit) return false;
           const slot = options.plan?.expectedNotes[expectedIndex];
           if (!slot || options.playStartTime === undefined || !options.plan) return false;
           return Math.abs((time - options.playStartTime) / options.plan.secondsPerBeat - slot.beat) >
@@ -2018,8 +2031,26 @@ export function planForQuestion(question: Question, bpm: number = DEFAULT_BPM): 
   const totalPauseBeats = waitBeats + leadInBeats;
   if (totalPauseBeats === 0 || plan.expectedNotes.length < 2) return plan;
 
+  // `anchorShift.splitIndex` (progressiveCurriculum.ts) is a RAW written-note
+  // index for the staff: it counts the rest-padding notes `padBar` appends so
+  // the departure phrase fills a whole bar. `plan.expectedNotes`, by
+  // contrast, is indexed over the SOUNDED timeline only — `planFor` above
+  // drops rests when building it. Indexing `expectedNotes` directly by the
+  // raw splitIndex silently walked past every padding rest in the departure
+  // phrase and landed on the wrong note as the pause boundary — putting the
+  // silent hand-shift window (and everything after it) at the wrong beat.
+  // That is exactly the kind of drift that only shows up on anchor-shift
+  // exercises and reads as the scrubber being "occasionally ahead or
+  // behind": convert the raw index to a sounded-note index by counting how
+  // many of the preceding raw notes are actually sounded, matching how
+  // `buildTransition` below already filters rests before indexing by
+  // splitIndex.
+  const rawSplitIndex = Math.max(1, question.anchorShift?.splitIndex ?? 1);
+  const soundedBeforeSplit = plan.notes
+    .slice(0, rawSplitIndex)
+    .filter((note) => !note.isRest).length;
   const splitIndex = Math.min(
-    Math.max(1, question.anchorShift?.splitIndex ?? 1),
+    Math.max(1, soundedBeforeSplit),
     plan.expectedNotes.length - 1,
   );
   const startBeat = plan.expectedNotes[splitIndex].beat;

@@ -534,11 +534,35 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     lineRef.current = null;
     trailRef.current = null;
 
+    // Stop at the written end of the last SOUNDED note, matching
+    // planFor()'s `performanceBeats` in audio/timing.ts exactly — staff
+    // generation routinely pads the final measure with a trailing rest so
+    // the bar/system comes out even (see progressiveCurriculum.ts's
+    // padBar()), and that padding is layout only, not extra performance
+    // time. Summing every note's duration including trailing rests made
+    // this component's own `totalBeats` land past where the audio clock's
+    // `plan.totalBeats` actually ends — up to a whole beat wider on an
+    // ordinary padded phrase. scrubberBoundsFromOnsets() below extrapolates
+    // the scrubber's rail end (endX) from this totalBeats, so that mismatch
+    // stretched the visual timeline past the real one: during the final
+    // note the scrubber crept toward a rail end it would never audibly
+    // reach on time, reading as the cursor running behind — exactly the
+    // reported "occasionally ahead or behind" symptom, and one that would
+    // recur on any exercise whose generated phrase needed trailing padding
+    // to fill out its bar (routine, not rare).
     const totalBeats = Math.max(
       Math.max(0, minimumTimelineBeats),
       cue.staves.reduce((max, staff) => {
-        const beats = staff.notes.reduce((sum, note) => sum + beatsForDuration(note.duration), 0);
-        return Math.max(max, beats);
+        let beat = 0;
+        let performanceEnd = 0;
+        for (const note of staff.notes) {
+          const beats = beatsForDuration(note.duration);
+          if (!note.duration.endsWith('r')) {
+            performanceEnd = Math.max(performanceEnd, beat + beats);
+          }
+          beat += beats;
+        }
+        return Math.max(max, performanceEnd);
       }, 0),
     );
 
