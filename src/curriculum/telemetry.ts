@@ -397,14 +397,16 @@ export interface PositionStats {
   passes: number;
   passRate: number;
   meanPitch: number;
+  meanRhythm?: number | null;
   meanTiming: number | null;
+  meanContinuity?: number | null;
   meanCleanliness: number | null;
   meanOverall: number;
   /** Hardest rung cleared on this shape, and the easiest one missed. */
   highestDifficultyPassed: number | null;
   lowestDifficultyFailed: number | null;
   /** Which of the three axes is dragging this position down. */
-  weakestAxis: 'pitch' | 'timing' | 'cleanliness';
+  weakestAxis: 'pitch' | 'rhythm' | 'continuity' | 'timing' | 'cleanliness';
   /** Concepts this position has been drilled in. */
   conceptIds: string[];
 }

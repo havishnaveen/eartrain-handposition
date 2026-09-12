@@ -70,7 +70,7 @@ export function isClefTranspositionMistake(
 /** Mastery routing is separate from the existing engine's independent category scores. */
 export function passesDiagnosticDrill(report: GradeResult, question: Question): boolean {
   return report.passed && report.matched === report.expectedCount && report.expectedCount > 0 &&
-    report.hardExtras === 0 && (report.scores.timing ?? 0) >= 3 &&
+    report.hardExtras === 0 && (report.scores.rhythm ?? report.scores.timing ?? 0) >= 3 &&
     (!question.anchorShift || report.transition?.onTime === true);
 }
 

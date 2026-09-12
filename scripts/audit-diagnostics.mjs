@@ -93,5 +93,59 @@ try {
   assert.equal(isClefTranspositionMistake(bassSeq, botchedNotes, 'bass'), false, 'Botched notes must NOT trigger clef error');
   assert.equal(isClefTranspositionMistake(bassSeq, correctNotes, 'bass'), false, 'Correct bass notes must NOT trigger clef error');
 
-  console.log('Diagnostic audit passed: six problems, 24 keys, handoff parsing, routing, notation, correct/incorrect takes, 40%+ clef error threshold and transfer gates.');
+  // Continuity grading criteria verification:
+  const sampleQuestion = DIAGNOSTIC_REGISTRY[0].create(DIAGNOSTIC_KEYS[0]).question;
+  const basePlan = planForQuestion(sampleQuestion);
+  const seq5 = sampleQuestion.expectedSequence;
+  const opt = { plan: basePlan, playStartTime: 10 };
+
+  // 1. Smooth take -> 5.0
+  const smoothNotes = seq5.map((p, i) => ({
+    midi: pitchToMidi(p),
+    time: 10 + i * basePlan.secondsPerBeat,
+    clarity: 0.99,
+    strength: 2,
+  }));
+  const smoothGrade = gradeSequence(seq5, smoothNotes, opt);
+  assert.equal(smoothGrade.scores.continuity, 5.0, 'Smooth uninterrupted take must receive 5.0 continuity');
+  assert.equal(smoothGrade.scores.rhythm, 5.0, 'On-beat take must receive 5.0 rhythm');
+
+  // 2. 1-beat pause -> 4.5 - 4.8
+  const pauseNotes = seq5.map((p, i) => ({
+    midi: pitchToMidi(p),
+    time: 10 + (i >= 2 ? i + 1.0 : i) * basePlan.secondsPerBeat,
+    clarity: 0.99,
+    strength: 2,
+  }));
+  const pauseGrade = gradeSequence(seq5, pauseNotes, opt);
+  assert.ok(pauseGrade.scores.continuity >= 4.4 && pauseGrade.scores.continuity <= 4.8,
+    `1-beat pause should slightly reduce continuity: ${pauseGrade.scores.continuity}`);
+
+  // 3. Stop and hesitation -> 3.0 - 4.3
+  const stumbleNotes = [
+    { midi: pitchToMidi(seq5[0]), time: 10, clarity: 0.99, strength: 2 },
+    { midi: pitchToMidi(seq5[1]), time: 10 + basePlan.secondsPerBeat, clarity: 0.99, strength: 2 },
+    { midi: pitchToMidi(seq5[1]) + 1, time: 10 + 1.7 * basePlan.secondsPerBeat, clarity: 0.99, strength: 2 },
+    { midi: pitchToMidi(seq5[2]), time: 10 + 2.8 * basePlan.secondsPerBeat, clarity: 0.99, strength: 2 },
+    { midi: pitchToMidi(seq5[3]), time: 10 + 3.8 * basePlan.secondsPerBeat, clarity: 0.99, strength: 2 },
+  ];
+  if (seq5.length > 4) {
+    stumbleNotes.push({ midi: pitchToMidi(seq5[4]), time: 10 + 4.8 * basePlan.secondsPerBeat, clarity: 0.99, strength: 2 });
+  }
+  const stumbleGrade = gradeSequence(seq5, stumbleNotes, opt);
+  assert.ok(stumbleGrade.scores.continuity >= 3.0 && stumbleGrade.scores.continuity <= 4.3,
+    `Hesitation/stumble should reduce continuity: ${stumbleGrade.scores.continuity}`);
+
+  // 4. Long freeze (>4 beats) -> < 3.0
+  const freezeNotes = seq5.map((p, i) => ({
+    midi: pitchToMidi(p),
+    time: 10 + (i >= 2 ? i + 4.5 : i) * basePlan.secondsPerBeat,
+    clarity: 0.99,
+    strength: 2,
+  }));
+  const freezeGrade = gradeSequence(seq5, freezeNotes, opt);
+  assert.ok(freezeGrade.scores.continuity < 3.0,
+    `Long freeze (>4 beats) must fail continuity (<3.0): ${freezeGrade.scores.continuity}`);
+
+  console.log('Diagnostic audit passed: six problems, 24 keys, continuity grading (smooth, pauses, stumbles, freeze), 40%+ clef threshold and transfer gates.');
 } finally { await server.close(); }

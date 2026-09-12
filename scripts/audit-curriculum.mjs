@@ -692,7 +692,9 @@ try {
                 `Perfect performance failed Lesson ${concept.index}, drill ${questionNumber}.`);
               assert.deepEqual(perfectGrade.scores, {
                 pitch: 5,
+                rhythm: 5,
                 timing: 5,
+                continuity: 5,
                 cleanliness: 5,
                 overall: 5,
               });

@@ -72,21 +72,21 @@ const PlayIcon = ({ paused }: { paused: boolean }) => (
   </svg>
 );
 
-function scoreMessage(axis: 'pitch' | 'timing' | 'cleanliness', value: number | null): string {
+function scoreMessage(axis: 'pitch' | 'rhythm' | 'continuity' | 'timing' | 'cleanliness', value: number | null): string {
   if (value === null) return 'Not timed.';
   if (axis === 'pitch') {
     if (value >= 4.5) return 'Notes matched.';
     if (value >= 3.5) return 'Check the missed notes.';
     return 'Check your starting keys.';
   }
-  if (axis === 'timing') {
+  if (axis === 'rhythm' || axis === 'timing') {
     if (value >= 4.5) return 'A steady beat.';
     if (value >= 3.5) return 'A few notes were off the beat.';
     return 'Follow the metronome.';
   }
-  if (value >= 4.5) return 'No extra notes.';
-  if (value >= 3.5) return 'A few extra notes.';
-  return 'Try without extra keys.';
+  if (value >= 4.5) return 'Smooth, steady flow.';
+  if (value >= 3.5) return 'A few small pauses or stumbles.';
+  return 'Keep moving forward without stopping.';
 }
 
 function ScoreMeter({
@@ -98,7 +98,7 @@ function ScoreMeter({
 }: {
   label: string;
   value: number | null;
-  axis: 'pitch' | 'timing' | 'cleanliness';
+  axis: 'pitch' | 'rhythm' | 'continuity' | 'timing' | 'cleanliness';
   message?: string;
   compact?: boolean;
 }) {
@@ -547,14 +547,14 @@ export function ExerciseReport({
           axis="pitch"
         />
         <ScoreMeter
-          label="Timing"
-          value={result.scores.timing}
-          axis="timing"
+          label="Rhythm"
+          value={result.scores.rhythm ?? result.scores.timing}
+          axis="rhythm"
         />
         <ScoreMeter
-          label="Cleanliness"
-          value={result.scores.cleanliness}
-          axis="cleanliness"
+          label="Continuity"
+          value={result.scores.continuity ?? result.scores.cleanliness}
+          axis="continuity"
         />
       </div>
 

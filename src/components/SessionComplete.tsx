@@ -65,12 +65,12 @@ export function SessionComplete({
                   <strong>{meanScores.pitch.toFixed(1)}</strong>
                 </div>
                 <div className="et-done__score">
-                  <span>Timing</span>
-                  <strong>{meanScores.timing === null ? '—' : meanScores.timing.toFixed(1)}</strong>
+                  <span>Rhythm</span>
+                  <strong>{(meanScores.rhythm ?? meanScores.timing) == null ? '—' : (meanScores.rhythm ?? meanScores.timing)!.toFixed(1)}</strong>
                 </div>
                 <div className="et-done__score">
-                  <span>Clean</span>
-                  <strong>{meanScores.cleanliness === null ? '—' : meanScores.cleanliness.toFixed(1)}</strong>
+                  <span>Continuity</span>
+                  <strong>{(meanScores.continuity ?? meanScores.cleanliness) == null ? '—' : (meanScores.continuity ?? meanScores.cleanliness)!.toFixed(1)}</strong>
                 </div>
               </div>
             ) : null}

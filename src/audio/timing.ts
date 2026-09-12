@@ -362,17 +362,16 @@ export interface RhythmReport {
 export interface ScoreBreakdown {
   /** Did the right notes come out, in order? The core skill. */
   pitch: number;
-  /** Did they land on the beat? null for untimed drills, or when too few
-   *  notes were recognized to honestly judge rhythm (see hasTimingEvidence
-   *  in gradeSequence) -- distinct from a real, graded, low score. */
+  /** Did they land on the beat? Null for untimed drills or too few notes recognized. */
+  rhythm?: number | null;
+  /** Backwards-compatibility alias for rhythm */
   timing: number | null;
-  /** Was the performance free of wrong and stray notes? null when too few
-   *  notes were recognized to honestly judge cleanliness (see
-   *  hasPerformanceEvidence in gradeSequence) -- distinct from a real,
-   *  graded, low score. */
+  /** Was the performance continuous, without unnatural gaps or stopping and going back? */
+  continuity?: number | null;
+  /** Backwards-compatibility alias for continuity */
   cleanliness: number | null;
   /** Weighted combination, 0-5. Always a number: Pitch alone is enough to
-   *  anchor the weighted mean even when Timing and/or Cleanliness are null. */
+   *  anchor the weighted mean even when Rhythm and/or Continuity are null. */
   overall: number;
 }
 
@@ -1206,18 +1205,26 @@ export function passesOverallScore(overall: number): boolean {
  */
 export function calculateOverallScore(
   pitch: number,
-  timing: number | null,
-  cleanliness: number | null,
-  weights: { pitch: number; timing: number; cleanliness: number } = {
-    pitch: 0.5,
-    timing: 0.2,
-    cleanliness: 0.3,
+  rhythmOrTiming: number | null,
+  continuityOrCleanliness: number | null,
+  weights: {
+    pitch: number;
+    rhythm?: number;
+    timing?: number;
+    continuity?: number;
+    cleanliness?: number;
+  } = {
+    pitch: 0.45,
+    rhythm: 0.35,
+    continuity: 0.20,
   },
 ): number {
+  const rWeight = weights.rhythm ?? weights.timing ?? 0.35;
+  const cWeight = weights.continuity ?? weights.cleanliness ?? 0.20;
   const categories = [
     { value: pitch, weight: weights.pitch },
-    ...(timing === null ? [] : [{ value: timing, weight: weights.timing }]),
-    ...(cleanliness === null ? [] : [{ value: cleanliness, weight: weights.cleanliness }]),
+    ...(rhythmOrTiming === null ? [] : [{ value: rhythmOrTiming, weight: rWeight }]),
+    ...(continuityOrCleanliness === null ? [] : [{ value: continuityOrCleanliness, weight: cWeight }]),
   ].filter(({ value, weight }) => Number.isFinite(value) && weight > 0);
   const totalWeight = categories.reduce((sum, category) => sum + category.weight, 0);
   if (totalWeight <= 0) return 0;
@@ -1235,14 +1242,14 @@ export function calculateOverallScore(
 export function capOverallByWeakestCategory(
   weightedOverall: number,
   pitch: number,
-  timing: number | null,
-  cleanliness: number | null,
+  rhythmOrTiming: number | null,
+  continuityOrCleanliness: number | null,
   isMemory = false,
 ): number {
   if (isMemory) return weightedOverall;
-  // Pitch is always graded; only fold Timing/Cleanliness into the floor
+  // Pitch is always graded; only fold Rhythm/Continuity into the floor
   // when they were actually scored (not null for lack of evidence).
-  const visibleCategories = [pitch, timing, cleanliness].filter(
+  const visibleCategories = [pitch, rhythmOrTiming, continuityOrCleanliness].filter(
     (value): value is number => value !== null,
   );
   const visibleCategoryFloor = Math.min(...visibleCategories);
@@ -1340,7 +1347,7 @@ export function gradeSpatialChord(
   );
   const efficiencyScore = secureCleanShape ? 5 : rawEfficiencyScore;
   const pitchScore = scoreToFive(expectedCount === 0 ? 0 : 5 * matched / expectedCount);
-  const cleanlinessScore = detected.length === 0
+  const continuityScore = detected.length === 0
     ? 0
     : scoreToFive(
         5 - performance.wrongRootGuesses * 0.25 - performance.wrongShapeGuesses * 1.05,
@@ -1348,8 +1355,8 @@ export function gradeSpatialChord(
   const overall = calculateOverallScore(
     pitchScore,
     efficiencyScore,
-    cleanlinessScore,
-    { pitch: 0.5, timing: 0.3, cleanliness: 0.2 },
+    continuityScore,
+    { pitch: 0.5, rhythm: 0.3, continuity: 0.2 },
   );
 
   const wrongMidi = detected.filter((note) => !targetMidi.includes(note.midi));
@@ -1401,8 +1408,10 @@ export function gradeSpatialChord(
   return {
     scores: {
       pitch: pitchScore,
+      rhythm: efficiencyScore,
       timing: efficiencyScore,
-      cleanliness: cleanlinessScore,
+      continuity: continuityScore,
+      cleanliness: continuityScore,
       overall,
     },
     passed,
@@ -1422,6 +1431,104 @@ export function gradeSpatialChord(
     spatialChord,
     detail,
   };
+}
+
+/**
+ * Continuity: evaluates smooth forward momentum and unbroken musical flow.
+ *
+ * Grades based on gaps (unnatural freezing/pauses between notes) and
+ * disruptions (stopping and going back, hesitations, and stumbling).
+ */
+export function computeContinuityScore(
+  matches: { expectedIndex: number; time: number; note: DetectedNote }[],
+  extras: ExtraNote[],
+  expectedCount: number,
+  options: GradeOptions,
+): number | null {
+  if (matches.length < 1) return null;
+  if (matches.length === 1 && expectedCount > 1) return null;
+  if (matches.length === 1 && expectedCount === 1) {
+    const wrongCount = extras.filter((e) => e.kind === 'wrong' || e.kind === 'hesitation').length;
+    return scoreToFive(Math.max(0, 5 - wrongCount * 0.5));
+  }
+
+  const { plan } = options;
+  const secondsPerBeat = plan?.secondsPerBeat ?? 0.75;
+  let penalty = 0;
+
+  // 1. Gaps: detect unnatural pauses or freezing between consecutive matched notes
+  for (let i = 1; i < matches.length; i++) {
+    const prevMatch = matches[i - 1];
+    const curMatch = matches[i];
+
+    // Simultaneous notes (e.g. chord tones or unisons on the same beat)
+    if (plan && plan.expectedNotes[prevMatch.expectedIndex] && plan.expectedNotes[curMatch.expectedIndex]) {
+      const prevBeat = plan.expectedNotes[prevMatch.expectedIndex].beat;
+      const curBeat = plan.expectedNotes[curMatch.expectedIndex].beat;
+      if (curBeat === prevBeat) {
+        continue;
+      }
+    }
+
+    // Expected gap in beats
+    let expectedGapBeats = 1;
+    if (plan && plan.expectedNotes[prevMatch.expectedIndex] && plan.expectedNotes[curMatch.expectedIndex]) {
+      expectedGapBeats = Math.max(
+        0.1,
+        plan.expectedNotes[curMatch.expectedIndex].beat - plan.expectedNotes[prevMatch.expectedIndex].beat,
+      );
+    }
+
+    // Give leeway for Anchor & Shift hand movements
+    const shiftSplit = plan?.timedShift?.splitIndex ?? options.anchorShift?.splitIndex;
+    if (
+      options.anchorShift &&
+      shiftSplit !== undefined &&
+      prevMatch.expectedIndex < shiftSplit &&
+      curMatch.expectedIndex >= shiftSplit
+    ) {
+      expectedGapBeats += options.anchorShift.allowedExtraBeats;
+    }
+
+    const playedGapSeconds = Math.max(0, curMatch.time - prevMatch.time);
+    const playedGapBeats = playedGapSeconds / secondsPerBeat;
+    const excessPauseBeats = Math.max(0, playedGapBeats - expectedGapBeats);
+
+    // Expressive tolerance: up to 0.65 beats of lag / expressive breath is tolerated before penalizing
+    if (excessPauseBeats > 0.65) {
+      const gapPenalty = Math.min(2.5, (excessPauseBeats - 0.65) * 0.85);
+      penalty += gapPenalty;
+    }
+  }
+
+  // 2. Stopping and going back / backtracks in expected note progression
+  for (let i = 1; i < matches.length; i++) {
+    const prevMatch = matches[i - 1];
+    const curMatch = matches[i];
+    if (plan && plan.expectedNotes[prevMatch.expectedIndex] && plan.expectedNotes[curMatch.expectedIndex]) {
+      if (plan.expectedNotes[curMatch.expectedIndex].beat === plan.expectedNotes[prevMatch.expectedIndex].beat) {
+        continue;
+      }
+    }
+    if (curMatch.expectedIndex < prevMatch.expectedIndex) {
+      penalty += 0.95;
+    }
+  }
+
+  // 3. Hesitations, stumbles, and retried notes
+  const hesitations = extras.filter((e) => e.kind === 'hesitation').length;
+  const wrongNotes = extras.filter((e) => e.kind === 'wrong').length;
+  const matchedMidis = new Set(matches.map((m) => m.note.midi));
+  const repeatedPastNotes = extras.filter(
+    (e) => e.kind === 'repeat' && matchedMidis.has(e.midi),
+  ).length;
+
+  penalty += hesitations * 0.85;
+  penalty += wrongNotes * 1.05;
+  const excessRepeats = Math.max(0, repeatedPastNotes - Math.max(1, Math.floor(expectedCount * 0.25)));
+  penalty += excessRepeats * 0.5;
+
+  return scoreToFive(Math.max(0, 5 - penalty));
 }
 
 /**
@@ -1695,17 +1802,18 @@ export function gradeSequence(
         // Preserve the established human-performance full-credit pocket, but
         // make errors outside it grow in subdivision units. This catches a
         // rushed pair of eighths without punishing ordinary expressive push.
-        const attackTimingError = timingProfile.fullCreditOnsetWindow + Math.max(
+        const fullCreditOnset = timingProfile.fullCreditOnsetWindow * 1.15;
+        const attackTimingError = fullCreditOnset + Math.max(
           0,
-          rawAttackTimingError - timingProfile.fullCreditOnsetWindow,
+          rawAttackTimingError - fullCreditOnset,
         ) * subdivisionSensitivity;
         const onsetScoringRange = Math.max(
           0.01,
-          timingProfile.zeroScoreWindow - timingProfile.fullCreditOnsetWindow,
+          timingProfile.zeroScoreWindow - fullCreditOnset,
         );
         const gradedOnsetError = Math.max(
           0,
-          attackTimingError - timingProfile.fullCreditOnsetWindow,
+          attackTimingError - fullCreditOnset,
         );
         let onsetScore = 5 * Math.pow(
           Math.max(0, 1 - gradedOnsetError / onsetScoringRange),
@@ -1727,7 +1835,7 @@ export function gradeSequence(
           return Math.abs((time - options.playStartTime) / options.plan.secondsPerBeat - slot.beat) >
             Math.max(0.35, timingProfile.onBeatWindow + timingProfile.startOffsetAllowance);
         }).length;
-        onsetScore = Math.min(onsetScore, 5 - clearlyOffBeat / Math.max(1, matches.length) * 1.75);
+        onsetScore = Math.min(onsetScore, 5 - clearlyOffBeat / Math.max(1, matches.length) * 1.25);
         // A steady pulse can still be steadily off the beat. Its interval
         // error is near zero, so the blended attack metric alone is too kind.
         // Apply an absolute-phase ceiling only to that specific case; uneven
@@ -1773,11 +1881,6 @@ export function gradeSequence(
         );
         return clamp5(onsetScore * 0.74 + durationScore * 0.26);
       })();
-  const completePitch =
-    matches.length === expectedCount &&
-    totalMissed === 0;
-  const cleanPerformance = significantExtraCount === 0;
-  const completeAndClean = completePitch && cleanPerformance;
   // One room artefact is not a performance. Timing and Cleanliness need a
   // minimum amount of played musical evidence before either can earn credit.
   const minimumPerformanceMatches = Math.min(
@@ -1880,31 +1983,21 @@ export function gradeSequence(
   // perfect for the identical take. Applying the same allowance keeps
   // genuinely excessive repeat-chatter (beyond the allowance) costly,
   // without an unearned cliff to zero for ordinary re-triggers.
-  const significantCleanlinessExtraCount = hard + hesitations * 0.75 + excessiveRepeatPitchErrors;
-  const cleanScore =
-    !hasPerformanceEvidence
-      ? null
-      : completeAndClean
-        // Quiet-room recoveries, sympathetic resonance, and harmless
-        // detector debris are not student mistakes. A complete ordered take
-        // with no wrong key or hesitation must display the earned 5.0.
-        ? 5
-        // Only confident, uncorrected wrong-key strikes should materially
-        // affect Cleanliness. Echoes, resonances, faint detections and quick
-        // self-corrections must not make a correct take look dirty.
-        : clamp5(5 - (polyphonicTake
-          ? 5 * significantCleanlinessExtraCount / Math.max(1, expectedCount)
-          : 1.3 * significantCleanlinessExtraCount));
+  const rhythmScore = timingScore;
+  const continuityScore = !hasPerformanceEvidence
+    ? null
+    : computeContinuityScore(matches, extras, expectedCount, options);
 
   // Pitch carries the most weight: this app exists to verify hand position.
-  const wPitch = isMemory ? 0.7 : 0.43;
-  const wTiming = isMemory ? 0.15 : 0.42;
-  const wClean = 0.15;
+  // Balanced weights across categories: Pitch 0.45, Rhythm 0.35, Continuity 0.20
+  const wPitch = isMemory ? 0.7 : 0.45;
+  const wRhythm = isMemory ? 0.15 : 0.35;
+  const wContinuity = isMemory ? 0.15 : 0.20;
   const weightedOverall = calculateOverallScore(
     pitchScore,
-    timingScore,
-    cleanScore,
-    { pitch: wPitch, timing: wTiming, cleanliness: wClean },
+    rhythmScore,
+    continuityScore,
+    { pitch: wPitch, rhythm: wRhythm, continuity: wContinuity },
   );
   // On ordinary performance drills a seriously weak visible category cannot
   // be averaged away by two high ones. Memory keeps its separate pitch-led
@@ -1912,21 +2005,13 @@ export function gradeSequence(
   const weaknessAwareOverall = capOverallByWeakestCategory(
     weightedOverall,
     pitchScore,
-    timingScore,
-    cleanScore,
+    rhythmScore,
+    continuityScore,
     isMemory,
   );
-  // Use the same allowance-adjusted count Cleanliness itself now uses
-  // (significantCleanlinessExtraCount), not the raw, zero-allowance
-  // significantExtraCount -- otherwise this cap contradicted the visible
-  // breakdown outright: reproduced empirically (scripts-testsuite/unit-
-  // grade-repro.mjs) that a handful of benign, allowance-covered "repeat"
-  // extras left Pitch/Timing/Cleanliness all showing a perfect 5.0/5.0/5.0
-  // while Overall was still hard-capped at 4.1, which makes no visible
-  // sense to a student and is the same "confident but unearned number"
-  // problem as the categories themselves. Genuine excess extras (beyond
-  // the same allowance already applied to Cleanliness) still trip this.
-  const extraNoteCap = significantCleanlinessExtraCount >= 0.7 ? 4.1 : 5;
+  // Only cap when an extra note or hesitation occurred; preserve up to 4.1 for minor blemishes
+  const significantDisruption = hard + hesitations * 0.75 + excessiveRepeatPitchErrors;
+  const extraNoteCap = significantDisruption >= 0.7 ? 4.1 : 5;
   const overall = Math.min(
     extraNoteCap,
     weaknessAwareOverall,
@@ -1934,8 +2019,10 @@ export function gradeSequence(
 
   const scores: ScoreBreakdown = {
     pitch: pitchScore,
-    timing: timingScore,
-    cleanliness: cleanScore,
+    rhythm: rhythmScore,
+    timing: rhythmScore,
+    continuity: continuityScore,
+    cleanliness: continuityScore,
     overall,
   };
 
@@ -2000,7 +2087,7 @@ export function gradeSequence(
       ? `Extra note (${wrong.name}) that is not in the exercise.`
       : 'Extra notes that are not in the exercise.';
   } else {
-    detail = 'Too many stumbles to count as clean. Try it again.';
+    detail = 'Keep a steady flow without stopping or going back. Try it again.';
   }
 
   return {
