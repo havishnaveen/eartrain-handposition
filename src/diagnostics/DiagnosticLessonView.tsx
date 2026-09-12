@@ -6,6 +6,12 @@ import DiagnosticTip from './DiagnosticTip';
 import { playDiagnosticExample } from './playback';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
 
+const RecordDot = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+    <circle cx="12" cy="12" r="7" fill="currentColor" />
+  </svg>
+);
+
 function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [playing, setPlaying] = useState(false), [heard, setHeard] = useState(false);
   const [answer, setAnswer] = useState<boolean | null>(null), [error, setError] = useState('');
@@ -20,28 +26,96 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     finally { locked.current = false; if (alive.current) setPlaying(false); }
   };
   return <section className="diagnostic-card" aria-label="Listen and judge">
-    <h1>Listen & judge</h1><p>Follow the sheet music while the piano plays.</p>
     <DiagnosticScore question={lesson.question} notation={lesson.notation} highlight={answer !== null} />
-    <button className="et-start" disabled={playing} onClick={() => { void play(); }}>{playing ? 'Playing…' : heard ? 'Play again' : 'Play piano example'}</button>
-    {error && <p role="alert">{error}</p>}
-    <h2>Did the piano play what is written, or was there a mistake?</h2>
-    <div className="diagnostic-choices">
-      <button disabled={!heard || playing || answer !== null} onClick={() => setAnswer(false)}>Sounds Right</button>
-      <button disabled={!heard || playing || answer !== null} onClick={() => setAnswer(true)}>Spot the Mistake</button>
+    <div className="diagnostic-action-area">
+      <div className="et-start-callout" role="note">
+        {playing
+          ? 'Listening to the piano example…'
+          : heard
+            ? (answer !== null ? 'Clue revealed below' : 'Did the piano play what is written, or was there a mistake?')
+            : 'Listen closely to the piano example'}
+      </div>
+      <button
+        type="button"
+        className="et-start"
+        disabled={playing}
+        onClick={() => { void play(); }}
+      >
+        <span className="et-start__dot"><RecordDot /></span>
+        {playing ? 'Playing…' : heard ? 'Play again' : 'Play piano example'}
+      </button>
+      {error && <p role="alert" className="diagnostic-error">{error}</p>}
     </div>
-    {answer !== null && <div className="diagnostic-feedback" role="status"><strong>{answer ? 'Good listening! You spotted it.' : 'Good try. Let’s listen for this clue together.'}</strong><p>{lesson.explanation}</p><p>The orange notes mark where the sound went off track.</p><button className="et-start" disabled={playing} onClick={onNext}>Discover the clue</button></div>}
+
+    <div className="diagnostic-prompt-section">
+      <h2 className="diagnostic-prompt">Did the piano play what is written, or was there a mistake?</h2>
+      <div className="diagnostic-choices">
+        <button
+          type="button"
+          disabled={!heard || playing || answer !== null}
+          aria-pressed={answer === false}
+          onClick={() => setAnswer(false)}
+        >
+          Sounds Right
+        </button>
+        <button
+          type="button"
+          disabled={!heard || playing || answer !== null}
+          aria-pressed={answer === true}
+          onClick={() => setAnswer(true)}
+        >
+          Spot the Mistake
+        </button>
+      </div>
+    </div>
+
+    {answer !== null && <div className="diagnostic-feedback" role="status">
+      <strong>{answer ? 'Good listening! You spotted it.' : 'Good try. Let’s listen for this clue together.'}</strong>
+      <p>{lesson.explanation}</p>
+      <p className="diagnostic-feedback__sub">The orange notes mark where the sound went off track.</p>
+      <div className="diagnostic-action-area diagnostic-action-area--feedback">
+        <div className="et-start-callout" role="note">
+          Ready to discover the clue?
+        </div>
+        <button type="button" className="et-start" disabled={playing} onClick={onNext}>
+          <span className="et-start__dot"><RecordDot /></span>
+          Discover the clue
+        </button>
+      </div>
+    </div>}
   </section>;
 }
+
 function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [choice, setChoice] = useState<number | null>(null);
   const correct = choice === lesson.mcq.correct;
-  return <section className="diagnostic-card"><h1>Discover the clue</h1><h2>{lesson.mcq.prompt}</h2>
+  return <section className="diagnostic-card" aria-label="Discover the clue">
+    <h2 className="diagnostic-prompt">{lesson.mcq.prompt}</h2>
     <DiagnosticTip lesson={lesson} />
-    <div className="diagnostic-choices">{lesson.mcq.choices.map((answer, i) => <button key={answer} disabled={correct} aria-pressed={choice === i} onClick={() => setChoice(i)}>{answer}</button>)}</div>
-    {choice !== null && <p className="diagnostic-feedback" role="status">{correct ? `You’ve got it! ${lesson.mcq.explanation}` : `Nearly! Look at the picture and try another answer. ${lesson.mcq.explanation}`}</p>}
-    {correct && <button className="et-start" onClick={onNext}>Try it on your piano</button>}
+    <div className="diagnostic-choices">
+      {lesson.mcq.choices.map((answer, i) => (
+        <button key={answer} type="button" disabled={correct} aria-pressed={choice === i} onClick={() => setChoice(i)}>
+          {answer}
+        </button>
+      ))}
+    </div>
+    {choice !== null && <div className="diagnostic-feedback" role="status">
+      <p>{correct ? `You’ve got it! ${lesson.mcq.explanation}` : `Nearly! Look at the picture and try another answer. ${lesson.mcq.explanation}`}</p>
+      {correct && (
+        <div className="diagnostic-action-area diagnostic-action-area--feedback">
+          <div className="et-start-callout" role="note">
+            Ready to play it on your piano?
+          </div>
+          <button type="button" className="et-start" onClick={onNext}>
+            <span className="et-start__dot"><RecordDot /></span>
+            Try it on your piano
+          </button>
+        </div>
+      )}
+    </div>}
   </section>;
 }
+
 export default function DiagnosticLessonView({ definition, selectedKey, initialStage, onStandard }: {
   definition: DiagnosticDefinition; selectedKey: DiagnosticKey; initialStage: DiagnosticStage; onStandard: () => void;
 }) {
@@ -50,7 +124,19 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={stage} questionsInLoop={4} lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel="Your practice prescription">
     <div className="diagnostic-flow" data-diagnostic={definition.id} data-stage={stage}>
       <p className="diagnostic-stage-label">{done ? 'Practice complete' : `Stage ${stage} of 4 · ${['Listen & judge', 'Discover the clue', 'Acoustic playthrough', 'Transfer drill'][stage - 1]}`}</p>
-      {done ? <section className="diagnostic-card"><h1>You carried the clue into a new phrase!</h1><p>You played both phrases successfully. Keep using this clue when you read your next piece.</p><button className="et-start" onClick={onStandard}>Return to standard curriculum</button></section> :
+      {done ? <section className="diagnostic-card diagnostic-complete">
+        <h2 className="diagnostic-prompt">You carried the clue into a new phrase!</h2>
+        <p className="diagnostic-complete__p">You played both phrases successfully. Keep using this clue when you read your next piece.</p>
+        <div className="diagnostic-action-area">
+          <div className="et-start-callout" role="note">
+            Ready to return to your lessons
+          </div>
+          <button type="button" className="et-start" onClick={onStandard}>
+            <span className="et-start__dot"><RecordDot /></span>
+            Return to standard curriculum
+          </button>
+        </div>
+      </section> :
         stage === 1 ? <ListenAndJudge lesson={lesson} onNext={() => setStage(2)} /> :
         stage === 2 ? <ConceptQuestion lesson={lesson} onNext={() => setStage(3)} /> :
         <AcousticDrill key={stage} question={stage === 3 ? lesson.question : lesson.transfer} notation={stage === 3 ? lesson.notation : lesson.transferNotation} transfer={stage === 4} onPassed={() => { if (stage === 3) setStage(4); else setDone(true); }} />}

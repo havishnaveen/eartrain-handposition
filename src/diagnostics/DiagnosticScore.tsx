@@ -42,7 +42,7 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, { question: Question; 
     return () => { disposed = true; observer.disconnect(); cancelAnimationFrame(frame); renderer.current = null; element.replaceChildren(); };
   }, [question, notation, highlight]);
   return <div className="diagnostic-score" aria-label={`${question.handScope} hand sheet music`}>
-    <div ref={host} />
+    <div ref={host} className="diagnostic-score__host" />
     {error && <p role="alert">The sheet music could not load. Please refresh before playing.</p>}
   </div>;
 });

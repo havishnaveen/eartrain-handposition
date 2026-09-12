@@ -31,6 +31,12 @@ try {
       assert.equal(await page.$eval('.diagnostic-flow', el => el.dataset.diagnostic), problem);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
       assert.equal(overflow, false, `${problem} overflow at ${width}`);
+      const gap = await page.evaluate(() => {
+        const score = document.querySelector('.diagnostic-score')?.getBoundingClientRect();
+        const btn = document.querySelector('button.et-start')?.getBoundingClientRect();
+        return btn && score ? btn.top - score.bottom : 0;
+      });
+      assert.ok(gap >= 20, `${problem} button overlapping or too close to score at width ${width}: gap=${gap}`);
     }
   }
   await page.goto(`${base}/?diagnosis=octave-displacement&dev=diagnostics`);

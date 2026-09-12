@@ -4,6 +4,7 @@ import DiagnosticNavigator from '../dev/DiagnosticNavigator';
 import type { DiagnosticSelection } from '../dev/DiagnosticNavigator';
 import type { OclefIntegrationSession } from '../integration/oclefBridge';
 import { DIAGNOSTIC_KEYS, DIAGNOSTIC_REGISTRY } from './registry';
+import type { DiagnosticStage } from './registry';
 import DiagnosticLessonView from './DiagnosticLessonView';
 import { diagnosticReferral } from './routing';
 import './diagnostics.css';
@@ -11,14 +12,16 @@ import './diagnostics.css';
 export default function DiagnosticRouter({ session }: { session: OclefIntegrationSession | null }) {
   const launch = session?.launch;
   const referral = useMemo(() => diagnosticReferral(launch, window.location.search), [launch]);
-  const [selection, setSelection] = useState<DiagnosticSelection | null>(() => referral ? { problem: referral.definition.id, key: referral.key.id, stage: 1, revision: 0 } : null);
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const parsedStage = searchParams ? parseInt(searchParams.get('stage') || '', 10) : NaN;
+  const initialStage = (!isNaN(parsedStage) && parsedStage >= 1 && parsedStage <= 4) ? (parsedStage as DiagnosticStage) : 1;
+  const [selection, setSelection] = useState<DiagnosticSelection | null>(() => referral ? { problem: referral.definition.id, key: referral.key.id, stage: initialStage, revision: 0 } : null);
   const [keyError, setKeyError] = useState(referral?.invalidKey);
   const [standardRevision, setStandardRevision] = useState(0);
   const standard = () => { setSelection(null); setKeyError(undefined); setStandardRevision(value => value + 1); };
   const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
   const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
   const tester = import.meta.env.DEV || new URLSearchParams(window.location.search).get('dev') === 'diagnostics';
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const parsedLesson = searchParams ? parseInt(searchParams.get('lesson') || '', 10) : NaN;
   const initialLesson = !isNaN(parsedLesson)
     ? parsedLesson

@@ -1,29 +1,39 @@
-.diagnostic-flow { width: 100%; min-width: 0; padding-bottom: 60px; }
-.diagnostic-stage-label { color: #ef6a47; font-size: .9rem; font-weight: 700; }
-.diagnostic-card { max-width: 100%; min-width: 0; padding: clamp(16px, 3vw, 32px); border-radius: 20px; background: var(--et-surface, #fff); color: #242237; }
-.diagnostic-card h1 { font-size: clamp(1.4rem, 3vw, 2rem); margin: 0 0 12px; }
-.diagnostic-card h2 { font-size: clamp(1.1rem, 2vw, 1.35rem); line-height: 1.4; }
+.diagnostic-flow { width: 100%; max-width: 920px; margin: 0 auto; min-width: 0; padding-bottom: 70px; }
+.diagnostic-stage-label { color: #ef6a47; font-size: .95rem; font-weight: 700; margin: 0 0 16px 4px; letter-spacing: 0.01em; }
+.diagnostic-card { max-width: 100%; min-width: 0; padding: clamp(20px, 4vw, 38px); border-radius: 24px; background: var(--et-surface, #fff); color: var(--et-ink, #242237); box-shadow: var(--et-card-shadow, 0 4px 20px rgba(0, 0, 0, 0.06)); border: 1px solid var(--et-border-subtle, rgba(0, 0, 0, 0.06)); box-sizing: border-box; }
+.diagnostic-prompt-section { margin: 32px 0 20px; text-align: center; }
+.diagnostic-prompt { font-size: clamp(1.2rem, 2.4vw, 1.55rem); font-weight: 700; color: inherit; margin: 0 0 16px; line-height: 1.4; text-align: center; }
 .diagnostic-card p, .diagnostic-tip { line-height: 1.6; }
-.diagnostic-choices { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
-.diagnostic-choices button, .diagnostic-card select { min-height: 52px; padding: 14px 18px; border-radius: 12px; border: 1px solid #d9d6e0; background: #f7f6fa; color: #242237; font: inherit; text-align: left; flex: 1 1 220px; cursor: pointer; max-width: 100%; white-space: normal; }
-.diagnostic-choices button[aria-pressed="true"] { border-color: #ef6a47; background: #fff0e9; }
-.diagnostic-choices button:disabled { opacity: .65; cursor: default; }
+.diagnostic-choices { display: flex; flex-wrap: wrap; gap: 14px; margin: 20px 0 28px; justify-content: center; }
+.diagnostic-choices button, .diagnostic-card select { min-height: 56px; padding: 16px 22px; border-radius: 14px; border: 1px solid #dcd8e4; background: #fbfafd; color: #242237; font: inherit; font-size: 16px; font-weight: 550; text-align: center; flex: 1 1 240px; max-width: 440px; cursor: pointer; transition: all 180ms ease; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03); white-space: normal; box-sizing: border-box; }
+.diagnostic-choices button:hover:not(:disabled) { border-color: #ef6a47; background: #fff8f5; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239, 106, 71, 0.12); }
+.diagnostic-choices button[aria-pressed="true"] { border-color: #ef6a47; background: #fff0e9; box-shadow: 0 0 0 2px rgba(239, 106, 71, 0.25); }
+.diagnostic-choices button:disabled { opacity: .65; cursor: default; transform: none; box-shadow: none; }
 .diagnostic-flow button:focus-visible, .diagnostic-navigator :focus-visible { outline: 3px solid #ef6a47; outline-offset: 3px; }
-.diagnostic-feedback { padding: 16px; margin: 16px 0; background: #fff0e9; border-left: 4px solid #ef6a47; border-radius: 10px; color: #242237; line-height: 1.6; }
-.diagnostic-tip { margin: 20px 0; padding: 20px; background: #f7f6fa; border-radius: 16px; }
+.diagnostic-action-area { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; margin: 28px 0; text-align: center; }
+.diagnostic-action-area--feedback { margin: 20px 0 8px; }
+.diagnostic-action-area .et-start { margin: 0; }
+.diagnostic-error { color: #dc2626; font-size: 14px; font-weight: 500; margin: 8px 0 0; }
+.diagnostic-feedback { padding: 22px 24px; margin: 28px 0; background: #fff5ef; border-left: 4px solid #ef6a47; border-radius: 16px; color: #242237; line-height: 1.6; }
+.diagnostic-feedback strong { display: block; font-size: 1.15rem; margin-bottom: 8px; color: #c2410c; }
+.diagnostic-feedback p { margin: 6px 0; font-size: 16px; }
+.diagnostic-feedback__sub { color: #78716c; font-size: 15px; }
+.diagnostic-tip { margin: 24px 0 32px; padding: 24px; background: #f8f7fb; border-radius: 18px; border: 1px solid #eeebf4; }
 .diagnostic-tip svg { width: min(100%, 380px); display: block; margin: auto; }
 .diagnostic-tip figcaption { margin-top: 15px; }
-.diagnostic-metaphor { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; font-size: clamp(1.4rem, 4vw, 2.3rem); }
+.diagnostic-metaphor { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: clamp(1.4rem, 4vw, 2.3rem); font-weight: 700; }
 .diagnostic-metaphor b { color: #ef6a47; }
-.diagnostic-fingers { display: flex; gap: 5px; }
-.diagnostic-fingers > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: 14px 3px; border: 1px solid #d9d6e0; border-radius: 6px; }
+.diagnostic-fingers { display: flex; gap: 6px; justify-content: center; max-width: 500px; margin: 0 auto; }
+.diagnostic-fingers > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: 14px 4px; border: 1px solid #dcd8e4; border-radius: 8px; }
 .diagnostic-fingers .is-black { background: #242237; color: white; }
 .diagnostic-fingers .is-white { background: white; color: #242237; }
 .diagnostic-fingers b { font-size: 1.5rem; color: #ef6a47; }
-.diagnostic-fingers small { text-align: center; font-size: .65rem; }
-.diagnostic-score { width: 100%; min-width: 0; background: white; border-radius: 12px; overflow-x: auto; }
-.diagnostic-score > div { width: 100%; min-width: 0; }
-.diagnostic-score svg { max-width: 100%; height: auto; }
+.diagnostic-fingers small { text-align: center; font-size: .7rem; }
+.diagnostic-complete { text-align: center; padding: 48px 32px; }
+.diagnostic-complete__p { font-size: 17px; color: #57534e; margin: 12px 0 28px; }
+.diagnostic-score { width: 100%; min-width: 0; min-height: 140px; background: #ffffff; border-radius: 20px; border: 1px solid #e7e5ee; box-shadow: 0 2px 12px rgba(36, 34, 55, 0.04); padding: 24px 28px; margin: 12px 0 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.diagnostic-score__host { width: 100%; min-width: 0; display: flex; justify-content: center; align-items: center; }
+.diagnostic-score svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
 .diagnostic-navigator { position: fixed; bottom: max(10px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 500; width: max-content; max-width: calc(100vw - 24px); color: #fff; background: #242237f5; border: 1px solid #ffffff25; border-radius: 14px; box-shadow: 0 8px 30px #0004; font-size: 12px; }
 .diagnostic-navigator button, .diagnostic-navigator select { font: inherit; color: inherit; background: #ffffff10; border: 1px solid #ffffff25; border-radius: 8px; padding: 9px 12px; min-height: 44px; cursor: pointer; }
 .diagnostic-navigator option { background: #242237; }
@@ -32,3 +42,19 @@
 .diagnostic-navigator label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .diagnostic-navigator small { width: 100%; opacity: .65; }
 .diagnostic-jumps { display: flex; flex-wrap: wrap; gap: 6px; }
+
+:root[data-theme='dark'] .diagnostic-card { background: #1e1b2e; color: #f3f1f8; border-color: rgba(255, 255, 255, 0.08); }
+:root[data-theme='dark'] .diagnostic-score { background: #ffffff; }
+:root[data-theme='dark'] .diagnostic-choices button { background: #262338; color: #f3f1f8; border-color: #3d3856; }
+:root[data-theme='dark'] .diagnostic-choices button:hover:not(:disabled) { background: #322b42; }
+:root[data-theme='dark'] .diagnostic-choices button[aria-pressed="true"] { background: #3c2420; border-color: #f97316; }
+:root[data-theme='dark'] .diagnostic-feedback { background: #2e1a14; color: #fde68a; border-left-color: #f97316; }
+:root[data-theme='dark'] .diagnostic-tip { background: #262338; border-color: #3d3856; }
+:root[data-theme='dark'] .diagnostic-fingers .is-white { background: #262338; color: #f3f1f8; border-color: #3d3856; }
+:root[data-theme='dark'] .diagnostic-complete__p { color: #d6d3d1; }
+
+@media (max-width: 640px) {
+  .diagnostic-score { padding: 16px 10px; margin: 10px 0 24px; }
+  .diagnostic-card { padding: 20px 14px; }
+  .diagnostic-choices button { min-height: 48px; padding: 12px 14px; font-size: 15px; }
+}

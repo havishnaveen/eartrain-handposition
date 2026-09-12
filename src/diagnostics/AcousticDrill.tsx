@@ -19,7 +19,8 @@ export function passesDiagnosticDrill(report: GradeResult, question: Question): 
 export default function AcousticDrill({ question, notation, onPassed, transfer }: {
   question: Question; notation: DiagnosticNotation; onPassed: () => void; transfer: boolean;
 }) {
-  const [status, setStatus] = useState<ExerciseStatus>('position-prompt');
+  const noProof = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('noproof') === '1';
+  const [status, setStatus] = useState<ExerciseStatus>(noProof ? 'prompt' : 'position-prompt');
   const [report, setReport] = useState<GradeResult | null>(null);
   const [detected, setDetected] = useState<DetectedNote[]>([]);
   const [progress, setProgress] = useState(0), [starting, setStarting] = useState(false);
