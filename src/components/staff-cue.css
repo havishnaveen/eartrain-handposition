@@ -139,3 +139,14 @@
   stroke-width: 3px;
   stroke-linejoin: round;
 }
+
+/* Suppress any measure numbers injected by OSMD or VexFlow to prevent
+   collision with fingering numbers or appearing as floating numbers. */
+.measure-number,
+[class*="measure-number"],
+.vf-text.measure-number {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

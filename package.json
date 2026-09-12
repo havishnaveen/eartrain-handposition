@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "audit:curriculum": "node scripts/audit-curriculum.mjs",
     "audit:late-chords": "node scripts/audit-late-standard-chords.mjs",
+    "audit:measure-numbers": "node scripts/audit-measure-numbers.mjs",
     "audit:audio": "node scripts/audit-pitch-processor.mjs && node scripts/audit-chord-processor.mjs && node scripts/audit-chord-transport.mjs",
     "audit:score": "node scripts/audit-score-analyzer.mjs && node scripts/audit-pcm-capture.mjs && node scripts/audit-live-regressions.mjs",
     "audit:production": "node scripts/audit-production.mjs",

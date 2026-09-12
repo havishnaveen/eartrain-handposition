@@ -592,11 +592,15 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       drawCredits: false,
       drawPartNames: false,
       drawPartAbbreviations: false,
+      drawMeasureNumbers: false,
     });
 
     const rules = (osmd as any).EngravingRules || (osmd as any).rules;
     if (rules) {
       rules.FingeringPositionFromXML = true;
+      rules.RenderMeasureNumbers = false;
+      rules.RenderMeasureNumbersOnlyAtSystemStart = false;
+      rules.MeasureNumberInterval = 0;
     }
 
     osmd.load(xml).then(() => {
@@ -605,6 +609,10 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
 
       const svg = container.querySelector('svg') as SVGSVGElement | null;
       if (!svg) return;
+
+      // Practice cues must never display measure numbers (which collide with
+      // fingering numbers and look like floating/levitating fingerings).
+      svg.querySelectorAll('.measure-number, [class*="measure-number"]').forEach((el) => el.remove());
 
       svg.setAttribute('role', 'img');
       svg.setAttribute('focusable', 'false');
