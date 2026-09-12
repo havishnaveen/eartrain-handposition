@@ -80,21 +80,26 @@ function sanitizeApiUrl(value: unknown, fallback: string): string {
   }
 }
 
-function parseLaunch(value: unknown): ResolvedStudentLaunch | null {
+function referralText(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= 120 ? value.trim() : undefined;
+}
+
+export function parseLaunch(value: unknown): ResolvedStudentLaunch | null {
   if (!isRecord(value)) return null;
   const assignmentValue = value.assignment;
   let assignment: ResolvedStudentLaunch['assignment'] = null;
   if (assignmentValue !== null && assignmentValue !== undefined) {
-    if (!isRecord(assignmentValue) || !isRemediationProblem(assignmentValue.problem)) return null;
+    if (!isRecord(assignmentValue) || !referralText(assignmentValue.problem)) return null;
     if (typeof assignmentValue.id !== 'string' || assignmentValue.id.length < 1) return null;
     const recommended = Number(assignmentValue.recommendedLessonIndex);
     const questionCap = Number(assignmentValue.questionCap);
     assignment = {
       id: assignmentValue.id,
-      problem: assignmentValue.problem,
+      problem: referralText(assignmentValue.problem)!,
+      ...(referralText(assignmentValue.key) ? { key: referralText(assignmentValue.key) } : {}),
       recommendedLessonIndex: Number.isInteger(recommended)
         ? Math.min(24, Math.max(1, recommended))
-        : openingLessonForProblem(assignmentValue.problem),
+        : isRemediationProblem(assignmentValue.problem) ? openingLessonForProblem(assignmentValue.problem) : 1,
       ...(Number.isInteger(questionCap) && questionCap > 0
         ? { questionCap: Math.min(216, questionCap) }
         : {}),
@@ -131,6 +136,9 @@ function parseLaunch(value: unknown): ResolvedStudentLaunch | null {
     externalSubject: value.externalSubject,
     sourceApp: 'reading.oclef.com',
     assignment,
+    ...(referralText(value.diagnosticReason) ? { diagnosticReason: referralText(value.diagnosticReason) } : {}),
+    ...(referralText(value.diagnosticCode) ? { diagnosticCode: referralText(value.diagnosticCode) } : {}),
+    ...(referralText(value.key) ? { key: referralText(value.key) } : {}),
     checkpoint,
   };
 }

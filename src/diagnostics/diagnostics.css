@@ -1,0 +1,34 @@
+.diagnostic-flow { width: 100%; min-width: 0; padding-bottom: 60px; }
+.diagnostic-stage-label { color: #ef6a47; font-size: .9rem; font-weight: 700; }
+.diagnostic-card { max-width: 100%; min-width: 0; padding: clamp(16px, 3vw, 32px); border-radius: 20px; background: var(--et-surface, #fff); color: #242237; }
+.diagnostic-card h1 { font-size: clamp(1.4rem, 3vw, 2rem); margin: 0 0 12px; }
+.diagnostic-card h2 { font-size: clamp(1.1rem, 2vw, 1.35rem); line-height: 1.4; }
+.diagnostic-card p, .diagnostic-tip { line-height: 1.6; }
+.diagnostic-choices { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.diagnostic-choices button, .diagnostic-card select { min-height: 52px; padding: 14px 18px; border-radius: 12px; border: 1px solid #d9d6e0; background: #f7f6fa; color: #242237; font: inherit; text-align: left; flex: 1 1 220px; cursor: pointer; max-width: 100%; white-space: normal; }
+.diagnostic-choices button[aria-pressed="true"] { border-color: #ef6a47; background: #fff0e9; }
+.diagnostic-choices button:disabled { opacity: .65; cursor: default; }
+.diagnostic-flow button:focus-visible, .diagnostic-navigator :focus-visible { outline: 3px solid #ef6a47; outline-offset: 3px; }
+.diagnostic-feedback { padding: 16px; margin: 16px 0; background: #fff0e9; border-left: 4px solid #ef6a47; border-radius: 10px; color: #242237; line-height: 1.6; }
+.diagnostic-tip { margin: 20px 0; padding: 20px; background: #f7f6fa; border-radius: 16px; }
+.diagnostic-tip svg { width: min(100%, 380px); display: block; margin: auto; }
+.diagnostic-tip figcaption { margin-top: 15px; }
+.diagnostic-metaphor { display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; font-size: clamp(1.4rem, 4vw, 2.3rem); }
+.diagnostic-metaphor b { color: #ef6a47; }
+.diagnostic-fingers { display: flex; gap: 5px; }
+.diagnostic-fingers > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: 14px 3px; border: 1px solid #d9d6e0; border-radius: 6px; }
+.diagnostic-fingers .is-black { background: #242237; color: white; }
+.diagnostic-fingers .is-white { background: white; color: #242237; }
+.diagnostic-fingers b { font-size: 1.5rem; color: #ef6a47; }
+.diagnostic-fingers small { text-align: center; font-size: .65rem; }
+.diagnostic-score { width: 100%; min-width: 0; background: white; border-radius: 12px; overflow-x: auto; }
+.diagnostic-score > div { width: 100%; min-width: 0; }
+.diagnostic-score svg { max-width: 100%; height: auto; }
+.diagnostic-navigator { position: fixed; bottom: max(10px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 500; width: max-content; max-width: calc(100vw - 24px); color: #fff; background: #242237f5; border: 1px solid #ffffff25; border-radius: 14px; box-shadow: 0 8px 30px #0004; font-size: 12px; }
+.diagnostic-navigator button, .diagnostic-navigator select { font: inherit; color: inherit; background: #ffffff10; border: 1px solid #ffffff25; border-radius: 8px; padding: 9px 12px; min-height: 44px; cursor: pointer; }
+.diagnostic-navigator option { background: #242237; }
+.diagnostic-navigator-toggle { width: 100%; color: #ef6a47 !important; }
+.diagnostic-navigator #diagnostic-controls { padding: 12px; display: flex; gap: 8px; flex-wrap: wrap; max-width: 760px; max-height: 55vh; overflow: auto; }
+.diagnostic-navigator label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.diagnostic-navigator small { width: 100%; opacity: .65; }
+.diagnostic-jumps { display: flex; flex-wrap: wrap; gap: 6px; }

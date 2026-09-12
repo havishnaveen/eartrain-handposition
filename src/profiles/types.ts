@@ -1,5 +1,4 @@
 import type { AttemptRecord } from '../curriculum/telemetry';
-import type { RemediationProblem } from '../curriculum/types';
 
 /** Versioned separately from the curriculum and database schema. */
 export const LEARNING_DATA_SCHEMA_VERSION = 1 as const;
@@ -41,7 +40,7 @@ export interface PracticeSessionRecord {
   /** External launch provenance; absent for ordinary local practice. */
   launchId?: string;
   assignmentId?: string;
-  remediationProblem?: RemediationProblem;
+  remediationProblem?: string;
 }
 
 export interface StudentAttemptRecord {
@@ -118,7 +117,9 @@ export interface LearningDataState {
 
 export interface RemediationAssignment {
   id: string;
-  problem: RemediationProblem;
+  /** Validated referral code; may name a registry diagnostic or a core skill. */
+  problem: string;
+  key?: string;
   /** Server-selected entry point after considering prior Oclef progress. */
   recommendedLessonIndex: number;
   questionCap?: number;
@@ -138,6 +139,9 @@ export interface ResolvedStudentLaunch {
   externalSubject: string;
   sourceApp: PracticeSessionRecord['sourceApp'];
   assignment: RemediationAssignment | null;
+  diagnosticReason?: string;
+  diagnosticCode?: string;
+  key?: string;
   /** Optional cross-app checkpoint chosen by the trusted exchange service. */
   checkpoint?: {
     lessonIndex: number;
