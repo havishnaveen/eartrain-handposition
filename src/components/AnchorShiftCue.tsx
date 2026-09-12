@@ -124,17 +124,17 @@ export const AnchorShiftCue = forwardRef<StaffCueHandle, AnchorShiftCueProps>(
 
         <div
           className="et-anchor-cue__rest-bar"
-          aria-label="One 4/4 rest measure: shift on beats 1 and 2, settle on beats 3 and 4"
+          aria-label="One 4/4 rest measure in the middle: switch hand positions and get ready"
         >
-          <b>Shift during this rest measure</b>
+          <b>Switch hand positions during this rest measure</b>
           <span className="et-anchor-cue__rest-staff" aria-hidden="true">
             <i /><i /><i /><i /><i />
             <em />
             <strong />
           </span>
           <span className="et-anchor-cue__rest-counts" aria-hidden="true">
-            <b>1<small>move</small></b><b>2<small>move</small></b>
-            <b>3<small>set</small></b><b>4<small>set</small></b>
+            <b>1</b><b>2</b>
+            <b>3</b><b>4</b>
           </span>
         </div>
 

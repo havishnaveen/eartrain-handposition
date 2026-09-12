@@ -79,8 +79,8 @@ const exerciseView = readFileSync(new URL('components/ExerciseView.tsx', sourceR
 if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
   throw new Error('Spatial chord rendering can bypass the universal position gate.');
 }
-if (!exerciseView.includes('Shift on 1–2, set the hand on 3–4')) {
-  throw new Error('The hand-shift cue lost its four-beat musical instruction.');
+if (!exerciseView.includes('Use the rest measure in the middle to switch hand positions and get ready')) {
+  throw new Error('The hand-shift cue lost its middle-rest transition instruction.');
 }
 if (!exerciseView.includes('et-spatial__reference-label">Reference') ||
     !exerciseView.includes('Use the reference shape and the distance you heard') ||

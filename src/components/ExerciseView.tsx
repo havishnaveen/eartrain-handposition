@@ -603,8 +603,8 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     const showPieceProgress = status === 'listening';
     const startCalloutText = exerciseMode === 'anchor-shift'
       ? (shiftWaitBeats > 0
-          ? 'Start playing after the two measure count in. Shift on 1–2, set the hand on 3–4, then play.'
-          : 'Start playing after the two measure count in. Shift hand during the rest.')
+          ? 'Start playing after the two measure count in. Use the rest measure in the middle to switch hand positions and get ready.'
+          : 'Start playing after the two measure count in. Use the rest in the middle to switch hand positions and get ready.')
       : exerciseMode === 'blind-memory'
         ? 'Study the pattern now. Start playing after the two measure count in.'
         : 'Start playing after the two measure count in';
