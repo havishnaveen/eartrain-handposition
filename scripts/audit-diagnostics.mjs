@@ -8,7 +8,7 @@ try {
   const { diagnosticMusicXML } = await server.ssrLoadModule('/src/diagnostics/notation.ts');
   const { parseLaunch } = await server.ssrLoadModule('/src/integration/oclefBridge.ts');
   const { gradeSequence, pitchToMidi, planForQuestion } = await server.ssrLoadModule('/src/audio/timing.ts');
-  const { passesDiagnosticDrill } = await server.ssrLoadModule('/src/diagnostics/AcousticDrill.tsx');
+  const { passesDiagnosticDrill, isClefTranspositionMistake } = await server.ssrLoadModule('/src/diagnostics/AcousticDrill.tsx');
   assert.equal(DIAGNOSTIC_REGISTRY.length, 6);
   assert.equal(DIAGNOSTIC_KEYS.length, 24);
   assert.equal(new Set(DIAGNOSTIC_KEYS.map(k => k.id)).size, 24);
@@ -78,5 +78,20 @@ try {
   assert.match(diagnosticMusicXML(octave.question, octave.notation), /octave-shift type="down"/);
   const clef = DIAGNOSTIC_REGISTRY.find(d => d.id === 'mid-line-clef-change').create(DIAGNOSTIC_KEYS[0]);
   assert.match(diagnosticMusicXML(clef.question, clef.notation), /<\/note><attributes><clef><sign>G/);
-  console.log('Diagnostic audit passed: six problems, 24 keys, handoff parsing, routing, notation, correct/incorrect takes and transfer gates.');
+
+  // Clef transposition 40%+ threshold verification:
+  const bassSeq = ['C3', 'E3', 'G3', 'A3'];
+  const fullWrongClef = ['A4', 'C5', 'E5', 'F5'].map(p => ({ midi: pitchToMidi(p) }));
+  const halfWrongClef = ['A4', 'C5', 'D2', 'F2'].map(p => ({ midi: pitchToMidi(p) }));
+  const quarterWrongClef = ['A4', 'D2', 'F2', 'B2'].map(p => ({ midi: pitchToMidi(p) }));
+  const botchedNotes = ['D2', 'F#2', 'G#2', 'B2'].map(p => ({ midi: pitchToMidi(p) }));
+  const correctNotes = ['C3', 'E3', 'G3', 'A3'].map(p => ({ midi: pitchToMidi(p) }));
+
+  assert.equal(isClefTranspositionMistake(bassSeq, fullWrongClef, 'bass'), true, '100% wrong clef notes must trigger clef error');
+  assert.equal(isClefTranspositionMistake(bassSeq, halfWrongClef, 'bass'), true, '50% (>= 40%) wrong clef notes must trigger clef error');
+  assert.equal(isClefTranspositionMistake(bassSeq, quarterWrongClef, 'bass'), false, '25% (< 40%) wrong clef notes must NOT trigger clef error');
+  assert.equal(isClefTranspositionMistake(bassSeq, botchedNotes, 'bass'), false, 'Botched notes must NOT trigger clef error');
+  assert.equal(isClefTranspositionMistake(bassSeq, correctNotes, 'bass'), false, 'Correct bass notes must NOT trigger clef error');
+
+  console.log('Diagnostic audit passed: six problems, 24 keys, handoff parsing, routing, notation, correct/incorrect takes, 40%+ clef error threshold and transfer gates.');
 } finally { await server.close(); }
