@@ -275,7 +275,7 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
   function ExerciseView(
     {
       status,
-      instruction,
+      instruction: _instruction,
       exerciseMode,
       positionProof,
       blindMemory,
@@ -599,16 +599,15 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     const hideUntilStart = status === 'prompt' && exerciseMode !== 'standard';
     const memoryPreviewSeconds = blindMemory?.previewSeconds ?? 6;
     const shiftWaitBeats = anchorShift?.timedShift?.waitBeats ?? 0;
-    const isChordReading = exerciseMode === 'standard' && /stacked chord/i.test(instruction);
     const memoryDigit = Math.max(0, Math.ceil(memorySecondsRemaining));
     const showPieceProgress = status === 'listening';
-    const visibleInstruction = isBlindMemory
-      ? status === 'memory-preview'
-        ? 'Find the pattern and remember it.'
-        : ''
-      : exerciseMode === 'anchor-shift'
-        ? status === 'prompt' ? '' : 'Play, move, continue.'
-        : instruction;
+    const startCalloutText = exerciseMode === 'anchor-shift'
+      ? (shiftWaitBeats > 0
+          ? 'Start playing after the two measure count in. Shift on 1–2, set the hand on 3–4, then play.'
+          : 'Start playing after the two measure count in. Shift hand during the rest.')
+      : exerciseMode === 'blind-memory'
+        ? 'Study the pattern now. Start playing after the two measure count in.'
+        : 'Start playing after the two measure count in';
 
     return (
       <section className={`et-exercise et-exercise--${status} et-exercise--mode-${exerciseMode}`}>
@@ -618,29 +617,6 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
             onAcknowledge={onAcknowledgeOrientation}
           />
         ) : null}
-        <span className="et-mode-chip et-mode-chip--inline">
-          {exerciseMode === 'blind-memory'
-            ? 'Remember it'
-            : exerciseMode === 'anchor-shift'
-              ? 'Move your hand'
-              : isChordReading
-                ? 'Read melody + chords'
-                : 'Play the phrase'}
-        </span>
-        {isBlindMemory ? (
-          <div className="et-kid-steps" aria-label="Remember it steps">
-            <span className={status === 'prompt' || status === 'memory-preview' ? 'is-active' : 'is-done'}><b>1</b> Look</span>
-            <span className={status === 'leadin' ? 'is-active' : status === 'listening' ? 'is-done' : ''}><b>2</b> Hide</span>
-            <span className={status === 'listening' ? 'is-active' : ''}><b>3</b> Play</span>
-          </div>
-        ) : exerciseMode === 'anchor-shift' ? (
-          <div className="et-kid-steps et-kid-steps--shift" aria-label="Timed hand switch steps">
-            <span className={status === 'prompt' || status === 'leadin' ? 'is-active' : ''}><b>1</b> Play</span>
-            <span><b>2</b> Move</span>
-            <span><b>3</b> Continue</span>
-          </div>
-        ) : null}
-        {visibleInstruction ? <p className="et-instruction">{visibleInstruction}</p> : null}
 
         <div
           className={`et-piece-progress${showPieceProgress ? ' et-piece-progress--live' : ' et-piece-progress--waiting'}`}
@@ -677,6 +653,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
         <div className="et-well" aria-live="polite">
           <div className={`et-panel${status === 'prompt' ? ' et-panel--on' : ''}`} aria-hidden={status !== 'prompt'}>
+            <div className="et-start-callout" role="note">
+              {startCalloutText}
+            </div>
             <button
               type="button"
               className="et-start"
@@ -687,13 +666,9 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
               <span className="et-start__dot"><RecordDot /></span>
               {startLabel}
             </button>
-            {micMessage || exerciseMode === 'anchor-shift' ? (
+            {micMessage ? (
               <p className={`et-panel__sub${micBlocked ? ' et-panel__sub--alert' : ''}`}>
-                {micMessage ?? (
-                  shiftWaitBeats > 0
-                    ? 'Shift on 1–2, set the hand on 3–4, then play.'
-                    : 'Move when the arrow lights up.'
-                )}
+                {micMessage}
               </p>
             ) : null}
           </div>
