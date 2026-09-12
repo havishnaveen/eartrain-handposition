@@ -134,7 +134,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
       </p>
     )}
     {status === 'report' && !passed && isClefError && forcedErrorMessage && !forcedDismissed && (
-      <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-error-title">
+      <div className="diagnostic-forced-overlay diagnostic-forced-overlay--center" role="alertdialog" aria-modal="true" aria-labelledby="forced-error-title">
         <div className="diagnostic-forced-card">
           <DiagnosticScore question={question} notation={notation} enlarged={true} highlightClef={true} />
           <h3 id="forced-error-title" className="diagnostic-forced-title">Check the clef</h3>
