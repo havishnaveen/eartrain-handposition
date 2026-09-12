@@ -28,6 +28,13 @@ export interface DiagnosticNotation {
   fifths?: number;
   mistakeIndices: readonly number[];
 }
+export interface WrongClefRound {
+  question: Question;
+  notation: DiagnosticNotation;
+  wrongClefPitches: readonly string[];
+  explanation: string;
+}
+
 export interface DiagnosticLesson {
   title: string;
   focus: string;
@@ -41,6 +48,8 @@ export interface DiagnosticLesson {
   mcq: { prompt: string; choices: readonly string[]; correct: number; explanation: string };
   tip: { kind: 'clef' | 'octave' | 'barline' | 'keyboard' | 'clef-change' | 'crossing'; text: string };
   key?: DiagnosticKey;
+  wrongClefRounds?: readonly WrongClefRound[];
+  forcedErrorMessage?: string;
 }
 export interface DiagnosticDefinition {
   id: string;
@@ -85,10 +94,48 @@ function base(id: string, title: string, pitches: string[], transfer: string[], 
     explanation: '', mcq: { prompt: '', choices: [], correct: 0, explanation: '' }, tip: { kind: 'clef', text: '' } };
 }
 function clefSwap(): DiagnosticLesson {
-  const lesson = base('clef-transposition', 'The clef detective', ['C3', 'E3', 'G3', 'A3'], ['C3', 'G3', 'A3', 'E3'], ['C3', 'E3', 'G3', 'F3'], 'left');
-  lesson.explanation = 'The last note should be A. The piano took a wrong turn to F. Check the bass clef before reading the lines!';
-  lesson.mcq = { prompt: 'Why did that last note sound like a wrong turn?', choices: ['The piano needed to be louder.', 'The pianist read the bass clef like a treble clef!', 'Every last note must be C.'], correct: 1, explanation: 'Each clef gives the lines different note names.' };
-  lesson.tip = { kind: 'clef', text: 'Bass clef is the F-clef! Its two dots hug the F line. The top line is A.' };
+  const r1Pitches = ['C3', 'E3', 'G3', 'A3'];
+  const r1Wrong = ['A4', 'C5', 'E5', 'F5'];
+  const r2Pitches = ['C3', 'G3', 'A3', 'E3'];
+  const r2Wrong = ['A4', 'E5', 'F5', 'C5'];
+  const r3Pitches = ['F3', 'E3', 'D3', 'C3'];
+  const r3Wrong = ['D5', 'C5', 'B4', 'A4'];
+
+  const lesson = base('clef-transposition', 'The clef detective', r1Pitches, r2Pitches, r1Wrong, 'left');
+  lesson.explanation = 'Every note was played in the wrong clef! The bass clef gives lines and spaces completely different note names than the treble clef.';
+  lesson.wrongClefRounds = [
+    {
+      question: question('clef-transposition/round-1', r1Pitches, 'left', [5, 3, 2, 1]),
+      notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
+      wrongClefPitches: r1Wrong,
+      explanation: 'Every note was played in the wrong clef. The pianist read the bass clef lines as if they were treble clef.',
+    },
+    {
+      question: question('clef-transposition/round-2', r2Pitches, 'left', [5, 2, 1, 3]),
+      notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
+      wrongClefPitches: r2Wrong,
+      explanation: 'Again, the entire sequence was played in the wrong clef — reading bass clef spaces as treble spaces.',
+    },
+    {
+      question: question('clef-transposition/round-3', r3Pitches, 'left', [2, 3, 4, 5]),
+      notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
+      wrongClefPitches: r3Wrong,
+      explanation: 'The whole descending line was read using treble clef instead of bass clef.',
+    },
+  ];
+  lesson.mcq = {
+    prompt: 'Across the past few exercises, what mistake was being made each time?',
+    choices: [
+      'The pianist read the bass clef notes as if they were in treble clef.',
+      'The hand shifted into the wrong starting octave.',
+      'The notes were played with uneven tempo and rushed the beat.',
+      'The accidental sharps from the key signature were forgotten.',
+    ],
+    correct: 0,
+    explanation: 'Each clef assigns different pitch names to the staff lines and spaces. Reading bass clef as treble shifts every single note.',
+  };
+  lesson.tip = { kind: 'clef', text: 'Bass clef is the F-clef! Its two dots surround the F line (line 4). The top line is A.' };
+  lesson.forcedErrorMessage = 'Check the clef carefully: this phrase is written in bass clef, not treble clef. The bottom line is G2, the middle line is D3, and the top line is A3. Set your left-hand position on C3 and read each note from the bass staff.';
   for (const q of [lesson.question, lesson.transfer]) {
     q.positionProof = question(q.id, ['C3', 'E3', 'G3'], 'left').positionProof;
     q.cue.staves[0].notes.forEach((note, i) => { note.finger = ({ C3: 5, E3: 3, G3: 2, A3: 1 } as Record<string, number>)[q.expectedSequence[i]]; });

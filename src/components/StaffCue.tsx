@@ -651,13 +651,13 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       const points = collectScrubPointsFromGraphic(osmd, svg, beatsPerBar || totalBeats);
 
       const shiftHeadroom = shiftMarker ? 18 : 0;
-      const cropPadX = 12;
+      const cropPadX = 6;
       const cropX = box.x - cropPadX;
-      const cropTop = box.y - SCRUB_OVERHANG - 4 - shiftHeadroom;
+      const cropTop = box.y - SCRUB_OVERHANG - 2 - shiftHeadroom;
       const cropWidth = box.width + cropPadX * 2;
-      const cropHeight = box.height + SCRUB_OVERHANG * 2 + 8 + shiftHeadroom;
-      const top = box.y - SCRUB_OVERHANG - 4;
-      const bottom = top + box.height + SCRUB_OVERHANG * 2 + 8;
+      const cropHeight = box.height + SCRUB_OVERHANG * 2 + 4 + shiftHeadroom;
+      const top = box.y - SCRUB_OVERHANG - 2;
+      const bottom = top + box.height + SCRUB_OVERHANG * 2 + 4;
 
       if (points.length > 0) {
         const bounds = scrubberBoundsFromOnsets(points, totalBeats, cropX + 10, cropX + cropWidth - 10);

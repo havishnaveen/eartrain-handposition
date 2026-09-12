@@ -16,15 +16,17 @@ export function passesDiagnosticDrill(report: GradeResult, question: Question): 
     report.hardExtras === 0 && (report.scores.timing ?? 0) >= 3 &&
     (!question.anchorShift || report.transition?.onTime === true);
 }
-export default function AcousticDrill({ question, notation, onPassed, transfer }: {
+export default function AcousticDrill({ question, notation, onPassed, transfer, skipProof, forcedErrorMessage }: {
   question: Question; notation: DiagnosticNotation; onPassed: () => void; transfer: boolean;
+  skipProof?: boolean; forcedErrorMessage?: string;
 }) {
-  const noProof = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('noproof') === '1';
+  const noProof = skipProof || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('noproof') === '1');
   const [status, setStatus] = useState<ExerciseStatus>(noProof ? 'prompt' : 'position-prompt');
   const [report, setReport] = useState<GradeResult | null>(null);
   const [detected, setDetected] = useState<DetectedNote[]>([]);
   const [progress, setProgress] = useState(0), [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
+  const [forcedDismissed, setForcedDismissed] = useState(false);
   const scoreRef = useRef<StaffCueHandle>(null), viewRef = useRef<ExerciseViewHandle>(null);
   const playStart = useRef(0), alive = useRef(true), busy = useRef(false), mode = useRef<'proof' | 'take' | null>(null);
   const plan = useMemo(() => planForQuestion(question, 75), [question]);
@@ -46,7 +48,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer }
   useEffect(() => { alive.current = true; return () => { alive.current = false; mode.current = null; }; }, []);
   const start = async () => {
     if (busy.current || !['position-prompt', 'prompt'].includes(status)) return;
-    busy.current = true; setStarting(true); setError('');
+    busy.current = true; setStarting(true); setError(''); setForcedDismissed(false);
     const proof = status === 'position-prompt';
     mode.current = proof ? 'proof' : 'take';
     try {
@@ -61,8 +63,29 @@ export default function AcousticDrill({ question, notation, onPassed, transfer }
   return <>
     {error && <p role="alert" className="diagnostic-feedback">{error}</p>}
     {status === 'report' && !passed && <p className="diagnostic-feedback">Let’s try once more. Keep the correct notes and a steady beat{question.anchorShift ? ', including the move' : ''}.</p>}
+    {status === 'report' && !passed && forcedErrorMessage && !forcedDismissed && (
+      <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-error-title">
+        <div className="diagnostic-forced-card">
+          <div className="diagnostic-forced-badge">Clef Notice</div>
+          <h3 id="forced-error-title" className="diagnostic-forced-title">Review the clef before retrying</h3>
+          <p className="diagnostic-forced-body">{forcedErrorMessage}</p>
+          <button
+            type="button"
+            className="diagnostic-btn-primary diagnostic-forced-btn"
+            onClick={() => {
+              setForcedDismissed(true);
+              audio.abort();
+              setReport(null);
+              setStatus(noProof ? 'prompt' : 'position-prompt');
+            }}
+          >
+            I understand · Let me play again
+          </button>
+        </div>
+      </div>
+    )}
     <ExerciseView ref={viewRef} status={status} instruction={question.instruction} exerciseMode={question.exerciseMode}
-      positionProof={question.positionProof} handScope={question.handScope} anchorShift={question.anchorShift}
+      positionProof={noProof ? undefined : question.positionProof} handScope={question.handScope} anchorShift={question.anchorShift}
       onStart={() => { void start(); }} micStatus={starting ? 'requesting' : audio.micStatus}
       onCancelStart={() => { mode.current = null; audio.abort(); setStatus('prompt'); }}
       beatLabel={audio.beatLabel} isDownbeat={audio.isDownbeat} analysisProgress={progress}
@@ -70,7 +93,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer }
       report={report} reportPlan={plan} reportDetectedNotes={detected} reportPlayStartTime={playStart.current}
       recordingUrl={audio.recordingUrl} onPlaybackFrame={beat => scoreRef.current?.seekToBeat(beat)} onPlaybackEnd={() => scoreRef.current?.hide()}
       nextLabel={passed ? transfer ? 'Finish practice' : 'Try a fresh phrase' : 'Try this phrase again'}
-      onNext={() => { if (passed) onPassed(); else { audio.abort(); setReport(null); setStatus('position-prompt'); } }}>
+      onNext={() => { if (passed) onPassed(); else { audio.abort(); setReport(null); setStatus(noProof ? 'prompt' : 'position-prompt'); } }}>
       {question.anchorShift ? <AnchorShiftCue ref={scoreRef} cue={question.cue} shift={question.anchorShift} notationScale={2.5} accentColor="#ef6a47" inkColor="#242237" /> :
         <DiagnosticScore ref={scoreRef} question={question} notation={notation} />}
     </ExerciseView>

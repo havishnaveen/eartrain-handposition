@@ -30,9 +30,23 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, { question: Question; 
     const score = new OSMD(element, { backend: 'svg', autoResize: false, drawTitle: false, drawSubtitle: false, drawComposer: false, drawPartNames: false, drawMeasureNumbers: false, drawMetronomeMarks: false, drawingParameters: 'compacttight' });
     const render = () => {
       if (disposed || element.clientWidth < 1) return;
-      score.Zoom = element.clientWidth < 420 ? 0.85 : 1.2;
+      score.Zoom = element.clientWidth < 420 ? 1.15 : 1.55;
       score.render(); score.cursor.hide(); active.current = -1;
-      element.querySelectorAll('svg').forEach(svg => { svg.style.removeProperty('width'); svg.style.removeProperty('height'); });
+      element.querySelectorAll('svg').forEach(svg => {
+        try {
+          const box = svg.getBBox();
+          if (box.width > 0 && box.height > 0) {
+            const padX = 14;
+            const padY = 8;
+            svg.setAttribute('viewBox', `${box.x - padX} ${box.y - padY} ${box.width + padX * 2} ${box.height + padY * 2}`);
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          }
+        } catch {
+          // getBBox fallback for non-DOM environments
+        }
+        svg.style.removeProperty('width');
+        svg.style.removeProperty('height');
+      });
     };
     const observer = new ResizeObserver(() => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { if (renderer.current === score) render(); }); });
     void score.load(diagnosticMusicXML(question, notation, highlight)).then(() => {
