@@ -13,12 +13,12 @@ try {
   if (process.env.PRODUCTION_AUDIT === '1') {
     await page.goto(`${base}/?diagnosis=hand-position`);
     await page.waitForSelector('.diagnostic-flow');
-    assert.equal(await page.$('.diagnostic-navigator'), null, 'Production must hide the tester without opt-in');
-    await page.goto(`${base}/?dev=diagnostics`);
+    assert.ok(await page.$('.diagnostic-navigator'), 'Production must provide the diagnostic tester on web');
+    await page.goto(`${base}/`);
     await page.waitForSelector('.diagnostic-navigator');
     assert.equal(await page.$('.diagnostic-flow'), null, 'No referral must preserve the standard curriculum');
     assert.equal(await page.evaluate(() => document.body.textContent.includes('DEV — Lesson')), false);
-    console.log('Production visibility audit passed: standard fallback, hidden tester by default, explicit tester flag, no retired jumper.');
+    console.log('Production visibility audit passed: standard fallback, persistent tester on web, no retired jumper.');
     process.exitCode = 0;
   } else {
   const problems = ['clef-transposition', 'octave-displacement', 'accidental-carryover', 'hand-position', 'mid-line-clef-change', 'cross-over-under'];

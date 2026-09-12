@@ -172,6 +172,26 @@ export function ExerciseLayout({
             {lessonFocus ? <p className="et-sidebar__focus">{lessonFocus}</p> : null}
           </div>
 
+          <section className="et-sidebar__set" aria-label={`Drill ${current} of ${loopSize}`}>
+            <div className="et-sidebar__set-copy">
+              <span>Current set</span>
+              <strong>{current}<small> / {loopSize}</small></strong>
+            </div>
+            <div
+              className="et-drill-progress"
+              role="progressbar"
+              aria-valuemin={1}
+              aria-valuemax={loopSize}
+              aria-valuenow={current}
+            >
+              {Array.from({ length: loopSize }, (_, index) => {
+                const number = index + 1;
+                const state = number < current ? 'done' : number === current ? 'active' : 'todo';
+                return <span key={number} className={`et-drill-progress__tick et-drill-progress__tick--${state}`} />;
+              })}
+            </div>
+          </section>
+
           <section className="et-sidebar__journey" aria-labelledby="et-pathway-label">
             <div className="et-sidebar__section-title">
               <span id="et-pathway-label">Lesson pathway</span>
@@ -195,26 +215,6 @@ export function ExerciseLayout({
                     {state === 'active' ? <em>Current lesson</em> : null}
                   </span>
                 );
-              })}
-            </div>
-          </section>
-
-          <section className="et-sidebar__set" aria-label={`Drill ${current} of ${loopSize}`}>
-            <div className="et-sidebar__set-copy">
-              <span>Current set</span>
-              <strong>{current}<small> / {loopSize}</small></strong>
-            </div>
-            <div
-              className="et-drill-progress"
-              role="progressbar"
-              aria-valuemin={1}
-              aria-valuemax={loopSize}
-              aria-valuenow={current}
-            >
-              {Array.from({ length: loopSize }, (_, index) => {
-                const number = index + 1;
-                const state = number < current ? 'done' : number === current ? 'active' : 'todo';
-                return <span key={number} className={`et-drill-progress__tick et-drill-progress__tick--${state}`} />;
               })}
             </div>
           </section>

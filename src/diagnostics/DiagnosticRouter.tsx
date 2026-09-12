@@ -18,10 +18,12 @@ export default function DiagnosticRouter({ session }: { session: OclefIntegratio
   const [selection, setSelection] = useState<DiagnosticSelection | null>(() => referral ? { problem: referral.definition.id, key: referral.key.id, stage: initialStage, revision: 0 } : null);
   const [keyError, setKeyError] = useState(referral?.invalidKey);
   const [standardRevision, setStandardRevision] = useState(0);
-  const standard = () => { setSelection(null); setKeyError(undefined); setStandardRevision(value => value + 1); };
-  const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
-  const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
-  const tester = import.meta.env.DEV || new URLSearchParams(window.location.search).get('dev') === 'diagnostics';
+  const [standardState, setStandardState] = useState<{
+    lesson: number;
+    question: number;
+    proofCompleted: boolean;
+  } | null>(null);
+
   const parsedLesson = searchParams ? parseInt(searchParams.get('lesson') || '', 10) : NaN;
   const initialLesson = !isNaN(parsedLesson)
     ? parsedLesson
@@ -30,18 +32,77 @@ export default function DiagnosticRouter({ session }: { session: OclefIntegratio
   const parsedQuestion = searchParams ? parseInt(searchParams.get('drill') || '', 10) : NaN;
   const initialQuestion = !isNaN(parsedQuestion) ? parsedQuestion : 1;
 
+  const handleJumpStandard = (lesson: number, drill: number, noProof: boolean) => {
+    setSelection(null);
+    setKeyError(undefined);
+    setStandardState({ lesson, question: drill, proofCompleted: noProof });
+    setStandardRevision(v => v + 1);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('diagnosis');
+      url.searchParams.delete('stage');
+      url.searchParams.delete('key');
+      url.searchParams.set('lesson', String(lesson));
+      url.searchParams.set('drill', String(drill));
+      if (noProof) {
+        url.searchParams.set('noproof', '1');
+      } else {
+        url.searchParams.delete('noproof');
+      }
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  const handleSelectDiagnostic = (next: DiagnosticSelection) => {
+    setKeyError(undefined);
+    setSelection(next);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('diagnosis', next.problem);
+      url.searchParams.set('stage', String(next.stage));
+      url.searchParams.set('key', next.key);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  const standard = () => {
+    setSelection(null);
+    setKeyError(undefined);
+    setStandardRevision(value => value + 1);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('diagnosis');
+      url.searchParams.delete('stage');
+      url.searchParams.delete('key');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
+  const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
+  const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
+  const tester = true;
+
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
       selection && definition ? <DiagnosticLessonView key={`${selection.problem}/${selection.key}/${selection.revision}`} definition={definition} selectedKey={selectedKey} initialStage={selection.stage} onStandard={standard} /> :
         <PathwayRouter
           key={standardRevision}
-          initialLesson={initialLesson}
-          initialQuestion={initialQuestion}
-          initialProofCompleted={initialProofCompleted}
+          initialLesson={standardState ? standardState.lesson : initialLesson}
+          initialQuestion={standardState ? standardState.question : initialQuestion}
+          initialProofCompleted={standardState ? standardState.proofCompleted : initialProofCompleted}
           sessionQuestionCap={launch?.assignment?.questionCap}
           returnUrl={launch?.assignment?.returnUrl}
           externalLaunch={launch}
         />}
-    {tester && <DiagnosticNavigator selection={selection} onSelect={next => { setKeyError(undefined); setSelection(next); }} onStandard={standard} />}
+    {tester && (
+      <DiagnosticNavigator
+        selection={selection}
+        onSelect={handleSelectDiagnostic}
+        onStandard={standard}
+        onJumpStandard={handleJumpStandard}
+        currentLesson={standardState?.lesson ?? initialLesson}
+        currentQuestion={standardState?.question ?? initialQuestion}
+      />
+    )}
   </>;
 }

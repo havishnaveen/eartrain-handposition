@@ -369,10 +369,10 @@
 }
 
 .et-sidebar__set {
-  margin-top: auto;
+  margin: 0;
   padding: 15px 15px 14px;
   border: 1px solid var(--et-line);
-  border-radius: 16px 16px 6px 16px;
+  border-radius: 16px;
   background: rgba(251, 247, 244, 0.8);
 }
 
