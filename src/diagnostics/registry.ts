@@ -28,11 +28,20 @@ export interface DiagnosticNotation {
   fifths?: number;
   mistakeIndices: readonly number[];
 }
+export interface DiagnosticFeatureCheck {
+  prompt: string;
+  choices: readonly string[];
+  correct: number;
+  explanation: string;
+}
+
 export interface WrongClefRound {
   question: Question;
   notation: DiagnosticNotation;
   wrongClefPitches: readonly string[];
   explanation: string;
+  correctFeedback?: string;
+  featureCheck?: DiagnosticFeatureCheck;
 }
 
 export interface DiagnosticLesson {
@@ -50,6 +59,8 @@ export interface DiagnosticLesson {
   key?: DiagnosticKey;
   wrongClefRounds?: readonly WrongClefRound[];
   forcedErrorMessage?: string;
+  correctFeedback?: string;
+  featureCheck?: DiagnosticFeatureCheck;
 }
 export interface DiagnosticDefinition {
   id: string;
@@ -103,24 +114,52 @@ function clefSwap(): DiagnosticLesson {
 
   const lesson = base('clef-transposition', 'The clef detective', r1Pitches, r2Pitches, r1Wrong, 'left');
   lesson.explanation = 'Every note was played in the wrong clef! The bass clef gives lines and spaces completely different note names than the treble clef.';
+  lesson.correctFeedback = 'The piano played in the wrong clef!';
+  lesson.featureCheck = {
+    prompt: 'Which clef is this sheet music written in?',
+    choices: ['Bass Clef', 'Treble Clef'],
+    correct: 0,
+    explanation: 'This phrase is written in bass clef (F-clef).',
+  };
   lesson.wrongClefRounds = [
     {
       question: question('clef-transposition/round-1', r1Pitches, 'left', [5, 3, 2, 1]),
       notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
       wrongClefPitches: r1Wrong,
       explanation: 'Every note was played in the wrong clef. The pianist read the bass clef lines as if they were treble clef.',
+      correctFeedback: 'The piano played in the wrong clef!',
+      featureCheck: {
+        prompt: 'Which clef is this sheet music written in?',
+        choices: ['Bass Clef', 'Treble Clef'],
+        correct: 0,
+        explanation: 'This phrase is written in bass clef (F-clef).',
+      },
     },
     {
       question: question('clef-transposition/round-2', r2Pitches, 'left', [5, 2, 1, 3]),
       notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
       wrongClefPitches: r2Wrong,
       explanation: 'Again, the entire sequence was played in the wrong clef — reading bass clef spaces as treble spaces.',
+      correctFeedback: 'The piano played in the wrong clef!',
+      featureCheck: {
+        prompt: 'Which clef is this sheet music written in?',
+        choices: ['Bass Clef', 'Treble Clef'],
+        correct: 0,
+        explanation: 'This phrase is written in bass clef (F-clef).',
+      },
     },
     {
       question: question('clef-transposition/round-3', r3Pitches, 'left', [2, 3, 4, 5]),
       notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
       wrongClefPitches: r3Wrong,
       explanation: 'The whole descending line was read using treble clef instead of bass clef.',
+      correctFeedback: 'The piano played in the wrong clef!',
+      featureCheck: {
+        prompt: 'Which clef is this sheet music written in?',
+        choices: ['Bass Clef', 'Treble Clef'],
+        correct: 0,
+        explanation: 'This phrase is written in bass clef (F-clef).',
+      },
     },
   ];
   lesson.mcq = {
@@ -147,6 +186,13 @@ function octave(): DiagnosticLesson {
   const lesson = base('octave-displacement', 'Follow the floating 8', ['C5', 'D5', 'E5', 'G5'], ['C5', 'E5', 'G5', 'D5'], ['C4', 'D4', 'E4', 'G4']);
   lesson.notation.octaveUp = true; lesson.transferNotation.octaveUp = true;
   lesson.explanation = 'The piano stayed too low. The 8va line asks for the same notes one octave higher, starting at C5.';
+  lesson.correctFeedback = 'The piano played in the wrong octave!';
+  lesson.featureCheck = {
+    prompt: 'What symbol appears above the sheet music?',
+    choices: ['8va (One octave higher)', 'Standard staff (No octave shift)'],
+    correct: 0,
+    explanation: 'The 8va line tells us to play the written notes one octave higher.',
+  };
   lesson.mcq = { prompt: 'What clue tells our fingers to float up high?', choices: ['The little 8va dashed line!', 'The page number.', 'Playing extra loudly.'], correct: 0, explanation: '8va means move the written notes one octave up.' };
   lesson.tip = { kind: 'octave', text: 'Read C4 under the 8va line → play C5. Same note name, one octave higher!' };
   for (const q of [lesson.question, lesson.transfer]) {
@@ -158,6 +204,13 @@ function octave(): DiagnosticLesson {
 function accidental(): DiagnosticLesson {
   const lesson = base('accidental-carryover', 'The accidental’s magic measure', ['C#4', 'D4', 'C#4', 'E4', 'C4', 'D4', 'E4', 'C4'], ['C#4', 'E4', 'D4', 'C#4', 'C4', 'E4', 'D4', 'C4'], ['C#4', 'D4', 'C4', 'E4', 'C4', 'D4', 'E4', 'C4']);
   lesson.explanation = 'Note 3 slipped to C-natural. The first sharp still protects that C in this measure. After the barline, C is natural again.';
+  lesson.correctFeedback = 'The piano missed the carried-over accidental!';
+  lesson.featureCheck = {
+    prompt: 'How far does the sharp symbol apply in this measure?',
+    choices: ['Until the barline', 'Only to the first note'],
+    correct: 0,
+    explanation: 'An accidental applies through the measure until the barline.',
+  };
   lesson.mcq = { prompt: 'How long does an accidental’s magic power last?', choices: ['Only for one note.', 'Forever and ever!', 'Through this measure, until the barline locks it out!'], correct: 2, explanation: 'It covers the same note name in the same octave until the barline.' };
   lesson.tip = { kind: 'barline', text: 'C♯ · D · C♯ · E | C · D · E · C. The second C keeps the sharp; the new bar resets it.' };
   for (const q of [lesson.question, lesson.transfer]) {
@@ -178,6 +231,13 @@ function handPosition(key: DiagnosticKey): DiagnosticLesson {
   mistake[index] = slip < 0 ? pattern[3] : pitches[index].replace(/[#b]/g, '');
   const lesson = base('hand-position', `${key.name}: find your five`, pitches, fresh.map(i => pattern[i]), mistake);
   lesson.key = key;
+  lesson.correctFeedback = 'The piano slipped on the hand position notes!';
+  lesson.featureCheck = {
+    prompt: black.length ? 'Does this 5-finger pattern include black keys?' : 'Is this 5-finger pattern on white keys only?',
+    choices: ['Yes', 'No'],
+    correct: 0,
+    explanation: 'Check the key signature and hand placement before playing.',
+  };
   lesson.question = question(`hand-position/${key.id}/practice`, pitches, 'right', order.map(i => i + 1), [pattern[0], pattern[2], pattern[4]]);
   lesson.transfer = question(`hand-position/${key.id}/transfer`, fresh.map(i => pattern[i]), 'right', fresh.map(i => i + 1), [pattern[0], pattern[2], pattern[4]]);
   lesson.notation.fifths = key.fifths; lesson.transferNotation.fifths = key.fifths;
@@ -191,6 +251,13 @@ function clefChange(): DiagnosticLesson {
   const lesson = base('mid-line-clef-change', 'Meet the new clef', ['C3', 'E3', 'C4', 'E4', 'G4', 'E4', 'D4', 'C4'], ['C3', 'G3', 'C4', 'G4', 'E4', 'D4', 'E4', 'C4'], ['C3', 'E3', 'C3', 'E3', 'G3', 'E3', 'D3', 'C3'], 'left');
   lesson.notation.clefChange = { index: 2, clef: 'treble' }; lesson.transferNotation.clefChange = { index: 2, clef: 'treble' };
   lesson.explanation = 'A treble clef arrived before note 3. The written phrase climbs higher, but the piano stayed down low.';
+  lesson.correctFeedback = 'The piano missed the clef change!';
+  lesson.featureCheck = {
+    prompt: 'What notation change happens midway through the staff?',
+    choices: ['The clef changes to treble', 'The time signature changes'],
+    correct: 0,
+    explanation: 'The clef symbol midway through the line changes which notes the lines and spaces represent.',
+  };
   lesson.mcq = { prompt: 'A surprise guest appeared in the middle of the music! What was it?', choices: ['A sign to stop forever.', 'A brand-new clef telling our hand to jump up high!', 'A sign to play louder.'], correct: 1, explanation: 'Read with the new clef from that spot onward.' };
   lesson.tip = { kind: 'clef-change', text: 'Bass → treble: pause your eyes at the new clef and find the new place before you start.' };
   for (const q of [lesson.question, lesson.transfer]) {
@@ -204,6 +271,13 @@ function crossing(): DiagnosticLesson {
   const lesson = base('cross-over-under', 'A smooth thumb tunnel', pitches, ['C5', 'B4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4'], pitches);
   lesson.hesitationBefore = 3; lesson.notation.mistakeIndices = [3];
   lesson.explanation = 'The piano froze for two seconds before F. Prepare the thumb early so the beat keeps walking.';
+  lesson.correctFeedback = 'The piano stumbled on the finger crossing!';
+  lesson.featureCheck = {
+    prompt: 'What fingering movement does this phrase require?',
+    choices: ['Thumb under or finger over', 'Keeping fingers in one fixed 5-finger span'],
+    correct: 0,
+    explanation: 'Moving past five keys requires crossing fingers smoothly.',
+  };
   lesson.mcq = { prompt: 'When should our thumb start getting ready to tuck under finger 3?', choices: ['While finger 2 plays, it starts preparing smoothly.', 'After the music stops.', 'Only after finger 5 plays.'], correct: 0, explanation: 'Prepare gently as finger 2 plays; let the thumb pass under and land on F after finger 3 plays E.' };
   lesson.tip = { kind: 'crossing', text: 'Up: 1–2–3 → thumb 1 on F. Down: 1 on F → finger 3 over to E. Keep the beat walking.' };
   lesson.question = question('cross-over-under/practice', pitches, 'right', [1, 2, 3, 1, 2, 3, 4, 5], ['C4', 'E4', 'G4']);

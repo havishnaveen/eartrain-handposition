@@ -14,9 +14,17 @@ const RecordDot = () => (
 
 function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [playing, setPlaying] = useState(false), [heard, setHeard] = useState(false);
-  const [answer, setAnswer] = useState<boolean | null>(null), [error, setError] = useState('');
+  const [error, setError] = useState('');
+  const [subStage, setSubStage] = useState<'listening' | 'identifying' | 'correctFeedback'>('listening');
+  const [retried, setRetried] = useState(false);
+  const [retryHint, setRetryHint] = useState('');
+  const [enlarged, setEnlarged] = useState(false);
+  const [highlightClef, setHighlightClef] = useState(false);
+  const [showForced, setShowForced] = useState(false);
   const playback = useRef<ReturnType<typeof playDiagnosticExample> | null>(null), alive = useRef(true), locked = useRef(false);
+
   useEffect(() => { alive.current = true; return () => { alive.current = false; playback.current?.stop(); }; }, []);
+
   const play = async () => {
     if (locked.current) return;
     locked.current = true; setPlaying(true); setError('');
@@ -25,53 +33,136 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     catch { if (alive.current) setError('The piano recording could not load. Check your connection and press Play again.'); }
     finally { locked.current = false; if (alive.current) setPlaying(false); }
   };
+
+  const onPickWrong = () => {
+    playback.current?.stop();
+    setEnlarged(false); setHighlightClef(false); setShowForced(false);
+    setSubStage('correctFeedback');
+  };
+
+  const onPickCorrect = () => {
+    playback.current?.stop();
+    if (retried || !lesson.featureCheck) {
+      setEnlarged(true); setHighlightClef(true); setShowForced(true);
+    } else {
+      setSubStage('identifying');
+    }
+  };
+
+  const onPickFeatureChoice = (index: number) => {
+    const check = lesson.featureCheck;
+    const isCorrect = index === (check?.correct ?? 0);
+    if (isCorrect) {
+      setRetried(true);
+      setSubStage('listening');
+      setHeard(false);
+      setRetryHint('That’s right! Now listen to the piano again.');
+    } else {
+      setEnlarged(true); setHighlightClef(true); setShowForced(true);
+    }
+  };
+
+  const featureCheck = lesson.featureCheck;
+
   return <section className="diagnostic-card" aria-label="Listen and judge">
-    <DiagnosticScore question={lesson.question} notation={lesson.notation} highlight={answer !== null} />
-    <div className="diagnostic-action-area">
-      <button
-        type="button"
-        className="et-start"
-        disabled={playing}
-        onClick={() => { void play(); }}
-      >
-        <span className="et-start__dot"><RecordDot /></span>
-        {playing ? 'Playing…' : heard ? 'Play again' : 'Play piano example'}
-      </button>
-      {error && <p role="alert" className="diagnostic-error">{error}</p>}
-    </div>
+    <DiagnosticScore question={lesson.question} notation={lesson.notation} enlarged={enlarged} highlightClef={highlightClef} />
 
-    <div className="diagnostic-prompt-section">
-      <h2 className="diagnostic-prompt">Did the piano match the notes?</h2>
-      <div className="diagnostic-choices">
-        <button
-          type="button"
-          disabled={!heard || playing || answer !== null}
-          aria-pressed={answer === false}
-          onClick={() => setAnswer(false)}
-        >
-          Correct
-        </button>
-        <button
-          type="button"
-          disabled={!heard || playing || answer !== null}
-          aria-pressed={answer === true}
-          onClick={() => setAnswer(true)}
-        >
-          Wrong
-        </button>
+    {subStage === 'listening' && (
+      <>
+        <div className="diagnostic-action-area">
+          {retryHint && <div className="diagnostic-retry-hint">{retryHint}</div>}
+          <button
+            type="button"
+            className="et-start"
+            disabled={playing}
+            onClick={() => { void play(); }}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            {playing ? 'Playing…' : heard ? 'Play again' : 'Play piano example'}
+          </button>
+          {error && <p role="alert" className="diagnostic-error">{error}</p>}
+        </div>
+
+        <div className="diagnostic-prompt-section">
+          <h2 className="diagnostic-prompt">Did the piano match the notes?</h2>
+          <div className="diagnostic-choices">
+            <button
+              type="button"
+              disabled={!heard || playing || showForced}
+              onClick={onPickCorrect}
+            >
+              Correct
+            </button>
+            <button
+              type="button"
+              disabled={!heard || playing || showForced}
+              onClick={onPickWrong}
+            >
+              Wrong
+            </button>
+          </div>
+        </div>
+      </>
+    )}
+
+    {subStage === 'identifying' && featureCheck && (
+      <div className="diagnostic-prompt-section">
+        <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+        <div className="diagnostic-choices">
+          {featureCheck.choices.map((choice, i) => (
+            <button
+              key={choice}
+              type="button"
+              onClick={() => onPickFeatureChoice(i)}
+            >
+              {choice}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+    )}
 
-    {answer !== null && <div className="diagnostic-feedback" role="status">
-      <strong>{answer ? 'Good ear! You caught it.' : 'Listen again carefully.'}</strong>
-      <p>{lesson.explanation}</p>
-      <div className="diagnostic-action-area diagnostic-action-area--feedback">
-        <button type="button" className="et-start" disabled={playing} onClick={onNext}>
+    {subStage === 'correctFeedback' && (
+      <div className="diagnostic-brief-feedback" role="status">
+        <span className="diagnostic-brief-badge">Correct!</span>
+        <p className="diagnostic-brief-text">
+          {lesson.correctFeedback ?? 'You caught the mistake!'}
+        </p>
+        <button
+          type="button"
+          className="et-start diagnostic-brief-btn"
+          onClick={onNext}
+        >
           <span className="et-start__dot"><RecordDot /></span>
           Discover the clue
         </button>
       </div>
-    </div>}
+    )}
+
+    {showForced && (
+      <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
+        <div className="diagnostic-forced-card">
+          <div className="diagnostic-forced-badge">Notation Notice</div>
+          <h3 id="forced-listen-title" className="diagnostic-forced-title">Review the notation</h3>
+          <p className="diagnostic-forced-body">{lesson.explanation}</p>
+          <button
+            type="button"
+            className="diagnostic-btn-primary diagnostic-forced-btn"
+            onClick={() => {
+              setShowForced(false);
+              setEnlarged(false);
+              setHighlightClef(false);
+              setSubStage('listening');
+              setRetried(true);
+              setHeard(false);
+              setRetryHint('Review the notation above, then listen again.');
+            }}
+          >
+            I understand
+          </button>
+        </div>
+      </div>
+    )}
   </section>;
 }
 
@@ -81,6 +172,9 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(false);
   const [error, setError] = useState('');
+  const [subStage, setSubStage] = useState<'listening' | 'identifying' | 'correctFeedback'>('listening');
+  const [retried, setRetried] = useState(false);
+  const [retryHint, setRetryHint] = useState('');
   const [enlarged, setEnlarged] = useState(false);
   const [highlightClef, setHighlightClef] = useState(false);
   const [showForced, setShowForced] = useState(false);
@@ -116,28 +210,68 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     }
   };
 
-  // If user picks Wrong: piano didn't match the written clef (they are right!)
-  // Move on immediately!
-  const onPickWrong = () => {
+  const advanceRound = () => {
     playback.current?.stop();
     setEnlarged(false);
     setHighlightClef(false);
     setShowForced(false);
+    setSubStage('listening');
+    setRetried(false);
+    setRetryHint('');
+    setHeard(false);
+    setError('');
     if (roundIdx < rounds.length - 1) {
       setRoundIdx(r => r + 1);
-      setHeard(false);
-      setError('');
     } else {
       onNext();
     }
   };
 
-  // If user picks Correct: they got it wrong!
-  // Enlarge sheet music, highlight clef, show forced message (no blur)
+  // When user picks Wrong: piano didn't match the written clef (they are right!)
+  const onPickWrong = () => {
+    playback.current?.stop();
+    setEnlarged(false);
+    setHighlightClef(false);
+    setShowForced(false);
+    setSubStage('correctFeedback');
+  };
+
+  // When user picks Correct: they got it wrong!
   const onPickCorrect = () => {
-    setEnlarged(true);
-    setHighlightClef(true);
-    setShowForced(true);
+    playback.current?.stop();
+    if (retried) {
+      // If already attempted feature check, show forced notice
+      setEnlarged(true);
+      setHighlightClef(true);
+      setShowForced(true);
+    } else {
+      // First mistake: ask them to identify the clef in the same sheet music
+      setSubStage('identifying');
+    }
+  };
+
+  const onPickFeatureChoice = (index: number) => {
+    const check = currentRound?.featureCheck ?? lesson.featureCheck;
+    const isCorrect = index === (check?.correct ?? 0);
+    if (isCorrect) {
+      // Identified clef correctly! Now do the question again:
+      setRetried(true);
+      setSubStage('listening');
+      setHeard(false);
+      setRetryHint('That’s right — it’s bass clef! Now listen to the piano again.');
+    } else {
+      // Failed to identify the clef: show forced modal
+      setEnlarged(true);
+      setHighlightClef(true);
+      setShowForced(true);
+    }
+  };
+
+  const featureCheck = currentRound?.featureCheck ?? lesson.featureCheck ?? {
+    prompt: 'Which clef is this sheet music written in?',
+    choices: ['Bass Clef', 'Treble Clef'],
+    correct: 0,
+    explanation: 'This phrase is written in bass clef.',
   };
 
   return (
@@ -148,38 +282,78 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
         enlarged={enlarged}
         highlightClef={highlightClef}
       />
-      <div className="diagnostic-action-area">
-        <button
-          type="button"
-          className="et-start"
-          disabled={playing}
-          onClick={() => { void play(); }}
-        >
-          <span className="et-start__dot"><RecordDot /></span>
-          {playing ? 'Playing…' : heard ? 'Play again' : 'Play piano example'}
-        </button>
-        {error && <p role="alert" className="diagnostic-error">{error}</p>}
-      </div>
 
-      <div className="diagnostic-prompt-section">
-        <h2 className="diagnostic-prompt">Did the piano match the notes?</h2>
-        <div className="diagnostic-choices">
+      {subStage === 'listening' && (
+        <>
+          <div className="diagnostic-action-area">
+            {retryHint && <div className="diagnostic-retry-hint">{retryHint}</div>}
+            <button
+              type="button"
+              className="et-start"
+              disabled={playing}
+              onClick={() => { void play(); }}
+            >
+              <span className="et-start__dot"><RecordDot /></span>
+              {playing ? 'Playing…' : heard ? 'Play again' : 'Play piano example'}
+            </button>
+            {error && <p role="alert" className="diagnostic-error">{error}</p>}
+          </div>
+
+          <div className="diagnostic-prompt-section">
+            <h2 className="diagnostic-prompt">Did the piano match the notes?</h2>
+            <div className="diagnostic-choices">
+              <button
+                type="button"
+                disabled={!heard || playing || showForced}
+                onClick={onPickCorrect}
+              >
+                Correct
+              </button>
+              <button
+                type="button"
+                disabled={!heard || playing || showForced}
+                onClick={onPickWrong}
+              >
+                Wrong
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {subStage === 'identifying' && (
+        <div className="diagnostic-prompt-section">
+          <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+          <div className="diagnostic-choices">
+            {featureCheck.choices.map((choice, i) => (
+              <button
+                key={choice}
+                type="button"
+                onClick={() => onPickFeatureChoice(i)}
+              >
+                {choice}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subStage === 'correctFeedback' && (
+        <div className="diagnostic-brief-feedback" role="status">
+          <span className="diagnostic-brief-badge">Correct!</span>
+          <p className="diagnostic-brief-text">
+            {currentRound?.correctFeedback ?? lesson.correctFeedback ?? 'The piano played in the wrong clef!'}
+          </p>
           <button
             type="button"
-            disabled={!heard || playing || showForced}
-            onClick={onPickCorrect}
+            className="et-start diagnostic-brief-btn"
+            onClick={advanceRound}
           >
-            Correct
-          </button>
-          <button
-            type="button"
-            disabled={!heard || playing || showForced}
-            onClick={onPickWrong}
-          >
-            Wrong
+            <span className="et-start__dot"><RecordDot /></span>
+            {roundIdx < rounds.length - 1 ? 'Next question' : 'Continue'}
           </button>
         </div>
-      </div>
+      )}
 
       {showForced && (
         <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
@@ -194,6 +368,12 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
               className="diagnostic-btn-primary diagnostic-forced-btn"
               onClick={() => {
                 setShowForced(false);
+                setEnlarged(false);
+                setHighlightClef(false);
+                setSubStage('listening');
+                setRetried(true);
+                setHeard(false);
+                setRetryHint('Look closely at the bass clef, then listen to the piano again.');
               }}
             >
               I understand

@@ -75,6 +75,77 @@
   pointer-events: none;
 }
 
+/* Brief feedback banner when learner gets it right */
+.diagnostic-brief-feedback {
+  margin: 24px auto 16px;
+  max-width: 540px;
+  padding: 22px 28px;
+  border-radius: 20px;
+  text-align: center;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.diagnostic-brief-badge {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #166534 !important;
+  background: #dcfce7 !important;
+  padding: 4px 14px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.diagnostic-brief-text {
+  font-size: 19px;
+  font-weight: 700;
+  color: #14532d !important;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.diagnostic-brief-btn {
+  margin: 6px 0 0 !important;
+  opacity: 1 !important;
+}
+
+.diagnostic-retry-hint {
+  display: inline-block;
+  margin: 0 auto 12px;
+  padding: 8px 18px;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dark .diagnostic-brief-feedback {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+.dark .diagnostic-brief-badge {
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+}
+.dark .diagnostic-brief-text {
+  color: #dcfce7;
+}
+.dark .diagnostic-retry-hint {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #bfdbfe;
+}
+
 /* Forced error modal overlay for diagnostic drills — NO blur so sheet music and clef stay clearly visible */
 .diagnostic-forced-overlay {
   position: fixed;
