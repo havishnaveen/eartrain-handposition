@@ -257,25 +257,41 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     }
   };
 
-  // User clicked "Wrong" -> they caught the mistake (Right answer!)
+  const isMatch = Boolean(currentRound?.isMatch);
+
+  // User clicked "Wrong"
   const onPickWrong = () => {
     playback.current?.stop();
-    setEnlarged(false);
-    setHighlightClef(false);
-    setSubStage('correctFeedback');
+    if (!isMatch) {
+      setEnlarged(false);
+      setHighlightClef(false);
+      setSubStage('correctFeedback');
+    } else {
+      if (retrying) {
+        setEnlarged(true);
+        setHighlightClef(true);
+        setShowForced(true);
+      } else {
+        setSubStage('incorrectFeedback');
+      }
+    }
   };
 
-  // User clicked "Correct" -> they thought the piano matched (Wrong answer!)
+  // User clicked "Correct"
   const onPickCorrect = () => {
     playback.current?.stop();
-    if (retrying) {
-      // Still got it wrong after clef check!
-      setEnlarged(true);
-      setHighlightClef(true);
-      setShowForced(true);
+    if (isMatch) {
+      setEnlarged(false);
+      setHighlightClef(false);
+      setSubStage('correctFeedback');
     } else {
-      // First mistake: show concise "Incorrect" feedback without explanation
-      setSubStage('incorrectFeedback');
+      if (retrying) {
+        setEnlarged(true);
+        setHighlightClef(true);
+        setShowForced(true);
+      } else {
+        setSubStage('incorrectFeedback');
+      }
     }
   };
 
@@ -402,7 +418,11 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
           <div className="diagnostic-forced-card">
             <h3 id="forced-listen-title" className="diagnostic-forced-title">Check the clef</h3>
             <p className="diagnostic-forced-body">
-              This phrase is written in bass clef, but the piano played in treble clef.
+              {isMatch
+                ? 'This phrase is written in treble clef, and the piano matched the notes.'
+                : currentRound.notation.clef === 'bass'
+                  ? 'This phrase is written in bass clef, but the piano played in treble clef.'
+                  : 'This phrase is written in treble clef, but the piano played in bass clef.'}
             </p>
             <button
               type="button"
@@ -440,7 +460,7 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
       ))}
     </div>
     {choice !== null && <div className="diagnostic-feedback" role="status">
-      <p>{correct ? `You’ve got it! ${lesson.mcq.explanation}` : `Nearly! Look at the picture and try another answer. ${lesson.mcq.explanation}`}</p>
+      <p>{correct ? `You’ve got it! ${lesson.mcq.explanation}` : `Nearly! Try another answer. ${lesson.mcq.explanation}`}</p>
       {correct && (
         <div className="diagnostic-action-area diagnostic-action-area--feedback">
           <button type="button" className="et-start" onClick={onNext}>

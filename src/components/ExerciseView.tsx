@@ -603,11 +603,11 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
     const showPieceProgress = status === 'listening';
     const startCalloutText = exerciseMode === 'anchor-shift'
       ? (shiftWaitBeats > 0
-          ? 'Start playing after the two measure count in. Use the rest measure in the middle to switch hand positions and get ready.'
-          : 'Start playing after the two measure count in. Use the rest in the middle to switch hand positions and get ready.')
+          ? 'Wait for the 2 measure count in then play. Use the rest measure in the middle to switch hand positions and get ready.'
+          : 'Wait for the 2 measure count in then play. Use the rest in the middle to switch hand positions and get ready.')
       : exerciseMode === 'blind-memory'
-        ? 'Study the pattern now. Start playing after the two measure count in.'
-        : 'Start playing after the two measure count in';
+        ? 'Study the pattern now. Wait for the 2 measure count in then play.'
+        : 'Wait for the 2 measure count in then play';
 
     return (
       <section className={`et-exercise et-exercise--${status} et-exercise--mode-${exerciseMode}`}>
@@ -653,19 +653,21 @@ export const ExerciseView = forwardRef<ExerciseViewHandle, ExerciseViewProps>(
 
         <div className="et-well" aria-live="polite">
           <div className={`et-panel${status === 'prompt' ? ' et-panel--on' : ''}`} aria-hidden={status !== 'prompt'}>
-            <div className="et-start-callout" role="note">
-              {startCalloutText}
+            <div className="et-start-row">
+              <button
+                type="button"
+                className="et-start"
+                onClick={onStart}
+                disabled={startBlocked}
+                tabIndex={status === 'prompt' ? 0 : -1}
+              >
+                <span className="et-start__dot"><RecordDot /></span>
+                {startLabel}
+              </button>
+              <div className="et-start-callout" role="note">
+                <strong>{startCalloutText}</strong>
+              </div>
             </div>
-            <button
-              type="button"
-              className="et-start"
-              onClick={onStart}
-              disabled={startBlocked}
-              tabIndex={status === 'prompt' ? 0 : -1}
-            >
-              <span className="et-start__dot"><RecordDot /></span>
-              {startLabel}
-            </button>
             {micMessage ? (
               <p className={`et-panel__sub${micBlocked ? ' et-panel__sub--alert' : ''}`}>
                 {micMessage}

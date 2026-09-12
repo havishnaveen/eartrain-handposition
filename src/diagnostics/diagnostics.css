@@ -33,9 +33,9 @@
 .diagnostic-fingers small { text-align: center; font-size: .7rem; }
 .diagnostic-complete { text-align: center; padding: 48px 32px; }
 .diagnostic-complete__p { font-size: 17px; color: #57534e; margin: 12px 0 28px; }
-.diagnostic-score { width: 100%; min-width: 0; min-height: 185px; background: #ffffff; border-radius: 20px; border: 1px solid #e7e5ee; box-shadow: 0 2px 12px rgba(36, 34, 55, 0.04); padding: 18px 24px; margin: 12px 0 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.diagnostic-score { width: 100%; min-width: 0; min-height: 220px; background: #ffffff; border-radius: 20px; border: 1.5px solid #e2d7cf; box-shadow: 0 2px 14px rgba(36, 34, 55, 0.05); padding: 24px 32px; margin: 12px 0 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .diagnostic-score__host { width: 100%; min-width: 0; display: flex; justify-content: center; align-items: center; }
-.diagnostic-score svg { max-width: 100%; max-height: 160px; height: auto; display: block; margin: 0 auto; }
+.diagnostic-score svg { width: min(100%, 640px); max-height: 240px; height: auto; display: block; margin: 0 auto; }
 
 .diagnostic-round-indicator {
   display: inline-flex;
@@ -54,10 +54,14 @@
 }
 
 .diagnostic-score--enlarged {
-  min-height: 235px !important;
+  min-height: 270px !important;
   border-color: #ef4444 !important;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25), 0 10px 28px rgba(0, 0, 0, 0.14) !important;
   transition: min-height 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+.diagnostic-score--enlarged svg {
+  width: min(100%, 720px) !important;
+  max-height: 280px !important;
 }
 
 .diagnostic-score--clef-highlight .vf-clef path {

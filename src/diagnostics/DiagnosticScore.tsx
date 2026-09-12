@@ -36,8 +36,8 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
     const score = new OSMD(element, { backend: 'svg', autoResize: false, drawTitle: false, drawSubtitle: false, drawComposer: false, drawPartNames: false, drawMeasureNumbers: false, drawMetronomeMarks: false, drawingParameters: 'compacttight' });
     const render = () => {
       if (disposed || element.clientWidth < 1) return;
-      const baseZoom = element.clientWidth < 420 ? 1.15 : 1.55;
-      score.Zoom = enlarged ? baseZoom * 1.35 : baseZoom;
+      const baseZoom = element.clientWidth < 420 ? 1.7 : 2.5;
+      score.Zoom = enlarged ? baseZoom * 1.25 : baseZoom;
       score.render(); score.cursor.hide(); active.current = -1;
       element.querySelectorAll('svg').forEach(svg => {
         try {

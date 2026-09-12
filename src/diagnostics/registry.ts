@@ -42,6 +42,7 @@ export interface WrongClefRound {
   explanation: string;
   correctFeedback?: string;
   featureCheck?: DiagnosticFeatureCheck;
+  isMatch?: boolean;
 }
 
 export interface DiagnosticLesson {
@@ -105,73 +106,80 @@ function base(id: string, title: string, pitches: string[], transfer: string[], 
     explanation: '', mcq: { prompt: '', choices: [], correct: 0, explanation: '' }, tip: { kind: 'clef', text: '' } };
 }
 function clefSwap(): DiagnosticLesson {
+  // Round 1: Bass clef, left hand — piano plays up in treble clef (Mismatch / Wrong)
   const r1Pitches = ['C3', 'E3', 'G3', 'A3'];
   const r1Wrong = ['A4', 'C5', 'E5', 'F5'];
-  const r2Pitches = ['C3', 'G3', 'A3', 'E3'];
-  const r2Wrong = ['A4', 'E5', 'F5', 'C5'];
-  const r3Pitches = ['F3', 'E3', 'D3', 'C3'];
-  const r3Wrong = ['D5', 'C5', 'B4', 'A4'];
+
+  // Round 2: Treble clef, right hand — piano plays exact matching notes (Match / Correct!)
+  const r2Pitches = ['C4', 'E4', 'G4', 'C5'];
+  const r2Audio = ['C4', 'E4', 'G4', 'C5'];
+
+  // Round 3: Treble clef, right hand — piano plays down in bass clef (Mismatch / Wrong)
+  const r3Pitches = ['G4', 'E4', 'D4', 'C4'];
+  const r3Wrong = ['B2', 'G2', 'F2', 'E2'];
 
   const lesson = base('clef-transposition', 'The clef detective', r1Pitches, r2Pitches, r1Wrong, 'left');
-  lesson.explanation = 'Every note was played in the wrong clef! The bass clef gives lines and spaces completely different note names than the treble clef.';
+  lesson.explanation = 'Different clefs assign completely different pitches to each line and space.';
   lesson.correctFeedback = 'The piano played in the wrong clef!';
   lesson.featureCheck = {
     prompt: 'Which clef is this sheet music written in?',
     choices: ['Bass Clef', 'Treble Clef'],
     correct: 0,
-    explanation: 'This phrase is written in bass clef (F-clef).',
+    explanation: 'Check the clef symbol on the left of the staff.',
   };
   lesson.wrongClefRounds = [
     {
       question: question('clef-transposition/round-1', r1Pitches, 'left', [5, 3, 2, 1]),
       notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
       wrongClefPitches: r1Wrong,
-      explanation: 'Every note was played in the wrong clef. The pianist read the bass clef lines as if they were treble clef.',
+      isMatch: false,
+      explanation: 'The piano read the bass clef notes as if they were treble clef.',
       correctFeedback: 'The piano played in the wrong clef!',
       featureCheck: {
         prompt: 'Which clef is this sheet music written in?',
         choices: ['Bass Clef', 'Treble Clef'],
         correct: 0,
-        explanation: 'This phrase is written in bass clef (F-clef).',
+        explanation: 'This phrase is written in bass clef.',
       },
     },
     {
-      question: question('clef-transposition/round-2', r2Pitches, 'left', [5, 2, 1, 3]),
-      notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
-      wrongClefPitches: r2Wrong,
-      explanation: 'Again, the entire sequence was played in the wrong clef — reading bass clef spaces as treble spaces.',
-      correctFeedback: 'The piano played in the wrong clef!',
+      question: question('clef-transposition/round-2', r2Pitches, 'right', [1, 2, 3, 5]),
+      notation: { clef: 'treble', mistakeIndices: [] },
+      wrongClefPitches: r2Audio,
+      isMatch: true,
+      explanation: 'The piano accurately matched the treble clef notes.',
+      correctFeedback: 'The piano matched the notes in treble clef!',
       featureCheck: {
         prompt: 'Which clef is this sheet music written in?',
-        choices: ['Bass Clef', 'Treble Clef'],
+        choices: ['Treble Clef', 'Bass Clef'],
         correct: 0,
-        explanation: 'This phrase is written in bass clef (F-clef).',
+        explanation: 'This phrase is written in treble clef.',
       },
     },
     {
-      question: question('clef-transposition/round-3', r3Pitches, 'left', [2, 3, 4, 5]),
-      notation: { clef: 'bass', mistakeIndices: [0, 1, 2, 3] },
+      question: question('clef-transposition/round-3', r3Pitches, 'right', [5, 3, 2, 1]),
+      notation: { clef: 'treble', mistakeIndices: [0, 1, 2, 3] },
       wrongClefPitches: r3Wrong,
-      explanation: 'The whole descending line was read using treble clef instead of bass clef.',
+      isMatch: false,
+      explanation: 'The piano played the treble staff notes down in bass clef.',
       correctFeedback: 'The piano played in the wrong clef!',
       featureCheck: {
         prompt: 'Which clef is this sheet music written in?',
-        choices: ['Bass Clef', 'Treble Clef'],
+        choices: ['Treble Clef', 'Bass Clef'],
         correct: 0,
-        explanation: 'This phrase is written in bass clef (F-clef).',
+        explanation: 'This phrase is written in treble clef.',
       },
     },
   ];
   lesson.mcq = {
-    prompt: 'Across the past few exercises, what mistake was being made each time?',
+    prompt: 'Across the past few exercises, what mistake was being made?',
     choices: [
-      'The pianist read the bass clef notes as if they were in treble clef.',
+      'Notes were played in the wrong clef instead of the written clef.',
       'The hand shifted into the wrong starting octave.',
       'The notes were played with uneven tempo and rushed the beat.',
-      'The accidental sharps from the key signature were forgotten.',
     ],
     correct: 0,
-    explanation: 'Each clef assigns different pitch names to the staff lines and spaces. Reading bass clef as treble shifts every single note.',
+    explanation: 'Each clef assigns different pitch names to the staff lines and spaces.',
   };
   lesson.tip = { kind: 'clef', text: 'Bass clef is the F-clef! Its two dots surround the F line (line 4). The top line is A.' };
   lesson.forcedErrorMessage = 'This phrase is written in bass clef, not treble clef.';

@@ -950,21 +950,30 @@
   color: var(--et-ink-soft);
 }
 
+.et-start-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
 .et-start-callout {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   font-family: inherit;
-  font-size: 16.5px;
-  font-weight: 650;
+  font-size: 16px;
+  font-weight: 750;
   line-height: 1.4;
   letter-spacing: -0.01em;
   color: #7c2d12;
-  background: #ffffff;
-  border: 1.5px solid rgba(249, 115, 22, 0.45);
+  background: #fff7ed;
+  border: 1.5px solid rgba(249, 115, 22, 0.55);
   border-radius: 999px;
-  padding: 9px 24px;
+  padding: 10px 22px;
   margin: 0;
   box-shadow:
     0 0 18px rgba(249, 115, 22, 0.24),
@@ -974,6 +983,10 @@
   max-width: min(92vw, 700px);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.et-start-callout strong {
+  font-weight: 800;
 }
 
 @keyframes et-callout-glow {
