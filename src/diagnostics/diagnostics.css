@@ -1,6 +1,8 @@
 .diagnostic-flow { width: 100%; max-width: 920px; margin: 0 auto; min-width: 0; padding-bottom: 70px; }
 .diagnostic-stage-label { color: #ef6a47; font-size: .95rem; font-weight: 700; margin: 0 0 16px 4px; letter-spacing: 0.01em; }
-.diagnostic-card { max-width: 100%; min-width: 0; padding: clamp(20px, 4vw, 38px); border-radius: 24px; background: var(--et-surface, #fff); color: var(--et-ink, #242237); box-shadow: var(--et-card-shadow, 0 4px 20px rgba(0, 0, 0, 0.06)); border: 1px solid var(--et-border-subtle, rgba(0, 0, 0, 0.06)); box-sizing: border-box; }
+.diagnostic-card { position: relative; max-width: 100%; min-width: 0; padding: clamp(20px, 4vw, 38px); border-radius: 24px; background: var(--et-surface, #fff); color: var(--et-ink, #242237); box-shadow: 0 4px 24px rgba(239, 106, 71, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04); border: 2px solid #ef6a47; box-sizing: border-box; }
+.diagnostic-try-again-badge { position: absolute; top: 18px; right: 22px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #c2410c !important; background: #ffedd5 !important; border: 1.5px solid #f97316; padding: 4px 12px; border-radius: 999px; box-shadow: 0 2px 6px rgba(249, 115, 22, 0.12); z-index: 2; pointer-events: none; }
+@media (max-width: 640px) { .diagnostic-try-again-badge { top: 14px; right: 14px; font-size: 11px; padding: 3px 10px; } }
 .diagnostic-prompt-section { margin: 32px 0 20px; text-align: center; }
 .diagnostic-prompt { font-size: clamp(1.2rem, 2.4vw, 1.55rem); font-weight: 700; color: inherit; margin: 0 0 16px; line-height: 1.4; text-align: center; }
 .diagnostic-card p, .diagnostic-tip { line-height: 1.6; }
