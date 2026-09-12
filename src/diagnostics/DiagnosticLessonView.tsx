@@ -168,10 +168,9 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     {showForced && (
       <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
         <div className="diagnostic-forced-card">
-          <div className="diagnostic-forced-badge">Clef Notice</div>
-          <h3 id="forced-listen-title" className="diagnostic-forced-title">Review the clef</h3>
+          <h3 id="forced-listen-title" className="diagnostic-forced-title">Check the notation</h3>
           <p className="diagnostic-forced-body">
-            Look closely at the highlighted clef above — its lines and spaces name different notes than the piano played.
+            The piano did not match the written notes above.
           </p>
           <button
             type="button"
@@ -401,10 +400,9 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       {showForced && (
         <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
           <div className="diagnostic-forced-card">
-            <div className="diagnostic-forced-badge">Clef Notice</div>
-            <h3 id="forced-listen-title" className="diagnostic-forced-title">Review the clef</h3>
+            <h3 id="forced-listen-title" className="diagnostic-forced-title">Check the clef</h3>
             <p className="diagnostic-forced-body">
-              The piano played in treble clef, but this phrase is written in <strong>bass clef</strong>. Look closely at the highlighted clef above — its lines and spaces name different notes than treble.
+              This phrase is written in bass clef, but the piano played in treble clef.
             </p>
             <button
               type="button"

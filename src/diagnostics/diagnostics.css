@@ -192,7 +192,7 @@
 }
 
 .diagnostic-forced-title {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   font-size: 21px;
   font-weight: 800;
   color: #18181b;
@@ -200,14 +200,15 @@
 }
 
 .diagnostic-forced-body {
-  margin: 0 0 24px;
-  font-size: 15px;
-  line-height: 1.65;
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
   color: #334155;
-  text-align: left;
+  text-align: center;
   background: #f8fafc;
-  padding: 18px 20px;
-  border-radius: 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
   border: 1px solid #e2e8f0;
 }
 

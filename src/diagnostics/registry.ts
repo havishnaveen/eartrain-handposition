@@ -174,7 +174,7 @@ function clefSwap(): DiagnosticLesson {
     explanation: 'Each clef assigns different pitch names to the staff lines and spaces. Reading bass clef as treble shifts every single note.',
   };
   lesson.tip = { kind: 'clef', text: 'Bass clef is the F-clef! Its two dots surround the F line (line 4). The top line is A.' };
-  lesson.forcedErrorMessage = 'Check the clef carefully: this phrase is written in bass clef, not treble clef. The bottom line is G2, the middle line is D3, and the top line is A3. Set your left-hand position on C3 and read each note from the bass staff.';
+  lesson.forcedErrorMessage = 'This phrase is written in bass clef, not treble clef.';
   for (const q of [lesson.question, lesson.transfer]) {
     q.positionProof = question(q.id, ['C3', 'E3', 'G3'], 'left').positionProof;
     q.cue.staves[0].notes.forEach((note, i) => { note.finger = ({ C3: 5, E3: 3, G3: 2, A3: 1 } as Record<string, number>)[q.expectedSequence[i]]; });

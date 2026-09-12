@@ -66,8 +66,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
     {status === 'report' && !passed && forcedErrorMessage && !forcedDismissed && (
       <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-error-title">
         <div className="diagnostic-forced-card">
-          <div className="diagnostic-forced-badge">Clef Notice</div>
-          <h3 id="forced-error-title" className="diagnostic-forced-title">Review the clef before retrying</h3>
+          <h3 id="forced-error-title" className="diagnostic-forced-title">Check the clef</h3>
           <p className="diagnostic-forced-body">{forcedErrorMessage}</p>
           <button
             type="button"
@@ -79,7 +78,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
               setStatus(noProof ? 'prompt' : 'position-prompt');
             }}
           >
-            I understand · Let me play again
+            I understand
           </button>
         </div>
       </div>
