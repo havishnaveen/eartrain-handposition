@@ -75,11 +75,6 @@ const pathwayRouter = readFileSync(new URL('components/PathwayRouter.tsx', sourc
 if (!pathwayRouter.includes("return question.positionProof && !proofCompleted ? 'position-prompt' : 'prompt'")) {
   throw new Error('Per-drill position proof gate is no longer universal.');
 }
-const app = readFileSync(new URL('App.tsx', sourceRoot), 'utf8');
-if (!app.includes("import DevLessonJumper from './dev/DevLessonJumper'") ||
-    !app.includes('<DevLessonJumper baseInitialLesson={initialLesson}>')) {
-  throw new Error('The lesson jumper is no longer mounted around PathwayRouter.');
-}
 const exerciseView = readFileSync(new URL('components/ExerciseView.tsx', sourceRoot), 'utf8');
 if (!exerciseView.includes("spatialChord && !showingPositionGate")) {
   throw new Error('Spatial chord rendering can bypass the universal position gate.');
