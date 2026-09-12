@@ -95,7 +95,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
       nextLabel={passed ? transfer ? 'Finish practice' : 'Try a fresh phrase' : 'Try this phrase again'}
       onNext={() => { if (passed) onPassed(); else { audio.abort(); setReport(null); setStatus(noProof ? 'prompt' : 'position-prompt'); } }}>
       {question.anchorShift ? <AnchorShiftCue ref={scoreRef} cue={question.cue} shift={question.anchorShift} notationScale={2.5} accentColor="#ef6a47" inkColor="#242237" /> :
-        <DiagnosticScore ref={scoreRef} question={question} notation={notation} />}
+        <DiagnosticScore ref={scoreRef} question={question} notation={notation} enlarged={status === 'report' && !passed} highlightClef={status === 'report' && !passed} />}
     </ExerciseView>
   </>;
 }

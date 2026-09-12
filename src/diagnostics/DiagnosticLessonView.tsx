@@ -48,7 +48,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     </div>
 
     <div className="diagnostic-prompt-section">
-      <h2 className="diagnostic-prompt">Did the piano play what is written, or was there a mistake?</h2>
+      <h2 className="diagnostic-prompt">Did the piano match the notes?</h2>
       <div className="diagnostic-choices">
         <button
           type="button"
@@ -56,7 +56,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
           aria-pressed={answer === false}
           onClick={() => setAnswer(false)}
         >
-          Sounds Right
+          Correct
         </button>
         <button
           type="button"
@@ -64,15 +64,14 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
           aria-pressed={answer === true}
           onClick={() => setAnswer(true)}
         >
-          Spot the Mistake
+          Wrong
         </button>
       </div>
     </div>
 
     {answer !== null && <div className="diagnostic-feedback" role="status">
-      <strong>{answer ? 'Good listening! You spotted it.' : 'Good try. Let’s listen for this clue together.'}</strong>
+      <strong>{answer ? 'Good ear! You caught it.' : 'Listen again carefully.'}</strong>
       <p>{lesson.explanation}</p>
-      <p className="diagnostic-feedback__sub">The orange notes mark where the sound went off track.</p>
       <div className="diagnostic-action-area diagnostic-action-area--feedback">
         <div className="et-start-callout" role="note">
           Ready to discover the clue?
@@ -91,8 +90,10 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
   const [roundIdx, setRoundIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(false);
-  const [answer, setAnswer] = useState<boolean | null>(null);
   const [error, setError] = useState('');
+  const [enlarged, setEnlarged] = useState(false);
+  const [highlightClef, setHighlightClef] = useState(false);
+  const [showForced, setShowForced] = useState(false);
   const playback = useRef<ReturnType<typeof playDiagnosticExample> | null>(null);
   const alive = useRef(true);
   const locked = useRef(false);
@@ -118,23 +119,35 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       await run.done;
       if (alive.current) setHeard(true);
     } catch {
-      if (alive.current) setError('The piano recording could not load. Check your connection and press Play again.');
+      if (alive.current) setError('Piano audio could not load. Press play again.');
     } finally {
       locked.current = false;
       if (alive.current) setPlaying(false);
     }
   };
 
-  const advanceRound = () => {
+  // If user picks Wrong: piano didn't match the written clef (they are right!)
+  // Move on immediately!
+  const onPickWrong = () => {
     playback.current?.stop();
+    setEnlarged(false);
+    setHighlightClef(false);
+    setShowForced(false);
     if (roundIdx < rounds.length - 1) {
       setRoundIdx(r => r + 1);
       setHeard(false);
-      setAnswer(null);
       setError('');
     } else {
       onNext();
     }
+  };
+
+  // If user picks Correct: they got it wrong!
+  // Enlarge sheet music, highlight clef, show forced message (no blur)
+  const onPickCorrect = () => {
+    setEnlarged(true);
+    setHighlightClef(true);
+    setShowForced(true);
   };
 
   return (
@@ -142,14 +155,19 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       <div className="diagnostic-round-indicator">
         Question {roundIdx + 1} of {rounds.length}
       </div>
-      <DiagnosticScore question={currentRound.question} notation={currentRound.notation} highlight={answer !== null} />
+      <DiagnosticScore
+        question={currentRound.question}
+        notation={currentRound.notation}
+        enlarged={enlarged}
+        highlightClef={highlightClef}
+      />
       <div className="diagnostic-action-area">
         <div className="et-start-callout" role="note">
           {playing
-            ? 'Listening to the piano example…'
+            ? 'Listening to the piano…'
             : heard
-              ? (answer !== null ? 'Check the result below' : 'Did the piano play what is written, or was there a mistake?')
-              : 'Listen closely to the piano example'}
+              ? (showForced ? 'Check the highlighted clef' : 'Did the piano match the notes?')
+              : 'Listen to the piano'}
         </div>
         <button
           type="button"
@@ -164,38 +182,41 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       </div>
 
       <div className="diagnostic-prompt-section">
-        <h2 className="diagnostic-prompt">Did the piano play what is written, or was there a mistake?</h2>
+        <h2 className="diagnostic-prompt">Did the piano match the notes?</h2>
         <div className="diagnostic-choices">
           <button
             type="button"
-            disabled={!heard || playing || answer !== null}
-            aria-pressed={answer === false}
-            onClick={() => setAnswer(false)}
+            disabled={!heard || playing || showForced}
+            onClick={onPickCorrect}
           >
-            Sounds Right
+            Correct
           </button>
           <button
             type="button"
-            disabled={!heard || playing || answer !== null}
-            aria-pressed={answer === true}
-            onClick={() => setAnswer(true)}
+            disabled={!heard || playing || showForced}
+            onClick={onPickWrong}
           >
-            Spot the Mistake
+            Wrong
           </button>
         </div>
       </div>
 
-      {answer !== null && (
-        <div className="diagnostic-feedback" role="status">
-          <strong>{answer ? 'Good ear! You caught it.' : 'Listen again carefully.'}</strong>
-          <p>{currentRound.explanation}</p>
-          <div className="diagnostic-action-area diagnostic-action-area--feedback">
-            <div className="et-start-callout" role="note">
-              {roundIdx < rounds.length - 1 ? `Ready for question ${roundIdx + 2} of ${rounds.length}?` : 'Ready to discover what went wrong?'}
-            </div>
-            <button type="button" className="et-start" disabled={playing} onClick={advanceRound}>
-              <span className="et-start__dot"><RecordDot /></span>
-              {roundIdx < rounds.length - 1 ? `Continue to Question ${roundIdx + 2}` : 'Discover what happened'}
+      {showForced && (
+        <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
+          <div className="diagnostic-forced-card">
+            <div className="diagnostic-forced-badge">Clef Notice</div>
+            <h3 id="forced-listen-title" className="diagnostic-forced-title">Review the clef</h3>
+            <p className="diagnostic-forced-body">
+              The piano played in treble clef, but this phrase is written in <strong>bass clef</strong>. Look closely at the highlighted clef above — its lines and spaces name different notes than treble.
+            </p>
+            <button
+              type="button"
+              className="diagnostic-btn-primary diagnostic-forced-btn"
+              onClick={() => {
+                setShowForced(false);
+              }}
+            >
+              I understand
             </button>
           </div>
         </div>

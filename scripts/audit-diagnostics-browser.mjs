@@ -43,8 +43,8 @@ try {
   await page.waitForSelector('.diagnostic-score svg');
   await page.screenshot({ path: '../octave-desktop.png', fullPage: true });
   await clickText('Play piano example');
-  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent === 'Spot the Mistake' && !b.disabled), { timeout: 45000 });
-  await clickText('Spot the Mistake');
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => (b.textContent === 'Spot the Mistake' || b.textContent === 'Wrong') && !b.disabled), { timeout: 45000 });
+  await clickText('Wrong');
   await clickText('Discover the clue');
   await page.waitForSelector('[data-stage="2"]');
   await clickText('Diagnostic tester');
@@ -76,8 +76,8 @@ try {
   await page.goto(`${base}/?diagnosis=clef-transposition`);
   await page.waitForSelector('.diagnostic-score svg');
   await clickText('Play piano example');
-  await page.waitForFunction(() => document.body.textContent.includes('could not load'), { timeout: 30000 });
-  assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent === 'Sounds Right').disabled), true);
+  await page.waitForFunction(() => document.body.textContent.includes('could not load') || document.body.textContent.includes('Audio could not load'), { timeout: 30000 });
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent === 'Correct' || b.textContent === 'Sounds Right').disabled), true);
   assert.deepEqual(errors, []);
   console.log('Browser audit passed: six problem renderers at four widths, MCQ progression, physical gates, tester navigation, 24-key menu, audio failure handling.');
   }
