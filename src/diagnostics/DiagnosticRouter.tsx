@@ -18,10 +18,27 @@ export default function DiagnosticRouter({ session }: { session: OclefIntegratio
   const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
   const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
   const tester = import.meta.env.DEV || new URLSearchParams(window.location.search).get('dev') === 'diagnostics';
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const parsedLesson = searchParams ? parseInt(searchParams.get('lesson') || '', 10) : NaN;
+  const initialLesson = !isNaN(parsedLesson)
+    ? parsedLesson
+    : (launch?.assignment?.recommendedLessonIndex ?? launch?.checkpoint?.lessonIndex ?? 1);
+  const initialProofCompleted = searchParams ? searchParams.get('noproof') === '1' : false;
+  const parsedQuestion = searchParams ? parseInt(searchParams.get('drill') || '', 10) : NaN;
+  const initialQuestion = !isNaN(parsedQuestion) ? parsedQuestion : 1;
+
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
       selection && definition ? <DiagnosticLessonView key={`${selection.problem}/${selection.key}/${selection.revision}`} definition={definition} selectedKey={selectedKey} initialStage={selection.stage} onStandard={standard} /> :
-        <PathwayRouter key={standardRevision} initialLesson={launch?.assignment?.recommendedLessonIndex ?? launch?.checkpoint?.lessonIndex ?? 1} sessionQuestionCap={launch?.assignment?.questionCap} returnUrl={launch?.assignment?.returnUrl} externalLaunch={launch} />}
+        <PathwayRouter
+          key={standardRevision}
+          initialLesson={initialLesson}
+          initialQuestion={initialQuestion}
+          initialProofCompleted={initialProofCompleted}
+          sessionQuestionCap={launch?.assignment?.questionCap}
+          returnUrl={launch?.assignment?.returnUrl}
+          externalLaunch={launch}
+        />}
     {tester && <DiagnosticNavigator selection={selection} onSelect={next => { setKeyError(undefined); setSelection(next); }} onStandard={standard} />}
   </>;
 }
