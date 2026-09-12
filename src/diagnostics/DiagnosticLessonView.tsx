@@ -28,13 +28,6 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
   return <section className="diagnostic-card" aria-label="Listen and judge">
     <DiagnosticScore question={lesson.question} notation={lesson.notation} highlight={answer !== null} />
     <div className="diagnostic-action-area">
-      <div className="et-start-callout" role="note">
-        {playing
-          ? 'Listening to the piano example…'
-          : heard
-            ? (answer !== null ? 'Clue revealed below' : 'Did the piano play what is written, or was there a mistake?')
-            : 'Listen closely to the piano example'}
-      </div>
       <button
         type="button"
         className="et-start"
@@ -73,9 +66,6 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
       <strong>{answer ? 'Good ear! You caught it.' : 'Listen again carefully.'}</strong>
       <p>{lesson.explanation}</p>
       <div className="diagnostic-action-area diagnostic-action-area--feedback">
-        <div className="et-start-callout" role="note">
-          Ready to discover the clue?
-        </div>
         <button type="button" className="et-start" disabled={playing} onClick={onNext}>
           <span className="et-start__dot"><RecordDot /></span>
           Discover the clue
@@ -152,9 +142,6 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
 
   return (
     <section className="diagnostic-card" aria-label={`Question ${roundIdx + 1} of ${rounds.length}`}>
-      <div className="diagnostic-round-indicator">
-        Question {roundIdx + 1} of {rounds.length}
-      </div>
       <DiagnosticScore
         question={currentRound.question}
         notation={currentRound.notation}
@@ -162,13 +149,6 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
         highlightClef={highlightClef}
       />
       <div className="diagnostic-action-area">
-        <div className="et-start-callout" role="note">
-          {playing
-            ? 'Listening to the piano…'
-            : heard
-              ? (showForced ? 'Check the highlighted clef' : 'Did the piano match the notes?')
-              : 'Listen to the piano'}
-        </div>
         <button
           type="button"
           className="et-start"
@@ -242,9 +222,6 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
       <p>{correct ? `You’ve got it! ${lesson.mcq.explanation}` : `Nearly! Look at the picture and try another answer. ${lesson.mcq.explanation}`}</p>
       {correct && (
         <div className="diagnostic-action-area diagnostic-action-area--feedback">
-          <div className="et-start-callout" role="note">
-            Ready to play it on your piano?
-          </div>
           <button type="button" className="et-start" onClick={onNext}>
             <span className="et-start__dot"><RecordDot /></span>
             Try it on your piano
@@ -264,20 +241,10 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
 
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={stage} questionsInLoop={isClefSwap ? 3 : 4} lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel="Your practice prescription">
     <div className="diagnostic-flow" data-diagnostic={definition.id} data-stage={stage}>
-      <p className="diagnostic-stage-label">
-        {done
-          ? 'Practice complete'
-          : isClefSwap
-            ? `Stage ${stage} of 3 · ${['3 Listening questions', 'Analyze the mistake', 'Play on your piano'][stage - 1] ?? 'Play on your piano'}`
-            : `Stage ${stage} of 4 · ${['Listen & judge', 'Discover the clue', 'Acoustic playthrough', 'Transfer drill'][stage - 1]}`}
-      </p>
       {done ? <section className="diagnostic-card diagnostic-complete">
         <h2 className="diagnostic-prompt">You carried the clue into a new phrase!</h2>
         <p className="diagnostic-complete__p">You read and played the phrase accurately in bass clef. Keep checking your clef when you practice!</p>
         <div className="diagnostic-action-area">
-          <div className="et-start-callout" role="note">
-            Ready to return to your lessons
-          </div>
           <button type="button" className="et-start" onClick={onStandard}>
             <span className="et-start__dot"><RecordDot /></span>
             Return to standard curriculum
