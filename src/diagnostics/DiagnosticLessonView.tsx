@@ -207,10 +207,10 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
 
     {subStage === 'professorNotified' && (
       <div className="diagnostic-professor-notice" role="alert">
-        <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
-        <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+        <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
+        <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
         <p className="diagnostic-professor-notice__text">
-          Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+          We've saved a note for your teacher so you can practice this concept together. Let's keep going!
         </p>
         <button
           type="button"
@@ -511,10 +511,10 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
 
       {subStage === 'professorNotified' && (
         <div className="diagnostic-professor-notice" role="alert">
-          <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
-          <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+          <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
+          <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
           <p className="diagnostic-professor-notice__text">
-            Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+            We've saved a note for your teacher so you can practice this concept together. Let's keep going!
           </p>
           <button
             type="button"
@@ -822,10 +822,10 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
       {subStage === 'professorNotified' && (
         <div className="diagnostic-professor-notice" role="alert">
-          <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
-          <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+          <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
+          <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
           <p className="diagnostic-professor-notice__text">
-            Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+            We've saved a note for your teacher so you can practice this concept together. Let's keep going!
           </p>
           <button
             type="button"
@@ -906,10 +906,10 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
     </div>
     {professorNotified ? (
       <div className="diagnostic-professor-notice" role="alert">
-        <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
-        <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+        <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
+        <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
         <p className="diagnostic-professor-notice__text">
-          Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+          We've saved a note for your teacher so you can practice this concept together. Let's keep going!
         </p>
         <button type="button" className="et-start diagnostic-brief-btn" onClick={onNext}>
           <span className="et-start__dot"><RecordDot /></span>

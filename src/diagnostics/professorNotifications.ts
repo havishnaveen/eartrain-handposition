@@ -56,7 +56,7 @@ export function prepareProfessorNotification(params: {
     questionIndex: params.questionIndex,
     questionPrompt: params.questionPrompt,
     attemptsCount: params.attemptsCount,
-    message: 'Despite direct instructions, multiple attempts on this question were incorrect.',
+    message: 'Teacher review recommended: student needs practice on this concept.',
     details: params.details,
   };
 
