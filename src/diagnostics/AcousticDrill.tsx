@@ -97,12 +97,14 @@ export function detectDiagnosticMistake({
   notation,
   mistakePitches,
   forcedErrorMessage,
+  diagnosticId,
 }: {
   expectedSequence: string[];
   detected: readonly Pick<DetectedNote, 'midi'>[];
   notation: DiagnosticNotation;
   mistakePitches?: readonly string[];
   forcedErrorMessage?: string;
+  diagnosticId?: string;
 }): boolean {
   if (!detected.length || !expectedSequence.length || !forcedErrorMessage) return false;
 
@@ -111,8 +113,8 @@ export function detectDiagnosticMistake({
     return true;
   }
 
-  // 2. Octave displacement check: played 1 octave too low when 8va is present
-  if (notation.octaveUp) {
+  // 2. Octave displacement check: played 1 octave too low
+  if (notation.octaveUp || diagnosticId === 'octave-displacement' || forcedErrorMessage.toLowerCase().includes('octave')) {
     const expectedMidi = expectedSequence.map(pitchToMidi).filter((m): m is number => m !== null);
     const oneOctaveDown = expectedMidi.map(m => m - 12);
     const octaveDownMatches = alignPitchSequences(oneOctaveDown, detected, m => m)
@@ -191,6 +193,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
         notation,
         mistakePitches,
         forcedErrorMessage,
+        diagnosticId: diagnosticId || question.conceptId,
       });
       setIsDiagnosticError(diagError);
       if (!passedDrill) {
@@ -261,7 +264,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
         <div className="diagnostic-forced-card">
           <DiagnosticScore question={question} notation={notation} enlarged={true} highlightClef={true} />
           <h3 id="forced-error-title" className="diagnostic-forced-title">
-            {notation.octaveUp ? 'Check the octave' : notation.clefChange || forcedErrorMessage.toLowerCase().includes('clef') ? 'Check the clef' : 'Check the notation'}
+            {notation.octaveUp || diagnosticId === 'octave-displacement' || forcedErrorMessage.toLowerCase().includes('octave') ? 'Check the octave' : notation.clefChange || forcedErrorMessage.toLowerCase().includes('clef') ? 'Check the clef' : 'Check the notation'}
           </h3>
           <p className="diagnostic-forced-body">{forcedErrorMessage}</p>
           <button

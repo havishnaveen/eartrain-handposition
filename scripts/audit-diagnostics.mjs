@@ -75,7 +75,7 @@ try {
   assert.equal((score.match(/<accidental>sharp<\/accidental>/g) ?? []).length, 1, 'Do not reprint the carry-over sharp');
   assert.equal((score.match(/<alter>1<\/alter>/g) ?? []).length, 2, 'Both first-measure Cs sound sharp');
   const octave = DIAGNOSTIC_REGISTRY.find(d => d.id === 'octave-displacement').create(DIAGNOSTIC_KEYS[0]);
-  assert.match(diagnosticMusicXML(octave.question, octave.notation), /octave-shift type="down"/);
+  assert.match(diagnosticMusicXML(octave.question, octave.notation), /<octave>5<\/octave>/);
   const clef = DIAGNOSTIC_REGISTRY.find(d => d.id === 'mid-line-clef-change').create(DIAGNOSTIC_KEYS[0]);
   assert.match(diagnosticMusicXML(clef.question, clef.notation), /<\/note><attributes><clef><sign>G/);
 

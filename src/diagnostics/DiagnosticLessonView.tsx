@@ -440,7 +440,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
             onClick={() => setSubStage('identifying')}
           >
             <span className="et-start__dot"><RecordDot /></span>
-            Next question
+            Check clue
           </button>
         </div>
       )}
@@ -667,12 +667,9 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
   return (
     <section className="diagnostic-card" aria-label={`Question ${roundIdx + 1} of ${rounds.length}`}>
       <div className="diagnostic-round-header">
-        <span className="diagnostic-round-indicator" aria-label={`Round ${roundIdx + 1} of ${rounds.length}`}>
-          {currentRound?.title ? `${currentRound.title} · Question ${roundIdx + 1} of ${rounds.length}` : `Question ${roundIdx + 1} of ${rounds.length}`}
+        <span className="diagnostic-round-indicator" aria-label={`Question ${roundIdx + 1} of ${rounds.length}`}>
+          Question {roundIdx + 1} of {rounds.length}{hasAudio ? ' · Listen' : ''}
         </span>
-        {currentRound?.badge && (
-          <span className="diagnostic-round-pill">{currentRound.badge}</span>
-        )}
       </div>
 
       {retrying && subStage === 'prompting' && (
@@ -756,7 +753,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
             onClick={() => setSubStage('identifying')}
           >
             <span className="et-start__dot"><RecordDot /></span>
-            Next question
+            Check clue
           </button>
         </div>
       )}
@@ -822,7 +819,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
             onClick={advanceRound}
           >
             <span className="et-start__dot"><RecordDot /></span>
-            {roundIdx < rounds.length - 1 ? 'Next question' : 'Discover the clue'}
+            {roundIdx < rounds.length - 1 ? 'Next question' : 'Continue to piano'}
           </button>
         </div>
       )}
@@ -840,7 +837,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
             onClick={advanceRound}
           >
             <span className="et-start__dot"><RecordDot /></span>
-            {roundIdx < rounds.length - 1 ? 'Next question' : 'Discover the clue'}
+            {roundIdx < rounds.length - 1 ? 'Next question' : 'Continue to piano'}
           </button>
         </div>
       )}
@@ -930,13 +927,13 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
           <p><strong>Correct!</strong> {lesson.mcq.explanation}</p>
         </div>
       ) : (
-        <p>Nearly! Try another answer. {lesson.mcq.explanation}</p>
+        <p>Try another answer.</p>
       )}
       {correct && (
         <div className="diagnostic-action-area diagnostic-action-area--feedback">
           <button type="button" className="et-start" onClick={onNext}>
             <span className="et-start__dot"><RecordDot /></span>
-            Try it on your piano
+            Continue to piano
           </button>
         </div>
       )}
