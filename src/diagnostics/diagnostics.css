@@ -81,6 +81,158 @@
   pointer-events: none;
 }
 
+@keyframes noteHaloPulse {
+  0%, 100% { opacity: 0.95; stroke-width: 2px; }
+  50% { opacity: 0.4; stroke-width: 3.5px; }
+}
+
+.diagnostic-note-halo {
+  animation: noteHaloPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.diagnostic-score--clef-change-highlight .vf-clef:last-of-type path {
+  fill: #ef6a47 !important;
+  stroke: #ef6a47 !important;
+  filter: drop-shadow(0 0 8px rgba(239, 106, 71, 0.8));
+}
+
+/* Round header pills & badges */
+.diagnostic-round-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.diagnostic-round-pill {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ef6a47;
+  background: #fff0e9;
+  border: 1px solid #fdba74;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+/* Interactive A/B Audio Comparison Player */
+.diagnostic-ab-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin: 20px 0 24px;
+  flex-wrap: wrap;
+}
+
+.diagnostic-ab-card {
+  flex: 1 1 240px;
+  max-width: 340px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.diagnostic-ab-card.is-playing {
+  border-color: #ef6a47;
+  background: #fff8f5;
+  box-shadow: 0 4px 16px rgba(239, 106, 71, 0.16);
+}
+
+.diagnostic-ab-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.diagnostic-ab-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.diagnostic-ab-card.is-playing .diagnostic-ab-tag {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.diagnostic-ab-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.diagnostic-ab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.diagnostic-ab-btn:hover:not(:disabled) {
+  border-color: #ef6a47;
+  background: #fff8f5;
+  color: #ef6a47;
+  transform: translateY(-1px);
+}
+
+.diagnostic-ab-btn:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.diagnostic-ab-card.is-playing .diagnostic-ab-btn {
+  background: #ef6a47;
+  color: #ffffff;
+  border-color: #ef6a47;
+}
+
+:root[data-theme='dark'] .diagnostic-ab-card {
+  background: #1e1b2e;
+  border-color: #3d3856;
+}
+:root[data-theme='dark'] .diagnostic-ab-card.is-playing {
+  background: #2e1a14;
+  border-color: #f97316;
+}
+:root[data-theme='dark'] .diagnostic-ab-label {
+  color: #f3f1f8;
+}
+:root[data-theme='dark'] .diagnostic-ab-btn {
+  background: #262338;
+  border-color: #3d3856;
+  color: #f3f1f8;
+}
+
 /* Brief feedback banner when learner answers */
 .diagnostic-brief-feedback {
   margin: 24px auto 16px;

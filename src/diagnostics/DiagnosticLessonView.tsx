@@ -502,6 +502,297 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
   );
 }
 
+function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
+  const rounds = lesson.interactiveRounds ?? [];
+  const [roundIdx, setRoundIdx] = useState(0);
+  const [subStage, setSubStage] = useState<'prompting' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback'>('prompting');
+  const [retrying, setRetrying] = useState(false);
+  const [playingA, setPlayingA] = useState(false);
+  const [playingB, setPlayingB] = useState(false);
+  const [heardA, setHeardA] = useState(false);
+  const [heardB, setHeardB] = useState(false);
+  const [error, setError] = useState('');
+  const [enlarged, setEnlarged] = useState(false);
+  const [highlightCue, setHighlightCue] = useState(false);
+  const [showForced, setShowForced] = useState(false);
+  const playback = useRef<ReturnType<typeof playDiagnosticExample> | null>(null);
+  const alive = useRef(true);
+  const locked = useRef(false);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      playback.current?.stop();
+    };
+  }, []);
+
+  const currentRound = rounds[roundIdx] ?? rounds[0];
+  const hasAudio = Boolean(currentRound?.audioClipA && currentRound?.audioClipB);
+  const featureCheck = currentRound?.featureCheck ?? lesson.featureCheck;
+
+  const playAudioClip = async (which: 'A' | 'B') => {
+    if (locked.current || !currentRound) return;
+    locked.current = true;
+    playback.current?.stop();
+    const clip = which === 'A' ? currentRound.audioClipA : currentRound.audioClipB;
+    if (!clip) { locked.current = false; return; }
+    if (which === 'A') setPlayingA(true); else setPlayingB(true);
+    setError('');
+    const run = playDiagnosticExample(clip.pitches, clip.hesitationBefore);
+    playback.current = run;
+    try {
+      await run.done;
+      if (alive.current) {
+        if (which === 'A') setHeardA(true); else setHeardB(true);
+      }
+    } catch {
+      if (alive.current) setError('Piano audio could not load. Press play again.');
+    } finally {
+      locked.current = false;
+      if (alive.current) {
+        if (which === 'A') setPlayingA(false); else setPlayingB(false);
+      }
+    }
+  };
+
+  const advanceRound = () => {
+    playback.current?.stop();
+    setEnlarged(false);
+    setHighlightCue(false);
+    setSubStage('prompting');
+    setRetrying(false);
+    setHeardA(false);
+    setHeardB(false);
+    setError('');
+    if (roundIdx < rounds.length - 1) {
+      setRoundIdx(r => r + 1);
+    } else {
+      onNext();
+    }
+  };
+
+  const onPickChoice = (index: number) => {
+    playback.current?.stop();
+    if (index === currentRound.correct) {
+      setEnlarged(false);
+      setHighlightCue(false);
+      setSubStage('correctFeedback');
+    } else {
+      if (retrying || !featureCheck) {
+        setEnlarged(true);
+        setHighlightCue(true);
+        setShowForced(true);
+      } else {
+        setSubStage('incorrectFeedback');
+      }
+    }
+  };
+
+  const onPickFeatureChoice = (index: number) => {
+    if (featureCheck && index === featureCheck.correct) {
+      setSubStage('identifyingCorrect');
+    } else {
+      setEnlarged(true);
+      setHighlightCue(true);
+      setShowForced(true);
+    }
+  };
+
+  return (
+    <section className="diagnostic-card" aria-label={`Question ${roundIdx + 1} of ${rounds.length}`}>
+      <div className="diagnostic-round-header">
+        <span className="diagnostic-round-indicator" aria-label={`Round ${roundIdx + 1} of ${rounds.length}`}>
+          {currentRound?.title ? `${currentRound.title} · Question ${roundIdx + 1} of ${rounds.length}` : `Question ${roundIdx + 1} of ${rounds.length}`}
+        </span>
+        {currentRound?.badge && (
+          <span className="diagnostic-round-pill">{currentRound.badge}</span>
+        )}
+      </div>
+
+      {retrying && subStage === 'prompting' && (
+        <span className="diagnostic-try-again-badge" aria-label="Try again attempt">
+          Try Again
+        </span>
+      )}
+
+      <DiagnosticScore
+        question={lesson.question}
+        notation={lesson.notation}
+        enlarged={enlarged}
+        highlightClef={highlightCue && Boolean(currentRound?.highlightClef)}
+        highlightClefChange={Boolean(currentRound?.highlightClefChange)}
+        highlight8va={Boolean(currentRound?.highlight8va)}
+        highlightNoteIndex={currentRound?.highlightNoteIndex}
+      />
+
+      {hasAudio && (
+        <div className="diagnostic-ab-row" aria-label="Audio clips comparison">
+          <div className={`diagnostic-ab-card ${playingA ? 'is-playing' : ''}`}>
+            <div className="diagnostic-ab-header">
+              <span className="diagnostic-ab-tag">Option A</span>
+              <span className="diagnostic-ab-label">{currentRound.audioClipA!.label}</span>
+            </div>
+            <button
+              type="button"
+              className="diagnostic-ab-btn"
+              disabled={playingA || playingB}
+              onClick={() => { void playAudioClip('A'); }}
+            >
+              <span className="et-start__dot"><RecordDot /></span>
+              <span>{playingA ? 'Playing…' : heardA ? 'Replay Clip A' : `Play ${currentRound.audioClipA!.label}`}</span>
+            </button>
+          </div>
+
+          <div className={`diagnostic-ab-card ${playingB ? 'is-playing' : ''}`}>
+            <div className="diagnostic-ab-header">
+              <span className="diagnostic-ab-tag">Option B</span>
+              <span className="diagnostic-ab-label">{currentRound.audioClipB!.label}</span>
+            </div>
+            <button
+              type="button"
+              className="diagnostic-ab-btn"
+              disabled={playingA || playingB}
+              onClick={() => { void playAudioClip('B'); }}
+            >
+              <span className="et-start__dot"><RecordDot /></span>
+              <span>{playingB ? 'Playing…' : heardB ? 'Replay Clip B' : `Play ${currentRound.audioClipB!.label}`}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p role="alert" className="diagnostic-error">{error}</p>}
+
+      {subStage === 'prompting' && (
+        <div className="diagnostic-prompt-section">
+          <h2 className="diagnostic-prompt">{currentRound.prompt}</h2>
+          <div className="diagnostic-choices">
+            {currentRound.choices.map((choice, i) => (
+              <button
+                key={choice}
+                type="button"
+                disabled={playingA || playingB || showForced}
+                onClick={() => onPickChoice(i)}
+              >
+                {choice}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subStage === 'incorrectFeedback' && (
+        <div className="diagnostic-brief-feedback diagnostic-brief-feedback--wrong" role="status">
+          <span className="diagnostic-brief-badge diagnostic-brief-badge--wrong">Incorrect</span>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={() => setSubStage('identifying')}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            Next question
+          </button>
+        </div>
+      )}
+
+      {subStage === 'identifying' && featureCheck && (
+        <div className="diagnostic-prompt-section">
+          <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+          <div className="diagnostic-choices">
+            {featureCheck.choices.map((choice, i) => (
+              <button
+                key={choice}
+                type="button"
+                onClick={() => onPickFeatureChoice(i)}
+              >
+                {choice}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subStage === 'identifyingCorrect' && featureCheck && (
+        <div className="diagnostic-brief-feedback diagnostic-brief-feedback--correct" role="status">
+          <div className="diagnostic-morph-box">
+            <MorphingCheckmark />
+            <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+            <p className="diagnostic-brief-text diagnostic-brief-text--correct">
+              {featureCheck.explanation}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={() => {
+              setSubStage('prompting');
+              setRetrying(true);
+              setHeardA(false);
+              setHeardB(false);
+              setPlayingA(false);
+              setPlayingB(false);
+              setEnlarged(false);
+              setHighlightCue(false);
+            }}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            Try question again
+          </button>
+        </div>
+      )}
+
+      {subStage === 'correctFeedback' && (
+        <div className="diagnostic-brief-feedback diagnostic-brief-feedback--correct" role="status">
+          <div className="diagnostic-morph-box">
+            <MorphingCheckmark />
+            <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+            <p className="diagnostic-brief-text diagnostic-brief-text--correct">
+              {currentRound.explanation}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={advanceRound}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            {roundIdx < rounds.length - 1 ? 'Next question' : 'Discover the clue'}
+          </button>
+        </div>
+      )}
+
+      {showForced && (
+        <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
+          <div className="diagnostic-forced-card">
+            <h3 id="forced-listen-title" className="diagnostic-forced-title">Check the notation</h3>
+            <p className="diagnostic-forced-body">
+              {featureCheck?.explanation ?? currentRound.explanation}
+            </p>
+            <button
+              type="button"
+              className="diagnostic-btn-primary diagnostic-forced-btn"
+              onClick={() => {
+                setShowForced(false);
+                setEnlarged(false);
+                setHighlightCue(false);
+                setSubStage('prompting');
+                setRetrying(true);
+                setHeardA(false);
+                setHeardB(false);
+                setPlayingA(false);
+                setPlayingB(false);
+              }}
+            >
+              I understand
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [choice, setChoice] = useState<number | null>(null);
   const correct = choice === lesson.mcq.correct;
@@ -542,12 +833,13 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
   const lesson = useMemo(() => definition.create(selectedKey), [definition, selectedKey]);
   const [stage, setStage] = useState<DiagnosticStage>(initialStage), [done, setDone] = useState(false);
   const isClefSwap = definition.id === 'clef-transposition' && Boolean(lesson.wrongClefRounds?.length);
+  const hasInteractiveRounds = Boolean(lesson.interactiveRounds?.length);
 
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={stage} questionsInLoop={isClefSwap ? 3 : 4} lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel="Your practice prescription">
     <div className="diagnostic-flow" data-diagnostic={definition.id} data-stage={stage}>
       {done ? <section className="diagnostic-card diagnostic-complete">
         <h2 className="diagnostic-prompt">You carried the clue into a new phrase!</h2>
-        <p className="diagnostic-complete__p">You read and played the phrase accurately in bass clef. Keep checking your clef when you practice!</p>
+        <p className="diagnostic-complete__p">You read and played the phrase accurately. Keep checking your notes when you practice!</p>
         <div className="diagnostic-action-area">
           <button type="button" className="et-start" onClick={onStandard}>
             <span className="et-start__dot"><RecordDot /></span>
@@ -556,7 +848,13 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
         </div>
       </section> :
         stage === 1 ? (
-          isClefSwap ? <WrongClefListening lesson={lesson} onNext={() => setStage(2)} /> : <ListenAndJudge lesson={lesson} onNext={() => setStage(2)} />
+          isClefSwap ? (
+            <WrongClefListening lesson={lesson} onNext={() => setStage(2)} />
+          ) : hasInteractiveRounds ? (
+            <DiagnosticInteractiveFlow lesson={lesson} onNext={() => setStage(2)} />
+          ) : (
+            <ListenAndJudge lesson={lesson} onNext={() => setStage(2)} />
+          )
         ) :
         stage === 2 ? <ConceptQuestion lesson={lesson} onNext={() => setStage(3)} /> :
         isClefSwap ? (

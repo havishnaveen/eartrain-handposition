@@ -4,7 +4,7 @@ import type { DiagnosticNotation } from './registry';
 const xml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 const clefXml = (clef: 'bass' | 'treble') => `<clef><sign>${clef === 'bass' ? 'F' : 'G'}</sign><line>${clef === 'bass' ? 4 : 2}</line></clef>`;
 /** Isolated engraving: sounding notes remain untouched in the engine's Question. */
-export function diagnosticMusicXML(question: Question, notation: DiagnosticNotation, highlight = false): string {
+export function diagnosticMusicXML(question: Question, notation: DiagnosticNotation, highlight = false, highlightNoteIndex?: number): string {
   const measures: string[] = [];
   const keyAlter = new Map<string, number>();
   const fifths = notation.fifths ?? 0;
@@ -27,7 +27,8 @@ export function diagnosticMusicXML(question: Question, notation: DiagnosticNotat
       const sign = alter !== previous ? `<accidental>${alter === 1 ? 'sharp' : alter === -1 ? 'flat' : alter === 2 ? 'double-sharp' : alter === -2 ? 'flat-flat' : 'natural'}</accidental>` : '';
       accidentals.set(identity, alter);
       const finger = question.cue.staves[0].notes[i].finger;
-      const color = highlight && notation.mistakeIndices.includes(i) ? '#ef6a47' : '#242237';
+      const isHighlighted = (highlight && notation.mistakeIndices.includes(i)) || highlightNoteIndex === i;
+      const color = isHighlighted ? '#ef6a47' : '#242237';
       contents += `<note color="${color}"><pitch><step>${step}</step><alter>${alter}</alter><octave>${octave}</octave></pitch><duration>1</duration><type>quarter</type>${sign}${finger ? `<notations><technical><fingering placement="${question.handScope === 'left' ? 'below' : 'above'}">${finger}</fingering></technical></notations>` : ''}</note>`;
     }
     if (start + 4 >= pitches.length && notation.octaveUp) contents += '<direction placement="above"><direction-type><octave-shift type="stop" size="8" number="1"/></direction-type></direction>';
