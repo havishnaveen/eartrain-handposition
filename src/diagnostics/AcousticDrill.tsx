@@ -9,6 +9,13 @@ import type { DetectedNote, GradeResult } from '../audio/timing';
 import type { Question } from '../curriculum/types';
 import type { DiagnosticNotation } from './registry';
 import { DiagnosticScore } from './DiagnosticScore';
+import { prepareProfessorNotification } from './professorNotifications';
+
+const RecordDot = () => (
+  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+    <circle cx="12" cy="12" r="7" fill="currentColor" />
+  </svg>
+);
 
 const DIATONIC_STEPS: Record<string, number> = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
 const STEP_TO_LETTER = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -160,6 +167,8 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
   const [error, setError] = useState('');
   const [forcedDismissed, setForcedDismissed] = useState(false);
   const [isDiagnosticError, setIsDiagnosticError] = useState(false);
+  const [failedTakes, setFailedTakes] = useState(0);
+  const [profNotified, setProfNotified] = useState(false);
   const scoreRef = useRef<StaffCueHandle>(null), viewRef = useRef<ExerciseViewHandle>(null);
   const playStart = useRef(0), alive = useRef(true), busy = useRef(false), mode = useRef<'proof' | 'take' | null>(null);
   const plan = useMemo(() => planForQuestion(question, 75), [question]);
@@ -184,6 +193,23 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
         forcedErrorMessage,
       });
       setIsDiagnosticError(diagError);
+      if (!passedDrill) {
+        const nextFailed = failedTakes + 1;
+        setFailedTakes(nextFailed);
+        if (nextFailed >= 2) {
+          prepareProfessorNotification({
+            diagnosticId: diagnosticId || question.conceptId,
+            lessonTitle: question.instruction,
+            stage: transfer ? 4 : 3,
+            questionPrompt: `Play the written phrase on your piano (${question.id})`,
+            attemptsCount: nextFailed,
+            details: diagError
+              ? `Acoustic Drill: Repeated failure triggering diagnostic mistake (${forcedErrorMessage})`
+              : 'Acoustic Drill: Repeated failure meeting passing score criteria.',
+          });
+          setProfNotified(true);
+        }
+      }
       setReport(result); setDetected(notes); setProgress(100); setStatus('report'); scoreRef.current?.hide();
     },
   });
@@ -204,12 +230,33 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
   const passed = report ? passesDiagnosticDrill(report, question) : false;
   return <>
     {error && <p role="alert" className="diagnostic-feedback">{error}</p>}
-    {status === 'report' && !passed && !isDiagnosticError && (
+    {status === 'report' && !passed && profNotified && (
+      <div className="diagnostic-professor-notice" role="alert">
+        <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
+        <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+        <p className="diagnostic-professor-notice__text">
+          Despite direct instructions, multiple attempts on this phrase were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+        </p>
+        <button
+          type="button"
+          className="et-start diagnostic-brief-btn"
+          onClick={() => {
+            audio.abort();
+            setReport(null);
+            onPassed();
+          }}
+        >
+          <span className="et-start__dot"><RecordDot /></span>
+          Continue to next question
+        </button>
+      </div>
+    )}
+    {status === 'report' && !passed && !profNotified && !isDiagnosticError && (
       <p className="diagnostic-feedback">
         Let’s try once more. Keep the correct notes and a steady beat{question.anchorShift ? ', including the move' : ''}.
       </p>
     )}
-    {status === 'report' && !passed && isDiagnosticError && forcedErrorMessage && !forcedDismissed && (
+    {status === 'report' && !passed && !profNotified && isDiagnosticError && forcedErrorMessage && !forcedDismissed && (
       <div className="diagnostic-forced-overlay diagnostic-forced-overlay--center" role="alertdialog" aria-modal="true" aria-labelledby="forced-error-title" data-diagnostic={diagnosticId}>
         <div className="diagnostic-forced-card">
           <DiagnosticScore question={question} notation={notation} enlarged={true} highlightClef={true} />

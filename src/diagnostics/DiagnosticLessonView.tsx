@@ -4,6 +4,7 @@ import AcousticDrill from './AcousticDrill';
 import { DiagnosticScore } from './DiagnosticScore';
 import DiagnosticTip from './DiagnosticTip';
 import { playDiagnosticExample } from './playback';
+import { prepareProfessorNotification } from './professorNotifications';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
 
 const RecordDot = () => (
@@ -20,7 +21,7 @@ const MorphingCheckmark = () => (
 );
 
 function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
-  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback'>('listening');
+  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('listening');
   const [retrying, setRetrying] = useState(false);
   const [playing, setPlaying] = useState(false), [heard, setHeard] = useState(false);
   const [error, setError] = useState('');
@@ -56,8 +57,15 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
   const onPickCorrect = () => {
     playback.current?.stop();
     if (retrying) {
-      setEnlarged(true); setHighlightClef(true);
-      setShowForced(true);
+      prepareProfessorNotification({
+        diagnosticId: lesson.question.conceptId,
+        lessonTitle: lesson.title,
+        stage: 1,
+        questionPrompt: 'Did the piano match the notes?',
+        attemptsCount: 2,
+        details: 'ListenAndJudge: Student failed retry on starter question despite guided clue.',
+      });
+      setSubStage('professorNotified');
     } else {
       setSubStage('incorrectFeedback');
     }
@@ -197,6 +205,24 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
       </div>
     )}
 
+    {subStage === 'professorNotified' && (
+      <div className="diagnostic-professor-notice" role="alert">
+        <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
+        <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+        <p className="diagnostic-professor-notice__text">
+          Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+        </p>
+        <button
+          type="button"
+          className="et-start diagnostic-brief-btn"
+          onClick={onNext}
+        >
+          <span className="et-start__dot"><RecordDot /></span>
+          Next question
+        </button>
+      </div>
+    )}
+
     {showForced && (
       <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
         <div className="diagnostic-forced-card">
@@ -228,7 +254,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
 function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const rounds = lesson.wrongClefRounds ?? [];
   const [roundIdx, setRoundIdx] = useState(0);
-  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback'>('listening');
+  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('listening');
   const [retrying, setRetrying] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(false);
@@ -300,9 +326,16 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       setSubStage('correctFeedback');
     } else {
       if (retrying) {
-        setEnlarged(true);
-        setHighlightClef(true);
-        setShowForced(true);
+        prepareProfessorNotification({
+          diagnosticId: 'clef-transposition',
+          lessonTitle: lesson.title,
+          stage: 1,
+          questionIndex: roundIdx,
+          questionPrompt: 'Did the piano match the notes?',
+          attemptsCount: 2,
+          details: `Round ${roundIdx + 1}: Student answered "Wrong" when the piano matched, despite guided instruction.`,
+        });
+        setSubStage('professorNotified');
       } else {
         setSubStage('incorrectFeedback');
       }
@@ -318,9 +351,16 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       setSubStage('correctFeedback');
     } else {
       if (retrying) {
-        setEnlarged(true);
-        setHighlightClef(true);
-        setShowForced(true);
+        prepareProfessorNotification({
+          diagnosticId: 'clef-transposition',
+          lessonTitle: lesson.title,
+          stage: 1,
+          questionIndex: roundIdx,
+          questionPrompt: 'Did the piano match the notes?',
+          attemptsCount: 2,
+          details: `Round ${roundIdx + 1}: Student answered "Correct" when the clef was mismatched, despite guided instruction.`,
+        });
+        setSubStage('professorNotified');
       } else {
         setSubStage('incorrectFeedback');
       }
@@ -469,6 +509,24 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
         </div>
       )}
 
+      {subStage === 'professorNotified' && (
+        <div className="diagnostic-professor-notice" role="alert">
+          <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
+          <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+          <p className="diagnostic-professor-notice__text">
+            Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+          </p>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={advanceRound}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            {roundIdx < rounds.length - 1 ? 'Next question' : 'Continue'}
+          </button>
+        </div>
+      )}
+
       {showForced && (
         <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
           <div className="diagnostic-forced-card">
@@ -505,7 +563,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
 function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const rounds = lesson.interactiveRounds ?? [];
   const [roundIdx, setRoundIdx] = useState(0);
-  const [subStage, setSubStage] = useState<'prompting' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback'>('prompting');
+  const [subStage, setSubStage] = useState<'prompting' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('prompting');
   const [retrying, setRetrying] = useState(false);
   const [playingA, setPlayingA] = useState(false);
   const [playingB, setPlayingB] = useState(false);
@@ -579,10 +637,17 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       setHighlightCue(false);
       setSubStage('correctFeedback');
     } else {
-      if (retrying || !featureCheck) {
-        setEnlarged(true);
-        setHighlightCue(true);
-        setShowForced(true);
+      if (retrying) {
+        prepareProfessorNotification({
+          diagnosticId: lesson.question.conceptId,
+          lessonTitle: lesson.title,
+          stage: 1,
+          questionIndex: roundIdx,
+          questionPrompt: currentRound.prompt,
+          attemptsCount: 2,
+          details: `Round ${roundIdx + 1} (${currentRound.title}): Learner selected "${currentRound.choices[index]}" on retry after guided review.`,
+        });
+        setSubStage('professorNotified');
       } else {
         setSubStage('incorrectFeedback');
       }
@@ -762,6 +827,24 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
         </div>
       )}
 
+      {subStage === 'professorNotified' && (
+        <div className="diagnostic-professor-notice" role="alert">
+          <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
+          <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+          <p className="diagnostic-professor-notice__text">
+            Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+          </p>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={advanceRound}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            {roundIdx < rounds.length - 1 ? 'Next question' : 'Discover the clue'}
+          </button>
+        </div>
+      )}
+
       {showForced && (
         <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
           <div className="diagnostic-forced-card">
@@ -795,18 +878,52 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
 function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [choice, setChoice] = useState<number | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [professorNotified, setProfessorNotified] = useState(false);
   const correct = choice === lesson.mcq.correct;
+
+  const onSelectChoice = (i: number) => {
+    setChoice(i);
+    if (i !== lesson.mcq.correct) {
+      const nextCount = wrongAttempts + 1;
+      setWrongAttempts(nextCount);
+      if (nextCount >= 2) {
+        prepareProfessorNotification({
+          diagnosticId: lesson.question.conceptId,
+          lessonTitle: lesson.title,
+          stage: 2,
+          questionPrompt: lesson.mcq.prompt,
+          attemptsCount: nextCount,
+          details: `Stage 2 Concept MCQ: Student failed 2 attempts, selecting "${lesson.mcq.choices[i]}" instead of "${lesson.mcq.choices[lesson.mcq.correct]}".`,
+        });
+        setProfessorNotified(true);
+      }
+    }
+  };
+
   return <section className="diagnostic-card" aria-label="Discover the clue">
     <h2 className="diagnostic-prompt">{lesson.mcq.prompt}</h2>
     <DiagnosticTip lesson={lesson} />
     <div className="diagnostic-choices">
       {lesson.mcq.choices.map((answer, i) => (
-        <button key={answer} type="button" disabled={correct} aria-pressed={choice === i} onClick={() => setChoice(i)}>
+        <button key={answer} type="button" disabled={correct || professorNotified} aria-pressed={choice === i} onClick={() => onSelectChoice(i)}>
           {answer}
         </button>
       ))}
     </div>
-    {choice !== null && <div className={`diagnostic-feedback ${correct ? 'diagnostic-feedback--correct' : ''}`} role="status">
+    {professorNotified ? (
+      <div className="diagnostic-professor-notice" role="alert">
+        <span className="diagnostic-professor-notice__badge">Notice to Professor Prepared</span>
+        <h3 className="diagnostic-professor-notice__title">Instructions Not Followed</h3>
+        <p className="diagnostic-professor-notice__text">
+          Despite direct instructions, multiple attempts on this question were incorrect. A notification has been prepared for your professor, and we are moving on to the next question.
+        </p>
+        <button type="button" className="et-start diagnostic-brief-btn" onClick={onNext}>
+          <span className="et-start__dot"><RecordDot /></span>
+          Continue to piano
+        </button>
+      </div>
+    ) : choice !== null && <div className={`diagnostic-feedback ${correct ? 'diagnostic-feedback--correct' : ''}`} role="status">
       {correct ? (
         <div className="diagnostic-morph-box">
           <MorphingCheckmark />
