@@ -1,218 +1,145 @@
-import type { StaffVisualGuide as StaffVisualGuideConfig } from "./registry";
+import type { StaffChoiceVisual } from "./registry";
 
-export default function StaffVisualGuide({ guide }: { guide: StaffVisualGuideConfig }) {
-  const { clef, highlight, label, compareLedger } = guide;
+export const TREBLE_CLEF_D =
+  "M25 46.5M39.0544 3.3288C39.112 3.3,39.1696 3.3,39.256 3.3C39.6016 3.3,40.0048 3.588,40.5808 4.308C42.9136 6.9864,44.5552 11.652,44.5552 15.4536C44.5552 15.7416,44.4976 15.972,44.4976 16.26C44.2384 20.7816,42.3952 24.4968,38.7376 28.0104L37.7584 28.9608L37.4128 29.3352L37.4128 29.4504L37.6144 30.3144L37.9312 31.8696L38.248 33.3096C38.68 35.268,38.8528 36.276,38.8528 36.276C38.8528 36.276,38.8528 36.276,38.8528 36.276C38.8528 36.276,38.968 36.276,39.112 36.2472C39.256 36.2472,39.7168 36.1896,40.2064 36.1896C40.552 36.1896,40.8976 36.2472,41.0704 36.2472C45.1312 36.7656,48.2704 39.6744,49.1632 43.764C49.336 44.4264,49.3936 45.1464,49.3936 45.8664C49.3936 49.7544,47.0608 53.4696,43.1728 55.2264C42.9424 55.3704,42.856 55.3992,42.856 55.3992L42.856 55.428C42.856 55.428,43.0288 56.0904,43.1728 56.8392L43.6048 59.028L44.008 60.7848C44.2384 61.908,44.3536 62.7144,44.3536 63.4344C44.3536 64.068,44.2672 64.644,44.1232 65.3064C43.144 69.3096,39.6592 71.7,36.0304 71.7C34.2448 71.7,32.4016 71.124,30.7888 69.828C29.3488 68.6184,28.7152 67.524,28.7152 66.084C28.7152 63.5496,30.76 61.764,32.8912 61.764C33.64 61.764,34.3888 61.9944,35.1088 62.4264C36.3184 63.2616,36.8656 64.5288,36.8656 65.7672C36.8656 67.668,35.5408 69.54,33.2656 69.684L33.0352 69.684L33.208 69.7992C34.1584 70.2024,35.1088 70.404,36.0304 70.404C38.3632 70.404,40.552 69.2232,41.8768 67.1784C42.6256 66.0264,43.0288 64.6728,43.0288 63.3192C43.0288 62.8008,42.9424 62.2824,42.8272 61.7064C42.8272 61.6488,42.7408 61.188,42.6256 60.756C41.992 57.6456,41.6176 55.8312,41.6176 55.8312C41.6176 55.8312,41.6176 55.8312,41.6176 55.8312C41.56 55.8312,41.4448 55.8312,41.3584 55.8888C41.0704 55.9464,40.4656 56.0904,40.2064 56.1192C39.5728 56.2056,38.968 56.2344,38.392 56.2344C32.7472 56.2344,27.5056 52.4328,25.6912 46.8168C25.2304 45.3192,24.9712 43.8216,24.9712 42.324C24.9712 39.3288,25.9216 36.3912,27.7648 33.7704C29.7808 30.9192,31.7968 28.4712,34.2736 25.9368L35.1376 25.044L34.936 23.9784L34.5616 22.2216L34.072 19.9752C33.928 19.14,33.7552 18.3336,33.7264 18.1608C33.5824 17.2104,33.496 16.2888,33.496 15.3384C33.496 11.7096,34.6768 8.2248,36.8944 5.4312C37.5568 4.5672,38.7376 3.4152,39.0544 3.3288M40.8112 9.0312C40.7536 9.0312,40.6672 9.0312,40.5808 9.0312C39.4 9.0312,37.8736 10.1256,36.8368 11.7384C35.7712 13.3224,35.224 15.4248,35.224 17.5848C35.224 18.1608,35.2528 18.7656,35.3392 19.3704C35.4256 19.8024,35.4544 20.0904,35.6848 21.1272L36.088 22.9416C36.2032 23.4888,36.2896 23.9208,36.2896 23.9784L36.2896 23.9784C36.3184 23.9784,37.2112 22.9992,37.4992 22.6536C40.3792 19.3992,42.1072 15.972,42.4816 12.948C42.5104 12.66,42.5104 12.4296,42.5104 12.1416C42.5104 11.2488,42.3952 10.3848,42.1936 9.924C41.9632 9.4632,41.4448 9.0888,40.8112 9.0312M36.4624 31.2936C36.4048 30.8904,36.3184 30.5736,36.3184 30.516C36.3184 30.516,36.3184 30.516,36.2896 30.516C36.232 30.516,34.9936 31.956,34.1296 32.964C32.6608 34.7496,31.1056 36.8808,30.472 37.9176C29.2624 39.9624,28.6576 42.2376,28.6576 44.484C28.6576 45.9528,28.9456 47.364,29.464 48.7176C31.0192 52.7208,34.5904 55.2264,38.4784 55.2264C38.9392 55.2264,39.4576 55.1976,39.9472 55.1112C40.5808 54.996,41.3584 54.7656,41.3584 54.6792L41.3584 54.6792C41.3584 54.6792,41.3008 54.3912,41.2144 54.0744L40.3792 49.956L39.7168 46.8744L39.2848 44.7432L38.824 42.6696C38.5936 41.4312,38.5072 41.1144,38.5072 41.1144C38.5072 41.1144,38.5072 41.0856,38.4784 41.0856C38.3056 41.0856,37.384 41.5464,36.9808 41.8344C35.4832 42.8712,34.7056 44.5128,34.7056 46.1256C34.7056 47.652,35.4544 49.1784,36.8944 50.0712C37.2112 50.2728,37.3264 50.4456,37.3264 50.6472C37.3264 50.676,37.3264 50.7624,37.3264 50.7912C37.2688 51.1368,37.0672 51.2808,36.7792 51.2808C36.664 51.2808,36.52 51.252,36.3472 51.1656C33.6976 50.0136,31.912 47.2776,31.912 44.2824L31.912 44.2824C31.912 40.8264,34.072 37.8312,37.384 36.6504L37.5568 36.5928L37.2688 35.1528L36.4624 31.2936M40.7824 40.9128C40.552 40.884,40.3216 40.884,40.1488 40.884C40.0912 40.884,40.0048 40.884,39.9472 40.884L39.8032 40.884L39.9184 41.4024L40.5232 44.2248L40.8976 46.068L41.3008 47.8824L42.1072 51.8856L42.424 53.412C42.5392 53.8152,42.5968 54.1608,42.6256 54.1608C42.6256 54.1608,42.6256 54.1608,42.6256 54.1608C42.6544 54.1608,43.144 53.8728,43.4608 53.6424C44.9296 52.6056,46.024 50.9928,46.4272 49.3224C46.5712 48.7752,46.6288 48.1992,46.6288 47.652C46.6288 44.3112,44.152 41.2872,40.7824 40.9128";
 
-  // Staff Line Y Coordinates (20px line spacing)
-  const yL5 = 30;
-  const yL4 = 50;
-  const yL3 = 70;
-  const yL2 = 90;
-  const yL1 = 110;
-  const yLedger = 130;
-  const yAbove = 10;
+export const BASS_CLEF_D =
+  "M25 35.5M33.8416 25.4488C34.072 25.3912,34.3024 25.3912,34.5616 25.3912C35.5696 25.3912,36.7504 25.5064,37.7584 25.708C42.4816 26.6872,45.736 29.884,46.3408 34.1464C46.3984 34.6072,46.4272 35.0392,46.4272 35.5C46.4272 38.092,45.5344 41.4328,44.008 44.2264C40.3792 50.7928,33.7552 55.516,25.8064 57.244C25.6624 57.244,25.5472 57.2728,25.4032 57.2728C25.1152 57.2728,24.9712 57.1,24.9712 56.8408C24.9712 56.5528,25.0288 56.4664,25.6048 56.236C34.7056 52.8088,40.7824 45.4072,41.3296 37.1128C41.3584 36.6808,41.3584 36.1912,41.3584 35.8168C41.3584 31.7848,40.12 28.7896,37.7296 27.292C36.6928 26.6296,35.5696 26.3128,34.36 26.3128C31.6816 26.3128,28.9456 27.8392,27.6784 30.4024C27.6208 30.604,27.4192 31.036,27.4192 31.0648C27.4192 31.0648,27.4192 31.0648,27.4192 31.0648C27.4192 31.0648,27.448 31.036,27.5344 31.0072C28.168 30.604,28.8592 30.4024,29.5792 30.4024C30.5872 30.4024,31.6528 30.8344,32.4016 31.6408C33.0928 32.3896,33.4672 33.3976,33.4672 34.3192C33.4672 36.1912,32.0848 38.092,29.9248 38.2936C29.7808 38.2936,29.6368 38.3224,29.4928 38.3224C27.1024 38.3224,25.1728 36.1336,25.1728 33.3688C25.1728 33.3112,25.1728 33.2248,25.1728 33.196C25.288 29.0776,29.0608 25.708,33.8416 25.4488M49.1632 29.308C49.2208 29.2792,49.2496 29.2792,49.336 29.2792C49.5376 29.2792,49.768 29.308,49.8256 29.3656C50.5456 29.5672,50.8912 30.2008,50.8912 30.8056C50.8912 31.324,50.632 31.8424,50.1136 32.1304C49.912 32.2744,49.6528 32.3032,49.3936 32.3032C48.9904 32.3032,48.5584 32.1304,48.2704 31.756C48.04 31.468,47.9248 31.1512,47.9248 30.8344C47.9248 30.1144,48.3856 29.3944,49.1632 29.308M49.1632 38.7256C49.2208 38.7256,49.2496 38.7256,49.336 38.7256C49.5376 38.7256,49.768 38.7544,49.8256 38.812C50.5456 39.0136,50.8912 39.6472,50.8912 40.252C50.8912 40.7704,50.632 41.2888,50.1136 41.548C49.912 41.692,49.6528 41.7496,49.3936 41.7496C48.9904 41.7496,48.5584 41.548,48.2704 41.2024C48.04 40.9144,47.9248 40.5976,47.9248 40.252C47.9248 39.532,48.3856 38.8408,49.1632 38.7256";
 
-  const staffLeft = 52;
-  const staffRight = 265;
-  const labelX = 274;
-  const badgeX = 348;
+export function StaffChoiceDiagram({ visual }: { visual: StaffChoiceVisual }) {
+  const { clef, position = "clef-only", highlight = true } = visual;
+
+  // Staff line Y coordinates (10px line spacing, authentic VexFlow coordinate space)
+  const yL5 = 16.5;
+  const yL4 = 26.5;
+  const yL3 = 36.5;
+  const yL2 = 46.5;
+  const yL1 = 56.5;
+
+  const staffX1 = 12;
+  const staffX2 = 158;
+  const noteX = 104;
 
   return (
-    <div className="diagnostic-staff-visual" role="img" aria-label={`Staff guide highlighting ${label ?? highlight}`}>
-      <svg
-        viewBox="0 0 520 156"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="diagnostic-staff-visual__svg"
-      >
-        {/* Background card */}
-        <rect x="2" y="2" width="516" height="152" rx="14" fill="#ffffff" stroke="#eeebf4" strokeWidth="1.5" />
+    <svg
+      viewBox="0 0 170 82"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="diagnostic-staff-choice-svg"
+      aria-hidden="true"
+    >
+      {/* Clean card background */}
+      <rect x="1" y="1" width="168" height="80" rx="8" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
 
-        {/* Space 3 Highlight Band */}
-        {(highlight === "space-3" || compareLedger) && (
-          <g className="diagnostic-guide-highlight-space">
-            <rect
-              x={staffLeft}
-              y={yL4}
-              width={staffRight - staffLeft}
-              height={yL3 - yL4}
-              rx="4"
-              fill="rgba(239, 106, 71, 0.16)"
-              stroke="#ef6a47"
-              strokeWidth="1.5"
-              strokeDasharray="4 2"
-            />
-            {/* Note in Space 3 */}
-            <ellipse
-              cx={compareLedger ? 210 : 160}
-              cy={(yL4 + yL3) / 2}
-              rx="9"
-              ry="7"
-              transform={`rotate(-18 ${compareLedger ? 210 : 160} ${(yL4 + yL3) / 2})`}
-              fill="#ef6a47"
-            />
-            <line
-              x1={compareLedger ? 218 : 168}
-              y1={(yL4 + yL3) / 2}
-              x2={compareLedger ? 218 : 168}
-              y2={(yL4 + yL3) / 2 - 28}
-              stroke="#ef6a47"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            {/* Callout Badge for Space 3 */}
-            <g transform={`translate(${badgeX}, 47)`}>
-              <rect x="0" y="0" width="158" height="26" rx="7" fill="#ffedd5" stroke="#f97316" strokeWidth="1.5" />
-              <text x="79" y="17" textAnchor="middle" fill="#c2410c" fontSize="11.5" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif">
-                👈 3rd Space (High C)
-              </text>
-            </g>
-          </g>
-        )}
+      {/* Highlights */}
+      {highlight && (position === "space-3" || position === "inside-staff") && (
+        <rect
+          x="60"
+          y={yL4}
+          width="88"
+          height="10"
+          rx="3"
+          fill="rgba(239, 106, 71, 0.2)"
+          stroke="#ef6a47"
+          strokeWidth="1.2"
+          strokeDasharray="3 2"
+        />
+      )}
 
-        {/* Ledger Line Below Highlight Band */}
-        {(highlight === "ledger-below" || compareLedger) && (
-          <g className="diagnostic-guide-highlight-ledger">
-            <rect
-              x={compareLedger ? 90 : staffLeft + 40}
-              y={yLedger - 10}
-              width={compareLedger ? 65 : staffRight - staffLeft - 80}
-              height="20"
-              rx="4"
-              fill="rgba(239, 106, 71, 0.16)"
-              stroke="#ef6a47"
-              strokeWidth="1.5"
-              strokeDasharray="4 2"
-            />
-            <line
-              x1={compareLedger ? 100 : 140}
-              y1={yLedger}
-              x2={compareLedger ? 140 : 180}
-              y2={yLedger}
-              stroke="#ef6a47"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-            <ellipse
-              cx={compareLedger ? 120 : 160}
-              cy={yLedger}
-              rx="9"
-              ry="7"
-              transform={`rotate(-18 ${compareLedger ? 120 : 160} ${yLedger})`}
-              fill="#ef6a47"
-            />
-            <line
-              x1={compareLedger ? 128 : 168}
-              y1={yLedger}
-              x2={compareLedger ? 128 : 168}
-              y2={yLedger - 28}
-              stroke="#ef6a47"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            {!compareLedger && (
-              <g transform={`translate(${badgeX}, 117)`}>
-                <rect x="0" y="0" width="158" height="26" rx="7" fill="#ffedd5" stroke="#f97316" strokeWidth="1.5" />
-                <text x="79" y="17" textAnchor="middle" fill="#c2410c" fontSize="11" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif">
-                  👈 Ledger Line (Middle C)
-                </text>
-              </g>
-            )}
-            {compareLedger && (
-              <g transform="translate(68, 138)">
-                <text x="60" y="11" textAnchor="middle" fill="#c2410c" fontSize="10.5" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif">
-                  Middle C (below staff)
-                </text>
-              </g>
-            )}
-          </g>
-        )}
+      {highlight && (position === "ledger-below" || position === "below-bottom-line") && (
+        <rect
+          x="60"
+          y="61.5"
+          width="88"
+          height="10"
+          rx="3"
+          fill="rgba(239, 106, 71, 0.2)"
+          stroke="#ef6a47"
+          strokeWidth="1.2"
+          strokeDasharray="3 2"
+        />
+      )}
 
-        {/* Above Line 5 Highlight */}
-        {highlight === "above-line-5" && (
-          <g className="diagnostic-guide-highlight-above">
-            <rect
-              x={staffLeft}
-              y={yAbove}
-              width={staffRight - staffLeft}
-              height="18"
-              rx="4"
-              fill="rgba(239, 106, 71, 0.16)"
-              stroke="#ef6a47"
-              strokeWidth="1.5"
-              strokeDasharray="4 2"
-            />
-            <ellipse cx="160" cy={yAbove + 9} rx="9" ry="7" transform="rotate(-18 160 19)" fill="#ef6a47" />
-            <line x1="152" y1={yAbove + 9} x2="152" y2={yAbove + 37} stroke="#ef6a47" strokeWidth="2" strokeLinecap="round" />
-            <g transform={`translate(${badgeX}, 7)`}>
-              <rect x="0" y="0" width="158" height="26" rx="7" fill="#ffedd5" stroke="#f97316" strokeWidth="1.5" />
-              <text x="79" y="17" textAnchor="middle" fill="#c2410c" fontSize="11.5" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif">
-                👈 Above Line 5 (High G)
-              </text>
-            </g>
-          </g>
-        )}
+      {highlight && position === "above-line-5" && (
+        <rect
+          x="60"
+          y="6.5"
+          width="88"
+          height="10"
+          rx="3"
+          fill="rgba(239, 106, 71, 0.2)"
+          stroke="#ef6a47"
+          strokeWidth="1.2"
+          strokeDasharray="3 2"
+        />
+      )}
 
-        {/* Line 4 Highlight */}
-        {highlight === "line-4" && (
-          <g className="diagnostic-guide-highlight-line4">
-            <line x1={staffLeft} y1={yL4} x2={staffRight} y2={yL4} stroke="#ef6a47" strokeWidth="3.5" />
-            <g transform={`translate(${badgeX}, 37)`}>
-              <rect x="0" y="0" width="158" height="26" rx="7" fill="#ffedd5" stroke="#f97316" strokeWidth="1.5" />
-              <text x="79" y="17" textAnchor="middle" fill="#c2410c" fontSize="11.5" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif">
-                👈 Line 4 (F Line)
-              </text>
-            </g>
-          </g>
-        )}
+      {highlight && position === "line-2" && (
+        <line x1="60" y1={yL2} x2="148" y2={yL2} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
+      )}
 
-        {/* Line 2 Highlight */}
-        {highlight === "line-2" && (
-          <g className="diagnostic-guide-highlight-line2">
-            <line x1={staffLeft} y1={yL2} x2={staffRight} y2={yL2} stroke="#ef6a47" strokeWidth="3.5" />
-            <g transform={`translate(${badgeX}, 77)`}>
-              <rect x="0" y="0" width="158" height="26" rx="7" fill="#ffedd5" stroke="#f97316" strokeWidth="1.5" />
-              <text x="79" y="17" textAnchor="middle" fill="#c2410c" fontSize="11.5" fontWeight="700" fontFamily="system-ui, -apple-system, sans-serif">
-                👈 Line 2 (G Line)
-              </text>
-            </g>
-          </g>
-        )}
+      {highlight && position === "line-4" && (
+        <line x1="60" y1={yL4} x2="148" y2={yL4} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
+      )}
 
-        {/* 5 Staff Lines */}
-        <line x1={staffLeft} y1={yL5} x2={staffRight} y2={yL5} stroke="#334155" strokeWidth="1.5" />
-        <line x1={staffLeft} y1={yL4} x2={staffRight} y2={yL4} stroke={highlight === "line-4" ? "#ef6a47" : "#334155"} strokeWidth={highlight === "line-4" ? "3" : "1.5"} />
-        <line x1={staffLeft} y1={yL3} x2={staffRight} y2={yL3} stroke="#334155" strokeWidth="1.5" />
-        <line x1={staffLeft} y1={yL2} x2={staffRight} y2={yL2} stroke={highlight === "line-2" ? "#ef6a47" : "#334155"} strokeWidth={highlight === "line-2" ? "3" : "1.5"} />
-        <line x1={staffLeft} y1={yL1} x2={staffRight} y2={yL1} stroke="#334155" strokeWidth="1.5" />
+      {/* 5 Staff Lines without text labeling */}
+      <line x1={staffX1} y1={yL5} x2={staffX2} y2={yL5} stroke="#475569" strokeWidth="1.2" />
+      <line x1={staffX1} y1={yL4} x2={staffX2} y2={yL4} stroke="#475569" strokeWidth="1.2" />
+      <line x1={staffX1} y1={yL3} x2={staffX2} y2={yL3} stroke="#475569" strokeWidth="1.2" />
+      <line x1={staffX1} y1={yL2} x2={staffX2} y2={yL2} stroke="#475569" strokeWidth="1.2" />
+      <line x1={staffX1} y1={yL1} x2={staffX2} y2={yL1} stroke="#475569" strokeWidth="1.2" />
 
-        {/* Clef Glyphs */}
-        {clef === "treble" ? (
-          <text x="14" y="96" fontSize="56" fill="#1e293b" fontFamily="Bravura, Academico, serif" style={{ userSelect: "none" }}>
-            𝄞
-          </text>
-        ) : (
-          <text x="16" y="76" fontSize="46" fill="#1e293b" fontFamily="Bravura, Academico, serif" style={{ userSelect: "none" }}>
-            𝄢
-          </text>
-        )}
+      {/* Authentic VexFlow / SMuFL Clef in true scale */}
+      {clef === "treble" ? (
+        <g transform="translate(18, 0)">
+          <path d={TREBLE_CLEF_D} fill="#1e293b" />
+        </g>
+      ) : (
+        <g transform="translate(18, -9)">
+          <path d={BASS_CLEF_D} fill="#1e293b" />
+        </g>
+      )}
 
-        {/* Line & Space Counting Labels (Neatly placed next to staff) */}
-        {!compareLedger && (
-          <g className="diagnostic-guide-counting-labels" fontFamily="system-ui, -apple-system, sans-serif">
-            {/* Lines 1 to 5 from bottom up */}
-            <text x={labelX} y={yL5 + 3.5} fill="#64748b" fontSize="10" fontWeight="600">Line 5</text>
-            <text x={labelX} y={(yL5 + yL4) / 2 + 3.5} fill="#94a3b8" fontSize="9.5" fontWeight="500">Space 4</text>
-            <text x={labelX} y={yL4 + 3.5} fill="#64748b" fontSize="10" fontWeight="600">Line 4</text>
-            <text x={labelX} y={(yL4 + yL3) / 2 + 3.5} fill={highlight === "space-3" ? "#c2410c" : "#94a3b8"} fontSize={highlight === "space-3" ? "10.5" : "9.5"} fontWeight={highlight === "space-3" ? "800" : "500"}>Space 3</text>
-            <text x={labelX} y={yL3 + 3.5} fill="#64748b" fontSize="10" fontWeight="600">Line 3</text>
-            <text x={labelX} y={(yL3 + yL2) / 2 + 3.5} fill="#94a3b8" fontSize="9.5" fontWeight="500">Space 2</text>
-            <text x={labelX} y={yL2 + 3.5} fill="#64748b" fontSize="10" fontWeight="600">Line 2</text>
-            <text x={labelX} y={(yL2 + yL1) / 2 + 3.5} fill="#94a3b8" fontSize="9.5" fontWeight="500">Space 1</text>
-            <text x={labelX} y={yL1 + 3.5} fill="#64748b" fontSize="10" fontWeight="600">Line 1</text>
-          </g>
-        )}
-      </svg>
-    </div>
+      {/* Notes */}
+      {(position === "space-3" || position === "inside-staff") && (
+        <g>
+          <ellipse cx={noteX} cy="31.5" rx="6" ry="4.5" transform={`rotate(-20 ${noteX} 31.5)`} fill="#ef6a47" />
+          <line x1={noteX - 5.5} y1="31.5" x2={noteX - 5.5} y2="59.5" stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
+        </g>
+      )}
+
+      {(position === "ledger-below" || position === "below-bottom-line") && (
+        <g>
+          <line x1={noteX - 12} y1="66.5" x2={noteX + 12} y2="66.5" stroke="#ef6a47" strokeWidth="2.2" strokeLinecap="round" />
+          <ellipse cx={noteX} cy="66.5" rx="6" ry="4.5" transform={`rotate(-20 ${noteX} 66.5)`} fill="#ef6a47" />
+          <line x1={noteX + 5.5} y1="66.5" x2={noteX + 5.5} y2="38.5" stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
+        </g>
+      )}
+
+      {position === "above-line-5" && (
+        <g>
+          <ellipse cx={noteX} cy="11.5" rx="6" ry="4.5" transform={`rotate(-20 ${noteX} 11.5)`} fill="#ef6a47" />
+          <line x1={noteX - 5.5} y1="11.5" x2={noteX - 5.5} y2="39.5" stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
+        </g>
+      )}
+
+      {position === "line-2" && (
+        <g>
+          <ellipse cx={noteX} cy={yL2} rx="6" ry="4.5" transform={`rotate(-20 ${noteX} ${yL2})`} fill="#ef6a47" />
+          <line x1={noteX + 5.5} y1={yL2} x2={noteX + 5.5} y2={yL2 - 28} stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
+        </g>
+      )}
+
+      {position === "line-4" && (
+        <g>
+          <ellipse cx={noteX} cy={yL4} rx="6" ry="4.5" transform={`rotate(-20 ${noteX} ${yL4})`} fill="#ef6a47" />
+          <line x1={noteX - 5.5} y1={yL4} x2={noteX - 5.5} y2={yL4 + 28} stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
+        </g>
+      )}
+    </svg>
   );
 }
+
+// Fallback export if needed
+export default StaffChoiceDiagram;
+

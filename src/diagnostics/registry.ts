@@ -28,6 +28,12 @@ export interface DiagnosticNotation {
   fifths?: number;
   mistakeIndices: readonly number[];
 }
+export interface StaffChoiceVisual {
+  clef: 'treble' | 'bass';
+  position?: 'space-3' | 'ledger-below' | 'above-line-5' | 'line-5' | 'line-4' | 'line-2' | 'line-1' | 'inside-staff' | 'below-bottom-line' | 'clef-only';
+  highlight?: boolean;
+}
+
 export interface StaffVisualGuide {
   clef: 'treble' | 'bass';
   highlight: 'space-3' | 'space-2' | 'space-1' | 'space-4' | 'line-1' | 'line-2' | 'line-3' | 'line-4' | 'line-5' | 'ledger-below' | 'above-line-5';
@@ -42,6 +48,7 @@ export interface DiagnosticFeatureCheck {
   explanation: string;
   highlightNoteIndex?: number;
   visualGuide?: StaffVisualGuide;
+  choiceVisuals?: readonly (StaffChoiceVisual | undefined)[];
 }
 
 export interface WrongClefRound {
@@ -169,6 +176,10 @@ function clefSwap(): DiagnosticLesson {
     choices: ['Bass Clef', 'Treble Clef'],
     correct: 0,
     explanation: 'Check the clef symbol on the left of the staff.',
+    choiceVisuals: [
+      { clef: 'bass', position: 'clef-only' },
+      { clef: 'treble', position: 'clef-only' },
+    ],
   };
   lesson.wrongClefRounds = [
     {
@@ -183,6 +194,10 @@ function clefSwap(): DiagnosticLesson {
         choices: ['Bass Clef', 'Treble Clef'],
         correct: 0,
         explanation: 'This phrase is written in bass clef.',
+        choiceVisuals: [
+          { clef: 'bass', position: 'clef-only' },
+          { clef: 'treble', position: 'clef-only' },
+        ],
       },
     },
     {
@@ -197,6 +212,10 @@ function clefSwap(): DiagnosticLesson {
         choices: ['Treble Clef', 'Bass Clef'],
         correct: 0,
         explanation: 'This phrase is written in treble clef.',
+        choiceVisuals: [
+          { clef: 'treble', position: 'clef-only' },
+          { clef: 'bass', position: 'clef-only' },
+        ],
       },
     },
     {
@@ -211,6 +230,10 @@ function clefSwap(): DiagnosticLesson {
         choices: ['Treble Clef', 'Bass Clef'],
         correct: 0,
         explanation: 'This phrase is written in treble clef.',
+        choiceVisuals: [
+          { clef: 'treble', position: 'clef-only' },
+          { clef: 'bass', position: 'clef-only' },
+        ],
       },
     },
   ];
@@ -271,7 +294,10 @@ function octave(): DiagnosticLesson {
         correct: 0,
         explanation: 'Note 1 sits in the 3rd space. Notes inside the staff are played up in the high register (C5), not down at Middle C.',
         highlightNoteIndex: 0,
-        visualGuide: { clef: 'treble', highlight: 'space-3', label: '3rd Space' },
+        choiceVisuals: [
+          { clef: 'treble', position: 'space-3', highlight: true },
+          { clef: 'treble', position: 'ledger-below', highlight: true },
+        ],
       },
     },
     {
@@ -287,7 +313,10 @@ function octave(): DiagnosticLesson {
         correct: 0,
         explanation: 'All the notes sit inside or above the staff, matching the high register you heard.',
         highlightNoteIndex: 2,
-        visualGuide: { clef: 'treble', highlight: 'above-line-5', label: 'High G (above line 5)' },
+        choiceVisuals: [
+          { clef: 'treble', position: 'above-line-5', highlight: true },
+          { clef: 'treble', position: 'ledger-below', highlight: true },
+        ],
       },
     },
     {
@@ -303,7 +332,10 @@ function octave(): DiagnosticLesson {
         correct: 0,
         explanation: 'Note 1 sits in the space above the top line (High G). The piano played down low near Middle C.',
         highlightNoteIndex: 0,
-        visualGuide: { clef: 'treble', highlight: 'above-line-5', label: 'Above Line 5' },
+        choiceVisuals: [
+          { clef: 'treble', position: 'above-line-5', highlight: true },
+          { clef: 'treble', position: 'line-2', highlight: true },
+        ],
       },
     },
   ];
@@ -312,7 +344,10 @@ function octave(): DiagnosticLesson {
     choices: ['In the 3rd space of the staff', 'Below the staff on a ledger line'],
     correct: 0,
     explanation: 'High C (C5) sits inside the staff; Middle C (C4) sits below the staff on a ledger line.',
-    visualGuide: { clef: 'treble', highlight: 'space-3', label: '3rd Space' },
+    choiceVisuals: [
+      { clef: 'treble', position: 'space-3', highlight: true },
+      { clef: 'treble', position: 'ledger-below', highlight: true },
+    ],
   };
   lesson.mcq = {
     prompt: 'What was the difference between the written notes and the piano audio?',
@@ -522,12 +557,15 @@ function clefChange(): DiagnosticLesson {
       explanation: 'In treble clef, the ledger line below the staff is Middle C (C4).',
       highlightNoteIndex: 2,
       featureCheck: {
-        prompt: 'Is Note 3 Middle C on a ledger line?',
-        choices: ['Yes', 'No'],
+        prompt: 'Where does Note 3 sit in the new treble clef?',
+        choices: ['Below the staff on a ledger line', 'In the 3rd space of the staff'],
         correct: 0,
         explanation: 'It is Middle C below the treble staff.',
         highlightNoteIndex: 2,
-        visualGuide: { clef: 'treble', highlight: 'ledger-below', label: 'Ledger line below staff' },
+        choiceVisuals: [
+          { clef: 'treble', position: 'ledger-below', highlight: true },
+          { clef: 'treble', position: 'space-3', highlight: true },
+        ],
       },
     },
     {

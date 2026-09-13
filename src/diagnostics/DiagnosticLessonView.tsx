@@ -3,7 +3,7 @@ import ExerciseLayout from '../components/ExerciseLayout';
 import AcousticDrill from './AcousticDrill';
 import { DiagnosticScore } from './DiagnosticScore';
 import DiagnosticTip from './DiagnosticTip';
-import StaffVisualGuide from './StaffVisualGuide';
+import { StaffChoiceDiagram } from './StaffVisualGuide';
 import { playDiagnosticExample } from './playback';
 import { prepareProfessorNotification } from './professorNotifications';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
@@ -151,19 +151,21 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     {subStage === 'identifying' && (
       <div className="diagnostic-prompt-section">
         <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
-        {featureCheck.visualGuide && (
-          <StaffVisualGuide guide={featureCheck.visualGuide} />
-        )}
-        <div className="diagnostic-choices">
-          {featureCheck.choices.map((choice, i) => (
-            <button
-              key={choice}
-              type="button"
-              onClick={() => onPickFeatureChoice(i)}
-            >
-              {choice}
-            </button>
-          ))}
+        <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
+          {featureCheck.choices.map((choice, i) => {
+            const visual = featureCheck.choiceVisuals?.[i];
+            return (
+              <button
+                key={choice}
+                type="button"
+                className={visual ? 'diagnostic-choice-card-with-visual' : ''}
+                onClick={() => onPickFeatureChoice(i)}
+              >
+                {visual && <StaffChoiceDiagram visual={visual} />}
+                <span className="diagnostic-choice-label">{choice}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     )}
@@ -457,19 +459,21 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       {subStage === 'identifying' && (
         <div className="diagnostic-prompt-section">
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
-          {featureCheck.visualGuide && (
-            <StaffVisualGuide guide={featureCheck.visualGuide} />
-          )}
-          <div className="diagnostic-choices">
-            {featureCheck.choices.map((choice, i) => (
-              <button
-                key={choice}
-                type="button"
-                onClick={() => onPickFeatureChoice(i)}
-              >
-                {choice}
-              </button>
-            ))}
+          <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
+            {featureCheck.choices.map((choice, i) => {
+              const visual = featureCheck.choiceVisuals?.[i];
+              return (
+                <button
+                  key={choice}
+                  type="button"
+                  className={visual ? 'diagnostic-choice-card-with-visual' : ''}
+                  onClick={() => onPickFeatureChoice(i)}
+                >
+                  {visual && <StaffChoiceDiagram visual={visual} />}
+                  <span className="diagnostic-choice-label">{choice}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -767,19 +771,21 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       {subStage === 'identifying' && featureCheck && (
         <div className="diagnostic-prompt-section">
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
-          {featureCheck.visualGuide && (
-            <StaffVisualGuide guide={featureCheck.visualGuide} />
-          )}
-          <div className="diagnostic-choices">
-            {featureCheck.choices.map((choice, i) => (
-              <button
-                key={choice}
-                type="button"
-                onClick={() => onPickFeatureChoice(i)}
-              >
-                {choice}
-              </button>
-            ))}
+          <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
+            {featureCheck.choices.map((choice, i) => {
+              const visual = featureCheck.choiceVisuals?.[i];
+              return (
+                <button
+                  key={choice}
+                  type="button"
+                  className={visual ? 'diagnostic-choice-card-with-visual' : ''}
+                  onClick={() => onPickFeatureChoice(i)}
+                >
+                  {visual && <StaffChoiceDiagram visual={visual} />}
+                  <span className="diagnostic-choice-label">{choice}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
