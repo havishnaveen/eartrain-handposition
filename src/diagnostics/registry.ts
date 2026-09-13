@@ -215,73 +215,73 @@ function clefSwap(): DiagnosticLesson {
 }
 function octave(): DiagnosticLesson {
   const lesson = base('octave-displacement', 'High Register Reading', ['C5', 'D5', 'E5', 'G5'], ['C5', 'E5', 'G5', 'D5'], ['C4', 'D4', 'E4', 'G4']);
-  lesson.explanation = 'The piano played one octave too low (Middle C4 instead of High C5).';
+  lesson.explanation = 'The piano played at Middle C instead of High C.';
   lesson.correctFeedback = 'The piano played in the wrong octave!';
   lesson.interactiveRounds = [
     {
-      title: 'Note 1 Register',
-      prompt: 'Where is Note 1 (C5) on the staff?',
+      title: 'High C vs Middle C',
+      prompt: 'Is this note Middle C or High C?',
       choices: [
-        '3rd space (High C)',
-        'Ledger line below staff (Middle C)',
+        'High C',
+        'Middle C',
       ],
       correct: 0,
-      explanation: '3rd space is high C5. Middle C (C4) sits below the staff.',
+      explanation: 'Middle C sits below the staff. High C sits inside the staff.',
       highlightNoteIndex: 0,
       featureCheck: {
-        prompt: 'Is Note 1 in the 3rd space or below the staff?',
-        choices: ['3rd space', 'Below the staff'],
+        prompt: 'Which C has a line through it below the staff?',
+        choices: ['Middle C', 'High C'],
         correct: 0,
-        explanation: 'Note 1 is in the 3rd space (C5).',
+        explanation: 'Middle C sits below the staff with a line through it.',
       },
     },
     {
-      title: 'Other High Notes',
-      prompt: 'Look at Note 2 (D5) and Note 4 (G5). Where do they sit?',
+      title: 'High G vs Low G',
+      prompt: 'Is Note 4 Low G or High G?',
       choices: [
-        'Upper staff (high register)',
-        'Lower staff (middle register)',
+        'High G',
+        'Low G',
       ],
       correct: 0,
-      explanation: 'D5 and G5 sit in the upper register of the treble staff.',
+      explanation: 'High G sits on top of the staff.',
       highlightNoteIndex: 3,
       featureCheck: {
-        prompt: 'Does Note 4 (G5) sit on top of the staff?',
-        choices: ['Yes', 'No'],
+        prompt: 'Does Note 4 sit on top of the staff?',
+        choices: ['Yes, High G', 'No, Low G'],
         correct: 0,
-        explanation: 'G5 sits on top of the staff.',
+        explanation: 'Note 4 sits above the top line — that is High G.',
       },
     },
     {
       title: 'Listen to the Register',
-      prompt: 'Which clip plays in the high C5 register?',
-      choices: ['Clip A (Middle register)', 'Clip B (High register)'],
-      correct: 1,
-      explanation: 'Clip B plays in the high C5 register.',
+      prompt: 'Which clip plays High C?',
+      choices: ['Clip B', 'Clip A'],
+      correct: 0,
+      explanation: 'Clip B plays High C.',
       audioClipA: { label: 'Clip A', pitches: ['C4', 'D4', 'E4', 'G4'] },
       audioClipB: { label: 'Clip B', pitches: ['C5', 'D5', 'E5', 'G5'] },
       featureCheck: {
         prompt: 'Which clip sounds higher?',
         choices: ['Clip B', 'Clip A'],
         correct: 0,
-        explanation: 'Clip B sounds one octave higher.',
+        explanation: 'Clip B sounds higher, matching High C.',
       },
     },
   ];
   lesson.featureCheck = {
-    prompt: 'Where is C5 written in treble clef?',
-    choices: ['3rd space', 'Ledger line below staff'],
+    prompt: 'Is Note 1 Middle C or High C?',
+    choices: ['High C', 'Middle C'],
     correct: 0,
-    explanation: 'C5 is in the 3rd space. Middle C (C4) is below the staff.',
+    explanation: 'High C sits inside the staff; Middle C sits below it.',
   };
   lesson.mcq = {
     prompt: 'What was the mistake in the piano performance?',
-    choices: ['Played one octave too low', 'Wrong clef', 'Wrong rhythm'],
+    choices: ['Played too low (at Middle C)', 'Wrong clef', 'Wrong rhythm'],
     correct: 0,
-    explanation: 'The notes are written in the high C5 register, but the piano played C4.',
+    explanation: 'The music is written in High C, but the piano played down at Middle C.',
   };
-  lesson.tip = { kind: 'octave', text: 'C5 sits in the 3rd space. Middle C (C4) sits on the ledger line below the staff.' };
-  lesson.forcedErrorMessage = 'These notes are written high on the staff (C5 register), not Middle C (C4).';
+  lesson.tip = { kind: 'octave', text: 'Middle C sits below the staff. High C sits inside the staff.' };
+  lesson.forcedErrorMessage = 'Play in High C position, not Middle C.';
   for (const q of [lesson.question, lesson.transfer]) {
     q.positionProof = question(q.id, ['C5', 'E5', 'G5']).positionProof;
     q.cue.staves[0].notes.forEach((note, i) => { note.finger = ({ C5: 1, D5: 2, E5: 3, G5: 5 } as Record<string, number>)[q.expectedSequence[i]]; });

@@ -666,11 +666,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
   return (
     <section className="diagnostic-card" aria-label={`Question ${roundIdx + 1} of ${rounds.length}`}>
-      <div className="diagnostic-round-header">
-        <span className="diagnostic-round-indicator" aria-label={`Question ${roundIdx + 1} of ${rounds.length}`}>
-          Question {roundIdx + 1} of {rounds.length}{hasAudio ? ' · Listen' : ''}
-        </span>
-      </div>
+
 
       {retrying && subStage === 'prompting' && (
         <span className="diagnostic-try-again-badge" aria-label="Try again attempt">
