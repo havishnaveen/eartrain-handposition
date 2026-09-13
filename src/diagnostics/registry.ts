@@ -28,11 +28,20 @@ export interface DiagnosticNotation {
   fifths?: number;
   mistakeIndices: readonly number[];
 }
+export interface StaffVisualGuide {
+  clef: 'treble' | 'bass';
+  highlight: 'space-3' | 'space-2' | 'space-1' | 'space-4' | 'line-1' | 'line-2' | 'line-3' | 'line-4' | 'line-5' | 'ledger-below' | 'above-line-5';
+  label?: string;
+  compareLedger?: boolean;
+}
+
 export interface DiagnosticFeatureCheck {
   prompt: string;
   choices: readonly string[];
   correct: number;
   explanation: string;
+  highlightNoteIndex?: number;
+  visualGuide?: StaffVisualGuide;
 }
 
 export interface WrongClefRound {
@@ -43,6 +52,7 @@ export interface WrongClefRound {
   correctFeedback?: string;
   featureCheck?: DiagnosticFeatureCheck;
   isMatch?: boolean;
+  highlightNoteIndex?: number;
 }
 
 export interface DiagnosticAudioClip {
@@ -260,6 +270,8 @@ function octave(): DiagnosticLesson {
         choices: ['In the 3rd space of the staff', 'Below the staff on a ledger line'],
         correct: 0,
         explanation: 'Note 1 sits in the 3rd space. Notes inside the staff are played up in the high register (C5), not down at Middle C.',
+        highlightNoteIndex: 0,
+        visualGuide: { clef: 'treble', highlight: 'space-3', label: '3rd Space' },
       },
     },
     {
@@ -274,6 +286,8 @@ function octave(): DiagnosticLesson {
         choices: ['Inside and above the staff', 'Below the bottom line'],
         correct: 0,
         explanation: 'All the notes sit inside or above the staff, matching the high register you heard.',
+        highlightNoteIndex: 2,
+        visualGuide: { clef: 'treble', highlight: 'above-line-5', label: 'High G (above line 5)' },
       },
     },
     {
@@ -288,6 +302,8 @@ function octave(): DiagnosticLesson {
         choices: ['Above the 5th line', 'On the 2nd line'],
         correct: 0,
         explanation: 'Note 1 sits in the space above the top line (High G). The piano played down low near Middle C.',
+        highlightNoteIndex: 0,
+        visualGuide: { clef: 'treble', highlight: 'above-line-5', label: 'Above Line 5' },
       },
     },
   ];
@@ -296,6 +312,7 @@ function octave(): DiagnosticLesson {
     choices: ['In the 3rd space of the staff', 'Below the staff on a ledger line'],
     correct: 0,
     explanation: 'High C (C5) sits inside the staff; Middle C (C4) sits below the staff on a ledger line.',
+    visualGuide: { clef: 'treble', highlight: 'space-3', label: '3rd Space' },
   };
   lesson.mcq = {
     prompt: 'What was the difference between the written notes and the piano audio?',
@@ -509,6 +526,8 @@ function clefChange(): DiagnosticLesson {
         choices: ['Yes', 'No'],
         correct: 0,
         explanation: 'It is Middle C below the treble staff.',
+        highlightNoteIndex: 2,
+        visualGuide: { clef: 'treble', highlight: 'ledger-below', label: 'Ledger line below staff' },
       },
     },
     {

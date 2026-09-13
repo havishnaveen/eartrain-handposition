@@ -3,6 +3,7 @@ import ExerciseLayout from '../components/ExerciseLayout';
 import AcousticDrill from './AcousticDrill';
 import { DiagnosticScore } from './DiagnosticScore';
 import DiagnosticTip from './DiagnosticTip';
+import StaffVisualGuide from './StaffVisualGuide';
 import { playDiagnosticExample } from './playback';
 import { prepareProfessorNotification } from './professorNotifications';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
@@ -88,7 +89,13 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
       </span>
     )}
 
-    <DiagnosticScore question={lesson.question} notation={lesson.notation} enlarged={enlarged} highlightClef={highlightClef} />
+    <DiagnosticScore
+      question={lesson.question}
+      notation={lesson.notation}
+      enlarged={enlarged}
+      highlightClef={highlightClef}
+      highlightNoteIndex={subStage === 'identifying' ? featureCheck.highlightNoteIndex : undefined}
+    />
 
     {subStage === 'listening' && (
       <>
@@ -144,6 +151,9 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     {subStage === 'identifying' && (
       <div className="diagnostic-prompt-section">
         <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+        {featureCheck.visualGuide && (
+          <StaffVisualGuide guide={featureCheck.visualGuide} />
+        )}
         <div className="diagnostic-choices">
           {featureCheck.choices.map((choice, i) => (
             <button
@@ -390,6 +400,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
         notation={currentRound.notation}
         enlarged={enlarged}
         highlightClef={highlightClef}
+        highlightNoteIndex={subStage === 'identifying' ? (featureCheck.highlightNoteIndex ?? currentRound.highlightNoteIndex) : undefined}
       />
 
       {subStage === 'listening' && (
@@ -446,6 +457,9 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       {subStage === 'identifying' && (
         <div className="diagnostic-prompt-section">
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+          {featureCheck.visualGuide && (
+            <StaffVisualGuide guide={featureCheck.visualGuide} />
+          )}
           <div className="diagnostic-choices">
             {featureCheck.choices.map((choice, i) => (
               <button
@@ -677,7 +691,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
         highlightClef={highlightCue && Boolean(currentRound?.highlightClef)}
         highlightClefChange={Boolean(currentRound?.highlightClefChange)}
         highlight8va={Boolean(currentRound?.highlight8va)}
-        highlightNoteIndex={currentRound?.highlightNoteIndex}
+        highlightNoteIndex={subStage === 'identifying' ? (featureCheck?.highlightNoteIndex ?? currentRound?.highlightNoteIndex) : currentRound?.highlightNoteIndex}
       />
 
       {hasAudio && (
@@ -753,6 +767,9 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       {subStage === 'identifying' && featureCheck && (
         <div className="diagnostic-prompt-section">
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+          {featureCheck.visualGuide && (
+            <StaffVisualGuide guide={featureCheck.visualGuide} />
+          )}
           <div className="diagnostic-choices">
             {featureCheck.choices.map((choice, i) => (
               <button

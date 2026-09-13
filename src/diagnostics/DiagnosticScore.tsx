@@ -152,9 +152,28 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
             const noteheads = svg.querySelectorAll('.vf-notehead');
             if (noteheads[highlightNoteIndex]) {
               const nb = (noteheads[highlightNoteIndex] as SVGGraphicsElement).getBBox();
+              const centerX = nb.x + nb.width / 2;
+              const centerY = nb.y + nb.height / 2;
+
+              // 1. Highlight the horizontal staff row/line containing this note
+              const rowBand = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+              const bandWidth = Math.max(nb.width + 50, 64);
+              rowBand.setAttribute('x', String(centerX - bandWidth / 2));
+              rowBand.setAttribute('y', String(centerY - 5.5));
+              rowBand.setAttribute('width', String(bandWidth));
+              rowBand.setAttribute('height', '11');
+              rowBand.setAttribute('rx', '4');
+              rowBand.setAttribute('fill', 'rgba(239, 106, 71, 0.18)');
+              rowBand.setAttribute('stroke', '#ef6a47');
+              rowBand.setAttribute('stroke-width', '1.5');
+              rowBand.setAttribute('stroke-dasharray', '3 2');
+              rowBand.setAttribute('class', 'diagnostic-staff-row-highlight');
+              noteheads[highlightNoteIndex].parentElement?.insertBefore(rowBand, noteheads[highlightNoteIndex]);
+
+              // 2. Beacon halo around the notehead
               const halo = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-              halo.setAttribute('cx', String(nb.x + nb.width / 2));
-              halo.setAttribute('cy', String(nb.y + nb.height / 2));
+              halo.setAttribute('cx', String(centerX));
+              halo.setAttribute('cy', String(centerY));
               halo.setAttribute('rx', String(nb.width / 2 + 7));
               halo.setAttribute('ry', String(nb.height / 2 + 7));
               halo.setAttribute('fill', 'rgba(239, 106, 71, 0.22)');

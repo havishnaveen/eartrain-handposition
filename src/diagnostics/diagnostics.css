@@ -32,6 +32,38 @@
 .diagnostic-fingers .is-white { background: white; color: #242237; }
 .diagnostic-fingers b { font-size: 1.5rem; color: #ef6a47; }
 .diagnostic-fingers small { text-align: center; font-size: .7rem; }
+
+/* Staff Line & Space Visual Guide */
+.diagnostic-staff-visual {
+  width: 100%;
+  max-width: 440px;
+  margin: 14px auto 18px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1.5px solid #eeebf4;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.diagnostic-staff-visual svg {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  display: block;
+}
+
+.diagnostic-staff-row-highlight {
+  animation: diagnostic-pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes diagnostic-pulse-glow {
+  0% { fill-opacity: 0.14; stroke-opacity: 0.7; }
+  100% { fill-opacity: 0.28; stroke-opacity: 1; }
+}
 .diagnostic-complete { text-align: center; padding: 48px 32px; }
 .diagnostic-complete__p { font-size: 17px; color: #57534e; margin: 12px 0 28px; }
 .diagnostic-score { width: 100%; min-width: 0; min-height: 220px; background: #ffffff; border-radius: 20px; border: 1.5px solid #e2d7cf; box-shadow: 0 2px 14px rgba(36, 34, 55, 0.05); padding: 24px 32px; margin: 12px 0 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; }
