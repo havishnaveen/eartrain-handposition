@@ -12,8 +12,15 @@ const RecordDot = () => (
   </svg>
 );
 
+const MorphingCheckmark = () => (
+  <svg className="diagnostic-morph-check" viewBox="0 0 52 52" aria-hidden="true">
+    <circle className="diagnostic-morph-check__circle" cx="26" cy="26" r="25" />
+    <path className="diagnostic-morph-check__path" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+  </svg>
+);
+
 function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
-  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'correctFeedback'>('listening');
+  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback'>('listening');
   const [retrying, setRetrying] = useState(false);
   const [playing, setPlaying] = useState(false), [heard, setHeard] = useState(false);
   const [error, setError] = useState('');
@@ -58,12 +65,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
 
   const onPickFeatureChoice = (index: number) => {
     if (index === featureCheck.correct) {
-      setSubStage('listening');
-      setRetrying(true);
-      setHeard(false);
-      setPlaying(false);
-      setEnlarged(false);
-      setHighlightClef(false);
+      setSubStage('identifyingCorrect');
     } else {
       setEnlarged(true);
       setHighlightClef(true);
@@ -148,12 +150,42 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
       </div>
     )}
 
+    {subStage === 'identifyingCorrect' && (
+      <div className="diagnostic-brief-feedback diagnostic-brief-feedback--correct" role="status">
+        <div className="diagnostic-morph-box">
+          <MorphingCheckmark />
+          <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+          <p className="diagnostic-brief-text diagnostic-brief-text--correct">
+            {featureCheck.explanation}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="et-start diagnostic-brief-btn"
+          onClick={() => {
+            setSubStage('listening');
+            setRetrying(true);
+            setHeard(false);
+            setPlaying(false);
+            setEnlarged(false);
+            setHighlightClef(false);
+          }}
+        >
+          <span className="et-start__dot"><RecordDot /></span>
+          Try question again
+        </button>
+      </div>
+    )}
+
     {subStage === 'correctFeedback' && (
       <div className="diagnostic-brief-feedback diagnostic-brief-feedback--correct" role="status">
-        <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
-        <p className="diagnostic-brief-text diagnostic-brief-text--correct">
-          {lesson.correctFeedback ?? 'The piano played in the wrong clef!'}
-        </p>
+        <div className="diagnostic-morph-box">
+          <MorphingCheckmark />
+          <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+          <p className="diagnostic-brief-text diagnostic-brief-text--correct">
+            {lesson.correctFeedback ?? 'The piano played in the wrong clef!'}
+          </p>
+        </div>
         <button
           type="button"
           className="et-start diagnostic-brief-btn"
@@ -196,7 +228,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
 function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const rounds = lesson.wrongClefRounds ?? [];
   const [roundIdx, setRoundIdx] = useState(0);
-  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'correctFeedback'>('listening');
+  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback'>('listening');
   const [retrying, setRetrying] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(false);
@@ -298,13 +330,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
   // User selected clef in the identification question
   const onPickFeatureChoice = (index: number) => {
     if (index === featureCheck.correct) {
-      // Correct clef identified -> return to first listening question with "Try Again" in top corner
-      setSubStage('listening');
-      setRetrying(true);
-      setHeard(false);
-      setPlaying(false);
-      setEnlarged(false);
-      setHighlightClef(false);
+      setSubStage('identifyingCorrect');
     } else {
       // Wrong clef chosen -> show forced acknowledgment notice
       setEnlarged(true);
@@ -396,12 +422,42 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
         </div>
       )}
 
+      {subStage === 'identifyingCorrect' && (
+        <div className="diagnostic-brief-feedback diagnostic-brief-feedback--correct" role="status">
+          <div className="diagnostic-morph-box">
+            <MorphingCheckmark />
+            <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+            <p className="diagnostic-brief-text diagnostic-brief-text--correct">
+              {featureCheck.explanation}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={() => {
+              setSubStage('listening');
+              setRetrying(true);
+              setHeard(false);
+              setPlaying(false);
+              setEnlarged(false);
+              setHighlightClef(false);
+            }}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            Try question again
+          </button>
+        </div>
+      )}
+
       {subStage === 'correctFeedback' && (
         <div className="diagnostic-brief-feedback diagnostic-brief-feedback--correct" role="status">
-          <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
-          <p className="diagnostic-brief-text diagnostic-brief-text--correct">
-            {currentRound?.correctFeedback ?? lesson.correctFeedback ?? 'The piano played in the wrong clef!'}
-          </p>
+          <div className="diagnostic-morph-box">
+            <MorphingCheckmark />
+            <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+            <p className="diagnostic-brief-text diagnostic-brief-text--correct">
+              {currentRound?.correctFeedback ?? lesson.correctFeedback ?? 'The piano played in the wrong clef!'}
+            </p>
+          </div>
           <button
             type="button"
             className="et-start diagnostic-brief-btn"
@@ -459,8 +515,15 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
         </button>
       ))}
     </div>
-    {choice !== null && <div className="diagnostic-feedback" role="status">
-      <p>{correct ? `You’ve got it! ${lesson.mcq.explanation}` : `Nearly! Try another answer. ${lesson.mcq.explanation}`}</p>
+    {choice !== null && <div className={`diagnostic-feedback ${correct ? 'diagnostic-feedback--correct' : ''}`} role="status">
+      {correct ? (
+        <div className="diagnostic-morph-box">
+          <MorphingCheckmark />
+          <p><strong>Correct!</strong> {lesson.mcq.explanation}</p>
+        </div>
+      ) : (
+        <p>Nearly! Try another answer. {lesson.mcq.explanation}</p>
+      )}
       {correct && (
         <div className="diagnostic-action-area diagnostic-action-area--feedback">
           <button type="button" className="et-start" onClick={onNext}>
@@ -499,15 +562,26 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
         isClefSwap ? (
           <AcousticDrill
             key="clef-swap-drill"
+            diagnosticId={definition.id}
             question={lesson.question}
             notation={lesson.notation}
             transfer={false}
             skipProof={true}
             forcedErrorMessage={lesson.forcedErrorMessage}
+            mistakePitches={lesson.mistakePitches}
             onPassed={() => setDone(true)}
           />
         ) : (
-          <AcousticDrill key={stage} question={stage === 3 ? lesson.question : lesson.transfer} notation={stage === 3 ? lesson.notation : lesson.transferNotation} transfer={stage === 4} onPassed={() => { if (stage === 3) setStage(4); else setDone(true); }} />
+          <AcousticDrill
+            key={stage}
+            diagnosticId={definition.id}
+            question={stage === 3 ? lesson.question : lesson.transfer}
+            notation={stage === 3 ? lesson.notation : lesson.transferNotation}
+            transfer={stage === 4}
+            forcedErrorMessage={lesson.forcedErrorMessage}
+            mistakePitches={lesson.mistakePitches}
+            onPassed={() => { if (stage === 3) setStage(4); else setDone(true); }}
+          />
         )}
     </div>
   </ExerciseLayout>;
