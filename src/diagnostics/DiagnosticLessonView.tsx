@@ -206,11 +206,9 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     )}
 
     {subStage === 'professorNotified' && (
-      <div className="diagnostic-professor-notice" role="alert">
-        <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
-        <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
-        <p className="diagnostic-professor-notice__text">
-          We've saved a note for your teacher so you can practice this concept together. Let's keep going!
+      <div className="diagnostic-brief-feedback" role="status">
+        <p className="diagnostic-brief-text">
+          Let's keep going to the next question!
         </p>
         <button
           type="button"
@@ -252,7 +250,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
 }
 
 function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
-  const rounds = lesson.wrongClefRounds ?? [];
+  const rounds = lesson.listenRounds ?? lesson.wrongClefRounds ?? [];
   const [roundIdx, setRoundIdx] = useState(0);
   const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('listening');
   const [retrying, setRetrying] = useState(false);
@@ -327,7 +325,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     } else {
       if (retrying) {
         prepareProfessorNotification({
-          diagnosticId: 'clef-transposition',
+          diagnosticId: lesson.question.conceptId,
           lessonTitle: lesson.title,
           stage: 1,
           questionIndex: roundIdx,
@@ -352,13 +350,13 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     } else {
       if (retrying) {
         prepareProfessorNotification({
-          diagnosticId: 'clef-transposition',
+          diagnosticId: lesson.question.conceptId,
           lessonTitle: lesson.title,
           stage: 1,
           questionIndex: roundIdx,
           questionPrompt: 'Did the piano match the notes?',
           attemptsCount: 2,
-          details: `Round ${roundIdx + 1}: Student answered "Correct" when the clef was mismatched, despite guided instruction.`,
+          details: `Round ${roundIdx + 1}: Student answered "Correct" when mismatched, despite guided instruction.`,
         });
         setSubStage('professorNotified');
       } else {
@@ -510,11 +508,9 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       )}
 
       {subStage === 'professorNotified' && (
-        <div className="diagnostic-professor-notice" role="alert">
-          <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
-          <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
-          <p className="diagnostic-professor-notice__text">
-            We've saved a note for your teacher so you can practice this concept together. Let's keep going!
+        <div className="diagnostic-brief-feedback" role="status">
+          <p className="diagnostic-brief-text">
+            Let's keep going to the next question!
           </p>
           <button
             type="button"
@@ -821,11 +817,9 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       )}
 
       {subStage === 'professorNotified' && (
-        <div className="diagnostic-professor-notice" role="alert">
-          <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
-          <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
-          <p className="diagnostic-professor-notice__text">
-            We've saved a note for your teacher so you can practice this concept together. Let's keep going!
+        <div className="diagnostic-brief-feedback" role="status">
+          <p className="diagnostic-brief-text">
+            Let's keep going to the next question!
           </p>
           <button
             type="button"
@@ -905,11 +899,9 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
       ))}
     </div>
     {professorNotified ? (
-      <div className="diagnostic-professor-notice" role="alert">
-        <span className="diagnostic-professor-notice__badge">Note for your teacher</span>
-        <h3 className="diagnostic-professor-notice__title">We'll review this with your teacher</h3>
-        <p className="diagnostic-professor-notice__text">
-          We've saved a note for your teacher so you can practice this concept together. Let's keep going!
+      <div className="diagnostic-brief-feedback" role="status">
+        <p className="diagnostic-brief-text">
+          Let's continue to the piano exercise!
         </p>
         <button type="button" className="et-start diagnostic-brief-btn" onClick={onNext}>
           <span className="et-start__dot"><RecordDot /></span>
@@ -943,6 +935,7 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
   const lesson = useMemo(() => definition.create(selectedKey), [definition, selectedKey]);
   const [stage, setStage] = useState<DiagnosticStage>(initialStage), [done, setDone] = useState(false);
   const isClefSwap = definition.id === 'clef-transposition' && Boolean(lesson.wrongClefRounds?.length);
+  const hasListenRounds = Boolean(lesson.listenRounds?.length || lesson.wrongClefRounds?.length);
   const hasInteractiveRounds = Boolean(lesson.interactiveRounds?.length);
 
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={stage} questionsInLoop={isClefSwap ? 3 : 4} lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel="Your practice prescription">
@@ -958,7 +951,7 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
         </div>
       </section> :
         stage === 1 ? (
-          isClefSwap ? (
+          hasListenRounds ? (
             <WrongClefListening lesson={lesson} onNext={() => setStage(2)} />
           ) : hasInteractiveRounds ? (
             <DiagnosticInteractiveFlow lesson={lesson} onNext={() => setStage(2)} />

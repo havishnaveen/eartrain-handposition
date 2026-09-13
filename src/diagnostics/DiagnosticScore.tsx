@@ -44,13 +44,41 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
     const element = host.current;
     if (!element) return;
     let disposed = false, frame = 0;
-    setError(false);
-    const score = new OSMD(element, { backend: 'svg', autoResize: false, drawTitle: false, drawSubtitle: false, drawComposer: false, drawPartNames: false, drawMeasureNumbers: false, drawMetronomeMarks: false, drawingParameters: 'compacttight' });
+    const score = new OSMD(element, {
+      backend: 'svg',
+      autoResize: false,
+      drawTitle: false,
+      drawSubtitle: false,
+      drawComposer: false,
+      drawPartNames: false,
+      drawMeasureNumbers: false,
+      drawMetronomeMarks: false,
+      drawingParameters: 'compacttight',
+    });
+    const rules = (score as any).EngravingRules || (score as any).rules;
+    if (rules) {
+      rules.SheetMaximumWidth = 4000;
+      rules.LastSystemMaxScalingFactor = 1;
+      rules.RenderMeasureNumbers = false;
+    }
     const render = () => {
       if (disposed || element.clientWidth < 1) return;
-      const baseZoom = element.clientWidth < 420 ? 1.7 : 2.5;
-      score.Zoom = enlarged ? baseZoom * 1.25 : baseZoom;
-      score.render(); score.cursor.hide(); active.current = -1;
+      const noteCount = question.expectedSequence.length;
+      // Proportional zoom factor ensuring 1-2 measures fit on a single continuous horizontal staff line with great readability
+      const widthFactor = noteCount <= 4 ? 1 : Math.max(0.5, 4.5 / noteCount);
+      const baseZoom = (element.clientWidth < 420 ? 1.35 : 1.95) * widthFactor;
+      let currentZoom = enlarged ? baseZoom * 1.12 : baseZoom;
+      score.Zoom = currentZoom;
+      score.render();
+      // Ensure all measures fit on 1 single continuous horizontal staff line (never wrap onto line 2)
+      let attempts = 0;
+      while (attempts < 4 && ((score as any).graphic?.musicPages?.[0]?.MusicSystems?.length ?? 1) > 1) {
+        currentZoom *= 0.85;
+        score.Zoom = currentZoom;
+        score.render();
+        attempts++;
+      }
+      score.cursor.hide(); active.current = -1;
       element.querySelectorAll('svg').forEach(svg => {
         try {
           const box = svg.getBBox();

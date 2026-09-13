@@ -20,9 +20,10 @@
 .diagnostic-feedback strong { display: block; font-size: 1.15rem; margin-bottom: 8px; color: #c2410c; }
 .diagnostic-feedback p { margin: 6px 0; font-size: 16px; }
 .diagnostic-feedback__sub { color: #78716c; font-size: 15px; }
-.diagnostic-tip { margin: 24px 0 32px; padding: 24px; background: #f8f7fb; border-radius: 18px; border: 1px solid #eeebf4; }
+.diagnostic-tip { margin: 24px auto 32px; padding: 24px 28px; background: #f8f7fb; border-radius: 18px; border: 1px solid #eeebf4; text-align: center; max-width: 580px; box-sizing: border-box; }
 .diagnostic-tip svg { width: min(100%, 380px); display: block; margin: auto; }
-.diagnostic-tip figcaption { margin-top: 15px; }
+.diagnostic-tip figcaption,
+.diagnostic-tip__caption { margin-top: 16px; text-align: center !important; font-size: 15px; line-height: 1.55; color: #475569; width: 100%; display: block; }
 .diagnostic-metaphor { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: clamp(1.4rem, 4vw, 2.3rem); font-weight: 700; }
 .diagnostic-metaphor b { color: #ef6a47; }
 .diagnostic-fingers { display: flex; gap: 6px; justify-content: center; max-width: 500px; margin: 0 auto; }
@@ -35,7 +36,7 @@
 .diagnostic-complete__p { font-size: 17px; color: #57534e; margin: 12px 0 28px; }
 .diagnostic-score { width: 100%; min-width: 0; min-height: 220px; background: #ffffff; border-radius: 20px; border: 1.5px solid #e2d7cf; box-shadow: 0 2px 14px rgba(36, 34, 55, 0.05); padding: 24px 32px; margin: 12px 0 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .diagnostic-score__host { width: 100%; min-width: 0; display: flex; justify-content: center; align-items: center; }
-.diagnostic-score svg { width: min(100%, 640px); max-height: 240px; height: auto; display: block; margin: 0 auto; }
+.diagnostic-score svg { width: min(100%, 720px); max-height: 220px; height: auto; display: block; margin: 0 auto; }
 
 .diagnostic-round-indicator {
   display: inline-flex;

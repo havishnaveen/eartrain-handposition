@@ -13,6 +13,6 @@ export default function DiagnosticTip({ lesson }: { lesson: DiagnosticLesson }) 
       kind === 'clef-change' ? <><span>𝄢</span><b>→</b><span>𝄞</span></> :
       <><span>1 · 2 · 3</span><b>↪</b><span>1 · 2 · 3</span></>
     }</div>}
-    <figcaption>{lesson.tip.text}</figcaption>
+    <figcaption className="diagnostic-tip__caption">{lesson.tip.text}</figcaption>
   </figure>;
 }
