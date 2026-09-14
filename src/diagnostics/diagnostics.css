@@ -117,9 +117,9 @@
 }
 .diagnostic-complete { text-align: center; padding: 48px 32px; }
 .diagnostic-complete__p { font-size: 17px; color: #57534e; margin: 12px 0 28px; }
-.diagnostic-score { width: 100%; min-width: 0; min-height: 220px; background: #ffffff; border-radius: 20px; border: 1.5px solid #e2d7cf; box-shadow: 0 2px 14px rgba(36, 34, 55, 0.05); padding: 24px 32px; margin: 12px 0 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.diagnostic-score { width: 100%; min-width: 0; min-height: 220px; background: #ffffff; border-radius: 20px; border: 1.5px solid #e2d7cf; box-shadow: 0 2px 14px rgba(36, 34, 55, 0.05); padding: 18px 24px; margin: 12px 0 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .diagnostic-score__host { width: 100%; min-width: 0; display: flex; justify-content: center; align-items: center; }
-.diagnostic-score svg { width: min(100%, 720px); max-height: 220px; height: auto; display: block; margin: 0 auto; }
+.diagnostic-score svg { height: clamp(140px, 24vw, 215px); width: auto; max-width: 100%; display: block; margin: 0 auto; }
 
 .diagnostic-round-indicator {
   display: inline-flex;
@@ -144,8 +144,9 @@
   transition: min-height 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 }
 .diagnostic-score--enlarged svg {
-  width: min(100%, 720px) !important;
-  max-height: 280px !important;
+  height: clamp(160px, 28vw, 250px) !important;
+  width: auto !important;
+  max-width: 100% !important;
 }
 
 .diagnostic-score--clef-highlight .vf-clef path {
@@ -581,7 +582,9 @@
 }
 
 .diagnostic-forced-card .diagnostic-score svg {
-  max-height: 180px;
+  height: clamp(110px, 18vw, 160px);
+  width: auto;
+  max-width: 100%;
 }
 
 .diagnostic-forced-badge {

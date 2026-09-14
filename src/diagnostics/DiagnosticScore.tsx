@@ -65,14 +65,14 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
       if (disposed || element.clientWidth < 1) return;
       const noteCount = question.expectedSequence.length;
       // Proportional zoom factor ensuring 1-2 measures fit on a single continuous horizontal staff line with great readability
-      const widthFactor = noteCount <= 4 ? 1 : Math.max(0.5, 4.5 / noteCount);
-      const baseZoom = (element.clientWidth < 420 ? 1.35 : 1.95) * widthFactor;
+      const widthFactor = noteCount <= 4 ? 1 : Math.max(0.72, 6.2 / noteCount);
+      const baseZoom = (element.clientWidth < 420 ? 1.45 : 2.65) * widthFactor;
       let currentZoom = enlarged ? baseZoom * 1.12 : baseZoom;
       score.Zoom = currentZoom;
       score.render();
       // Ensure all measures fit on 1 single continuous horizontal staff line (never wrap onto line 2)
       let attempts = 0;
-      while (attempts < 4 && ((score as any).graphic?.musicPages?.[0]?.MusicSystems?.length ?? 1) > 1) {
+      while (attempts < 6 && element.querySelectorAll('.staffline').length > 1) {
         currentZoom *= 0.85;
         score.Zoom = currentZoom;
         score.render();
@@ -87,6 +87,8 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
             const padY = 8;
             svg.setAttribute('viewBox', `${box.x - padX} ${box.y - padY} ${box.width + padX * 2} ${box.height + padY * 2}`);
             svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            svg.removeAttribute('width');
+            svg.removeAttribute('height');
           }
           if (highlightClef) {
             const clefEl = svg.querySelector('.vf-clef');
