@@ -33,11 +33,14 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
 
   useEffect(() => { alive.current = true; return () => { alive.current = false; playback.current?.stop(); }; }, []);
 
+  const isClefLesson = Boolean(lesson.question.conceptId.includes('clef'));
+  const isOctaveLesson = Boolean(lesson.question.conceptId.includes('octave'));
+
   const featureCheck = lesson.featureCheck ?? {
-    prompt: 'Which clef is this sheet music written in?',
-    choices: ['Bass Clef', 'Treble Clef'],
+    prompt: isClefLesson ? 'Which clef is this sheet music written in?' : isOctaveLesson ? 'Where does Note 1 sit on the staff?' : 'Check the sheet music notes',
+    choices: isClefLesson ? ['Bass Clef', 'Treble Clef'] : ['Option 1', 'Option 2'],
     correct: 0,
-    explanation: 'Check the clef symbol on the left of the staff.',
+    explanation: lesson.explanation ?? 'Check the sheet music notation.',
   };
 
   const play = async () => {
@@ -77,7 +80,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
       setSubStage('identifyingCorrect');
     } else {
       setEnlarged(true);
-      setHighlightClef(true);
+      setHighlightClef(isClefLesson);
       setShowForced(true);
     }
   };
@@ -93,7 +96,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
       question={lesson.question}
       notation={lesson.notation}
       enlarged={enlarged}
-      highlightClef={highlightClef}
+      highlightClef={highlightClef && isClefLesson}
       highlightNoteIndex={subStage === 'identifying' ? featureCheck.highlightNoteIndex : undefined}
     />
 
@@ -236,9 +239,11 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     {showForced && (
       <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
         <div className="diagnostic-forced-card">
-          <h3 id="forced-listen-title" className="diagnostic-forced-title">Check the notation</h3>
+          <h3 id="forced-listen-title" className="diagnostic-forced-title">
+            {isClefLesson ? 'Check the clef' : isOctaveLesson ? 'Check the octave' : 'Check the notation'}
+          </h3>
           <p className="diagnostic-forced-body">
-            The piano did not match the written notes above.
+            {featureCheck.explanation ?? lesson.explanation ?? 'The piano did not match the written notes above.'}
           </p>
           <button
             type="button"
@@ -284,12 +289,19 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     };
   }, []);
 
+  const isClefLesson = Boolean(lesson.question.conceptId.includes('clef'));
+  const isOctaveLesson = Boolean(lesson.question.conceptId.includes('octave'));
+
   const currentRound = rounds[roundIdx] ?? rounds[0];
   const featureCheck = currentRound?.featureCheck ?? lesson.featureCheck ?? {
-    prompt: 'Which clef is this sheet music written in?',
-    choices: ['Bass Clef', 'Treble Clef'],
+    prompt: isClefLesson
+      ? 'Which clef is this sheet music written in?'
+      : isOctaveLesson
+        ? 'Where does Note 1 sit on the staff?'
+        : 'Check the notation',
+    choices: isClefLesson ? ['Bass Clef', 'Treble Clef'] : ['Option 1', 'Option 2'],
     correct: 0,
-    explanation: 'This phrase is written in bass clef.',
+    explanation: currentRound?.explanation ?? lesson.explanation ?? 'Check the sheet music notes.',
   };
 
   const play = async () => {
@@ -377,14 +389,12 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     }
   };
 
-  // User selected clef in the identification question
   const onPickFeatureChoice = (index: number) => {
     if (index === featureCheck.correct) {
       setSubStage('identifyingCorrect');
     } else {
-      // Wrong clef chosen -> show forced acknowledgment notice
       setEnlarged(true);
-      setHighlightClef(true);
+      setHighlightClef(isClefLesson);
       setShowForced(true);
     }
   };
@@ -401,8 +411,8 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
         question={currentRound.question}
         notation={currentRound.notation}
         enlarged={enlarged}
-        highlightClef={highlightClef}
-        highlightNoteIndex={subStage === 'identifying' ? (featureCheck.highlightNoteIndex ?? currentRound.highlightNoteIndex) : undefined}
+        highlightClef={highlightClef && isClefLesson}
+        highlightNoteIndex={subStage === 'identifying' || showForced ? (featureCheck.highlightNoteIndex ?? currentRound.highlightNoteIndex) : undefined}
       />
 
       {subStage === 'listening' && (
@@ -511,7 +521,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
             <MorphingCheckmark />
             <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
             <p className="diagnostic-brief-text diagnostic-brief-text--correct">
-              {currentRound?.correctFeedback ?? lesson.correctFeedback ?? 'The piano played in the wrong clef!'}
+              {currentRound?.correctFeedback ?? lesson.correctFeedback ?? (isClefLesson ? 'The piano played in the wrong clef!' : isOctaveLesson ? 'The piano played in the wrong octave!' : 'The piano matched the notes!')}
             </p>
           </div>
           <button
@@ -544,13 +554,17 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       {showForced && (
         <div className="diagnostic-forced-overlay" role="alertdialog" aria-modal="true" aria-labelledby="forced-listen-title">
           <div className="diagnostic-forced-card">
-            <h3 id="forced-listen-title" className="diagnostic-forced-title">Check the clef</h3>
+            <h3 id="forced-listen-title" className="diagnostic-forced-title">
+              {isClefLesson ? 'Check the clef' : isOctaveLesson ? 'Check the octave' : 'Check the notation'}
+            </h3>
             <p className="diagnostic-forced-body">
-              {isMatch
-                ? 'This phrase is written in treble clef, and the piano matched the notes.'
-                : currentRound.notation.clef === 'bass'
-                  ? 'This phrase is written in bass clef, but the piano played in treble clef.'
-                  : 'This phrase is written in treble clef, but the piano played in bass clef.'}
+              {isClefLesson
+                ? (isMatch
+                    ? 'This phrase is written in treble clef, and the piano matched the notes.'
+                    : currentRound.notation.clef === 'bass'
+                      ? 'This phrase is written in bass clef, but the piano played in treble clef.'
+                      : 'This phrase is written in treble clef, but the piano played in bass clef.')
+                : (featureCheck.explanation ?? currentRound.explanation ?? lesson.explanation)}
             </p>
             <button
               type="button"

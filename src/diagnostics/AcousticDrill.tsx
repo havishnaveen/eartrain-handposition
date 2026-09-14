@@ -260,7 +260,13 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
     {status === 'report' && !passed && !profNotified && isDiagnosticError && forcedErrorMessage && !forcedDismissed && (
       <div className="diagnostic-forced-overlay diagnostic-forced-overlay--center" role="alertdialog" aria-modal="true" aria-labelledby="forced-error-title" data-diagnostic={diagnosticId}>
         <div className="diagnostic-forced-card">
-          <DiagnosticScore question={question} notation={notation} enlarged={true} highlightClef={true} />
+          <DiagnosticScore
+            question={question}
+            notation={notation}
+            enlarged={true}
+            highlightClef={Boolean((notation.clefChange || diagnosticId === 'clef-transposition' || forcedErrorMessage.toLowerCase().includes('clef')) && !diagnosticId?.includes('octave'))}
+            highlight8va={Boolean(notation.octaveUp || diagnosticId === 'octave-displacement' || forcedErrorMessage.toLowerCase().includes('octave'))}
+          />
           <h3 id="forced-error-title" className="diagnostic-forced-title">
             {notation.octaveUp || diagnosticId === 'octave-displacement' || forcedErrorMessage.toLowerCase().includes('octave') ? 'Check the octave' : notation.clefChange || forcedErrorMessage.toLowerCase().includes('clef') ? 'Check the clef' : 'Check the notation'}
           </h3>
