@@ -38,10 +38,9 @@ export function StaffChoiceDiagram({ visual }: { visual: StaffChoiceVisual }) {
           width="96"
           height="10"
           rx="3"
-          fill="rgba(239, 106, 71, 0.22)"
+          fill="rgba(239, 106, 71, 0.25)"
           stroke="#ef6a47"
-          strokeWidth="1.3"
-          strokeDasharray="3 2"
+          strokeWidth="1.2"
         />
       )}
 
@@ -53,10 +52,9 @@ export function StaffChoiceDiagram({ visual }: { visual: StaffChoiceVisual }) {
             width="96"
             height="10"
             rx="3"
-            fill="rgba(239, 106, 71, 0.22)"
+            fill="rgba(239, 106, 71, 0.25)"
             stroke="#ef6a47"
-            strokeWidth="1.3"
-            strokeDasharray="3 2"
+            strokeWidth="1.2"
           />
           <line x1="72" y1="66.5" x2="140" y2="66.5" stroke="#ef6a47" strokeWidth="2.2" strokeLinecap="round" />
         </g>
@@ -69,10 +67,9 @@ export function StaffChoiceDiagram({ visual }: { visual: StaffChoiceVisual }) {
           width="96"
           height="10"
           rx="3"
-          fill="rgba(239, 106, 71, 0.22)"
+          fill="rgba(239, 106, 71, 0.25)"
           stroke="#ef6a47"
-          strokeWidth="1.3"
-          strokeDasharray="3 2"
+          strokeWidth="1.2"
         />
       )}
 

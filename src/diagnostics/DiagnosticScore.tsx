@@ -65,8 +65,8 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
       if (disposed || element.clientWidth < 1) return;
       const noteCount = question.expectedSequence.length;
       // Proportional zoom factor ensuring 1-2 measures fit on a single continuous horizontal staff line with great readability
-      const widthFactor = noteCount <= 4 ? 1 : Math.max(0.72, 6.2 / noteCount);
-      const baseZoom = (element.clientWidth < 420 ? 1.45 : 2.65) * widthFactor;
+      const widthFactor = noteCount <= 4 ? 1 : Math.max(0.78, 6.6 / noteCount);
+      const baseZoom = (element.clientWidth < 420 ? 1.55 : 2.75) * widthFactor;
       let currentZoom = enlarged ? baseZoom * 1.12 : baseZoom;
       score.Zoom = currentZoom;
       score.render();
@@ -157,7 +157,7 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
               const centerX = nb.x + nb.width / 2;
               const centerY = nb.y + nb.height / 2;
 
-              // 1. Highlight the horizontal staff row/line containing this note
+              // 1. Highlight the horizontal staff row/line containing this note (clean translucent highlight, no dotted outline)
               const rowBand = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
               const bandWidth = Math.max(nb.width + 50, 64);
               rowBand.setAttribute('x', String(centerX - bandWidth / 2));
@@ -165,10 +165,7 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
               rowBand.setAttribute('width', String(bandWidth));
               rowBand.setAttribute('height', '11');
               rowBand.setAttribute('rx', '4');
-              rowBand.setAttribute('fill', 'rgba(239, 106, 71, 0.18)');
-              rowBand.setAttribute('stroke', '#ef6a47');
-              rowBand.setAttribute('stroke-width', '1.5');
-              rowBand.setAttribute('stroke-dasharray', '3 2');
+              rowBand.setAttribute('fill', 'rgba(239, 106, 71, 0.25)');
               rowBand.setAttribute('class', 'diagnostic-staff-row-highlight');
               noteheads[highlightNoteIndex].parentElement?.insertBefore(rowBand, noteheads[highlightNoteIndex]);
 
