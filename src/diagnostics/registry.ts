@@ -355,7 +355,7 @@ function octave(): DiagnosticLesson {
     correct: 0,
     explanation: 'The music is written in the high register (C5), but the piano played an octave lower around Middle C.',
   };
-  lesson.tip = { kind: 'octave', text: 'High C (C5) sits inside the 3rd space. Middle C (C4) sits below the staff on its own ledger line.' };
+  lesson.tip = { kind: 'octave', text: 'C5: 3rd space · C4: ledger line' };
   lesson.forcedErrorMessage = 'Play in High C position, not Middle C.';
   for (const q of [lesson.question, lesson.transfer]) {
     q.positionProof = question(q.id, ['C5', 'E5', 'G5']).positionProof;
@@ -422,7 +422,7 @@ function accidental(): DiagnosticLesson {
     explanation: 'An accidental applies through the measure until the barline.',
   };
   lesson.mcq = { prompt: 'How long does an accidental remain active in a measure?', choices: ['Through the measure until the barline', 'Only for the single note', 'For the whole piece'], correct: 0, explanation: 'Accidentals carry through the measure until the barline resets them.' };
-  lesson.tip = { kind: 'barline', text: 'C♯ · D · C♯ · E | C · D · E · C. The second C keeps the sharp; the new bar resets it.' };
+  lesson.tip = { kind: 'barline', text: 'Accidentals reset at the barline' };
   lesson.forcedErrorMessage = 'The sharp carries through the measure until the barline.';
   for (const q of [lesson.question, lesson.transfer]) {
     q.positionProof = question(q.id, ['C#4', 'E4', 'G4']).positionProof;
@@ -666,7 +666,7 @@ function crossing(): DiagnosticLesson {
     explanation: 'Tuck the thumb under to continue smoothly.',
   };
   lesson.mcq = { prompt: 'When should the thumb start tucking under?', choices: ['While finger 2 plays', 'After finger 3 lifts completely', 'After the phrase ends'], correct: 0, explanation: 'Preparing the thumb early keeps the tempo steady.' };
-  lesson.tip = { kind: 'crossing', text: 'Up: 1–2–3 → thumb 1 on F. Down: 1 on F → finger 3 over to E.' };
+  lesson.tip = { kind: 'crossing', text: 'Thumb (1) tucks under · Finger 3 crosses over' };
   lesson.forcedErrorMessage = 'Prepare the thumb under smoothly while finger 2 plays.';
   lesson.question = question('cross-over-under/practice', pitches, 'right', [1, 2, 3, 1, 2, 3, 4, 5], ['C4', 'E4', 'G4']);
   lesson.transfer = question('cross-over-under/transfer', lesson.transfer.expectedSequence, 'right', [5, 4, 3, 2, 1, 3, 2, 1], ['F4', 'A4', 'C5']);

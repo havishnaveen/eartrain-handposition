@@ -24,6 +24,12 @@
 .diagnostic-tip svg { width: min(100%, 380px); display: block; margin: auto; }
 .diagnostic-tip figcaption,
 .diagnostic-tip__caption { margin-top: 16px; text-align: center !important; font-size: 15px; line-height: 1.55; color: #475569; width: 100%; display: block; }
+.diagnostic-tip-visuals { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.diagnostic-tip-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.diagnostic-tip-item svg { width: 150px !important; max-width: 100% !important; height: auto !important; }
+.diagnostic-tip-label { font-size: 15px; font-weight: 700; color: #1e293b; }
+.diagnostic-tip-sublabel { font-size: 12px; font-weight: 600; color: #64748b; }
+.diagnostic-tip-vs { font-size: 20px; font-weight: 800; color: #ef6a47; margin: 0 4px; }
 .diagnostic-metaphor { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: clamp(1.4rem, 4vw, 2.3rem); font-weight: 700; }
 .diagnostic-metaphor b { color: #ef6a47; }
 .diagnostic-fingers { display: flex; gap: 6px; justify-content: center; max-width: 500px; margin: 0 auto; }
