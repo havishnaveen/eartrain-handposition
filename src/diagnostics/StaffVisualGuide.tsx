@@ -18,7 +18,6 @@ export function StaffChoiceDiagram({ visual }: { visual: StaffChoiceVisual }) {
 
   const staffX1 = 12;
   const staffX2 = 158;
-  const noteX = 104;
 
   return (
     <svg
@@ -31,55 +30,66 @@ export function StaffChoiceDiagram({ visual }: { visual: StaffChoiceVisual }) {
       {/* Clean card background */}
       <rect x="1" y="1" width="168" height="80" rx="8" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
 
-      {/* Highlights */}
+      {/* Highlights (Only highlight displayed, no note) */}
       {highlight && (position === "space-3" || position === "inside-staff") && (
         <rect
-          x="60"
+          x="58"
           y={yL4}
-          width="88"
+          width="96"
           height="10"
           rx="3"
-          fill="rgba(239, 106, 71, 0.2)"
+          fill="rgba(239, 106, 71, 0.22)"
           stroke="#ef6a47"
-          strokeWidth="1.2"
+          strokeWidth="1.3"
           strokeDasharray="3 2"
         />
       )}
 
       {highlight && (position === "ledger-below" || position === "below-bottom-line") && (
-        <rect
-          x="60"
-          y="61.5"
-          width="88"
-          height="10"
-          rx="3"
-          fill="rgba(239, 106, 71, 0.2)"
-          stroke="#ef6a47"
-          strokeWidth="1.2"
-          strokeDasharray="3 2"
-        />
+        <g>
+          <rect
+            x="58"
+            y="61.5"
+            width="96"
+            height="10"
+            rx="3"
+            fill="rgba(239, 106, 71, 0.22)"
+            stroke="#ef6a47"
+            strokeWidth="1.3"
+            strokeDasharray="3 2"
+          />
+          <line x1="72" y1="66.5" x2="140" y2="66.5" stroke="#ef6a47" strokeWidth="2.2" strokeLinecap="round" />
+        </g>
       )}
 
       {highlight && position === "above-line-5" && (
         <rect
-          x="60"
+          x="58"
           y="6.5"
-          width="88"
+          width="96"
           height="10"
           rx="3"
-          fill="rgba(239, 106, 71, 0.2)"
+          fill="rgba(239, 106, 71, 0.22)"
           stroke="#ef6a47"
-          strokeWidth="1.2"
+          strokeWidth="1.3"
           strokeDasharray="3 2"
         />
       )}
 
       {highlight && position === "line-2" && (
-        <line x1="60" y1={yL2} x2="148" y2={yL2} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
+        <line x1="58" y1={yL2} x2="154" y2={yL2} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
       )}
 
       {highlight && position === "line-4" && (
-        <line x1="60" y1={yL4} x2="148" y2={yL4} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
+        <line x1="58" y1={yL4} x2="154" y2={yL4} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
+      )}
+
+      {highlight && position === "line-5" && (
+        <line x1="58" y1={yL5} x2="154" y2={yL5} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
+      )}
+
+      {highlight && position === "line-1" && (
+        <line x1="58" y1={yL1} x2="154" y2={yL1} stroke="#ef6a47" strokeWidth="3" strokeLinecap="round" />
       )}
 
       {/* 5 Staff Lines without text labeling */}
@@ -97,43 +107,6 @@ export function StaffChoiceDiagram({ visual }: { visual: StaffChoiceVisual }) {
       ) : (
         <g transform="translate(18, -9)">
           <path d={BASS_CLEF_D} fill="#1e293b" />
-        </g>
-      )}
-
-      {/* Notes */}
-      {(position === "space-3" || position === "inside-staff") && (
-        <g>
-          <ellipse cx={noteX} cy="31.5" rx="6" ry="4.5" transform={`rotate(-20 ${noteX} 31.5)`} fill="#ef6a47" />
-          <line x1={noteX - 5.5} y1="31.5" x2={noteX - 5.5} y2="59.5" stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
-        </g>
-      )}
-
-      {(position === "ledger-below" || position === "below-bottom-line") && (
-        <g>
-          <line x1={noteX - 12} y1="66.5" x2={noteX + 12} y2="66.5" stroke="#ef6a47" strokeWidth="2.2" strokeLinecap="round" />
-          <ellipse cx={noteX} cy="66.5" rx="6" ry="4.5" transform={`rotate(-20 ${noteX} 66.5)`} fill="#ef6a47" />
-          <line x1={noteX + 5.5} y1="66.5" x2={noteX + 5.5} y2="38.5" stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
-        </g>
-      )}
-
-      {position === "above-line-5" && (
-        <g>
-          <ellipse cx={noteX} cy="11.5" rx="6" ry="4.5" transform={`rotate(-20 ${noteX} 11.5)`} fill="#ef6a47" />
-          <line x1={noteX - 5.5} y1="11.5" x2={noteX - 5.5} y2="39.5" stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
-        </g>
-      )}
-
-      {position === "line-2" && (
-        <g>
-          <ellipse cx={noteX} cy={yL2} rx="6" ry="4.5" transform={`rotate(-20 ${noteX} ${yL2})`} fill="#ef6a47" />
-          <line x1={noteX + 5.5} y1={yL2} x2={noteX + 5.5} y2={yL2 - 28} stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
-        </g>
-      )}
-
-      {position === "line-4" && (
-        <g>
-          <ellipse cx={noteX} cy={yL4} rx="6" ry="4.5" transform={`rotate(-20 ${noteX} ${yL4})`} fill="#ef6a47" />
-          <line x1={noteX - 5.5} y1={yL4} x2={noteX - 5.5} y2={yL4 + 28} stroke="#ef6a47" strokeWidth="1.8" strokeLinecap="round" />
         </g>
       )}
     </svg>
