@@ -280,6 +280,17 @@ function octave(): DiagnosticLesson {
   const r3Pitches = ['G5', 'E5', 'C5', 'E5', 'G5', 'F5', 'D5', 'C5'];
   const r3Question = question('octave-displacement/round-3', r3Pitches, 'right', [5, 3, 1, 3, 5, 4, 2, 1]);
 
+  const r4Question = question('octave-displacement/round-4', ['C5', 'E5', 'D5', 'F5', 'E5', 'C5'], 'right', [1, 3, 2, 4, 3, 1]);
+  const r5Question = question('octave-displacement/round-5', ['C5', 'D5', 'E5', 'F5', 'G5', 'E5', 'D5', 'C5'], 'right');
+  // Rhythm complexity belongs only to listening, not the acoustic passages.
+  [r4Question, r5Question].forEach((round, i) => {
+    const durations = i === 0 ? ['q', '8', '8', 'q', '8', '8'] : ['q', '16', '16', '16', '16', 'q', '8', '8'];
+    round.cue.staves[0].notes.forEach((note, index) => {
+      note.duration = durations[index];
+      note.finger = undefined; // Listening-only examples do not need fingering labels.
+    });
+  });
+
   lesson.listenRounds = [
     {
       question: r1Question,
@@ -292,7 +303,7 @@ function octave(): DiagnosticLesson {
         prompt: 'Where does Note 1 sit on the treble staff?',
         choices: ['In the 3rd space of the staff', 'Below the staff on a ledger line'],
         correct: 0,
-        explanation: 'Note 1 sits in the 3rd space. Notes inside the staff are played up in the high register (C5), not down at Middle C.',
+        explanation: 'Note 1 is C5, in the 5th octave.',
         highlightNoteIndex: 0,
         choiceVisuals: [
           { clef: 'treble', position: 'space-3', highlight: true },
@@ -311,7 +322,7 @@ function octave(): DiagnosticLesson {
         prompt: 'Where do these notes sit on the treble staff?',
         choices: ['Inside and above the staff', 'Below the bottom line'],
         correct: 0,
-        explanation: 'All the notes sit inside or above the staff, matching the high register you heard.',
+        explanation: 'These notes are in the 5th octave.',
         highlightNoteIndex: 2,
         choiceVisuals: [
           { clef: 'treble', position: 'above-line-5', highlight: true },
@@ -330,7 +341,7 @@ function octave(): DiagnosticLesson {
         prompt: 'Where does Note 1 sit on the staff?',
         choices: ['Above the 5th line', 'On the 2nd line'],
         correct: 0,
-        explanation: 'Note 1 sits in the space above the top line (High G). The piano played down low near Middle C.',
+        explanation: 'Note 1 is G5, in the 5th octave.',
         highlightNoteIndex: 0,
         choiceVisuals: [
           { clef: 'treble', position: 'above-line-5', highlight: true },
@@ -339,6 +350,37 @@ function octave(): DiagnosticLesson {
       },
     },
   ];
+  lesson.listenRounds = [
+    ...lesson.listenRounds,
+    ...[r4Question, r5Question].map(round => ({
+      question: round,
+      notation: { clef: 'treble' as const, mistakeIndices: [] },
+      wrongClefPitches: round.expectedSequence,
+      explanation: 'These notes are in the 5th octave.',
+      featureCheck: {
+        prompt: 'Which octave is Note 1 in?',
+        choices: ['5th octave', '4th octave'],
+        correct: 0,
+        explanation: 'Note 1 is C5, in the 5th octave.',
+        highlightNoteIndex: 0,
+      },
+    })),
+  ];
+  // Choose once per lesson, retain it on retries, and never alternate throughout.
+  const answerPatterns = [
+    [false, false, true, false, true], [true, false, false, true, false],
+    [false, true, true, false, true], [true, true, false, true, false],
+    [false, false, true, true, false], [true, true, false, false, true],
+  ];
+  const answers = answerPatterns[Math.floor(Math.random() * answerPatterns.length)];
+  lesson.listenRounds = lesson.listenRounds.map((round, i) => ({
+    ...round,
+    isMatch: answers[i],
+    wrongClefPitches: round.question.expectedSequence.map(pitch => answers[i] ? pitch : midiToName(pitchToMidi(pitch)! - 12)),
+    notation: { ...round.notation, mistakeIndices: answers[i] ? [] : round.question.expectedSequence.map((_, index) => index) },
+    explanation: answers[i] ? 'The piano matched the 5th-octave notes.' : 'The notes are in the 5th octave; the piano played too low.',
+    correctFeedback: answers[i] ? 'The piano matched the 5th-octave notes!' : 'The piano played an octave too low!',
+  }));
   lesson.featureCheck = {
     prompt: 'Where does High C sit on the treble staff?',
     choices: ['In the 3rd space of the staff', 'Below the staff on a ledger line'],

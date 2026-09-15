@@ -75,6 +75,37 @@ try {
   assert.equal((score.match(/<accidental>sharp<\/accidental>/g) ?? []).length, 1, 'Do not reprint the carry-over sharp');
   assert.equal((score.match(/<alter>1<\/alter>/g) ?? []).length, 2, 'Both first-measure Cs sound sharp');
   const octave = DIAGNOSTIC_REGISTRY.find(d => d.id === 'octave-displacement').create(DIAGNOSTIC_KEYS[0]);
+  const { diagnosticPlaybackTiming } = await server.ssrLoadModule('/src/diagnostics/playback.ts');
+  const originalRandom = Math.random;
+  try {
+    for (let pattern = 0; pattern < 6; pattern++) {
+      Math.random = () => (pattern + .5) / 6;
+      const lesson = DIAGNOSTIC_REGISTRY.find(d => d.id === 'octave-displacement').create(DIAGNOSTIC_KEYS[0]);
+      assert.equal(lesson.listenRounds.length, 5);
+      const answers = lesson.listenRounds.map(round => round.isMatch);
+      assert.ok(answers.includes(true) && answers.includes(false));
+      assert.ok(answers.some((answer, i) => i > 0 && answer === answers[i - 1]), 'Do not alternate every answer');
+      assert.equal(lesson.listenRounds[0].featureCheck.explanation, 'Note 1 is C5, in the 5th octave.');
+      for (const [i, round] of lesson.listenRounds.entries()) {
+        assert.deepEqual(round.wrongClefPitches.map(pitchToMidi), round.question.expectedSequence.map(p => pitchToMidi(p) - (round.isMatch ? 0 : 12)));
+        const durations = round.question.cue.staves[0].notes.map(note => note.duration);
+        if (i < 3) assert.ok(durations.every(duration => duration === 'q'));
+        else {
+          assert.ok(durations.includes(i === 3 ? '8' : '16'));
+          const plan = planForQuestion(round.question);
+          const timing = diagnosticPlaybackTiming(durations.length, durations);
+          assert.equal(plan.totalBeats, 4);
+          assert.equal(timing.seconds, 3.2);
+          assert.deepEqual(timing.notes.map(note => note.start), plan.expectedNotes.map(note => note.beat * plan.secondsPerBeat));
+          const xml = diagnosticMusicXML(round.question, round.notation);
+          assert.match(xml, i === 3 ? /<type>eighth<\/type>/ : /<type>16th<\/type>/);
+          assert.match(xml, /<beam/);
+          assert.equal((xml.match(/<measure number=/g) ?? []).length, 1);
+        }
+      }
+      for (const q of [lesson.question, lesson.transfer]) assert.ok(q.cue.staves[0].notes.every(note => note.duration === 'q'), 'Acoustic passages retain their rhythms');
+    }
+  } finally { Math.random = originalRandom; }
   assert.match(diagnosticMusicXML(octave.question, octave.notation), /<octave>5<\/octave>/);
   const clef = DIAGNOSTIC_REGISTRY.find(d => d.id === 'mid-line-clef-change').create(DIAGNOSTIC_KEYS[0]);
   assert.match(diagnosticMusicXML(clef.question, clef.notation), /<\/note><attributes><clef><sign>G/);

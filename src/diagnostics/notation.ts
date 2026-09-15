@@ -1,10 +1,21 @@
 import type { Question } from '../curriculum/types';
 import type { DiagnosticNotation } from './registry';
+import { cueSpecToMusicXML } from '../notation/cueSpecToMusicXML';
 
 const xml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 const clefXml = (clef: 'bass' | 'treble') => `<clef><sign>${clef === 'bass' ? 'F' : 'G'}</sign><line>${clef === 'bass' ? 4 : 2}</line></clef>`;
 /** Isolated engraving: sounding notes remain untouched in the engine's Question. */
 export function diagnosticMusicXML(question: Question, notation: DiagnosticNotation, highlight = false, highlightNoteIndex?: number): string {
+  // The new high-register listening rhythms use the existing beat-aware engraver.
+  // Keep the specialized clef/accidental/8va path below unchanged.
+  if (question.conceptId === 'octave-displacement' && question.cue.staves[0].notes.some(note => note.duration !== 'q')) {
+    return cueSpecToMusicXML({
+      ...question.cue,
+      staves: question.cue.staves.map(staff => ({ ...staff, notes: staff.notes.map((note, i) => ({
+        ...note, anchor: (highlight && notation.mistakeIndices.includes(i)) || highlightNoteIndex === i,
+      })) })),
+    }, { inkColor: '#242237', accentColor: '#ef6a47' });
+  }
   const measures: string[] = [];
   const keyAlter = new Map<string, number>();
   const fifths = notation.fifths ?? 0;

@@ -309,7 +309,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     locked.current = true;
     setPlaying(true);
     setError('');
-    const run = playDiagnosticExample(currentRound.wrongClefPitches);
+    const run = playDiagnosticExample(currentRound.wrongClefPitches, undefined, currentRound.question.cue.staves[0].notes.map(note => note.duration));
     playback.current = run;
     try {
       await run.done;
@@ -1016,6 +1016,7 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
             question={stage === 3 ? lesson.question : lesson.transfer}
             notation={stage === 3 ? lesson.notation : lesson.transferNotation}
             transfer={stage === 4}
+            skipProof={definition.id === 'octave-displacement'}
             forcedErrorMessage={lesson.forcedErrorMessage}
             mistakePitches={lesson.mistakePitches}
             onPassed={() => { if (stage === 3) setStage(4); else setDone(true); }}
