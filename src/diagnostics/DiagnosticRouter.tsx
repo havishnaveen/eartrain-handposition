@@ -9,6 +9,49 @@ import DiagnosticLessonView from './DiagnosticLessonView';
 import { diagnosticReferral } from './routing';
 import './diagnostics.css';
 
+function isDevTesterAllowed(session: OclefIntegrationSession | null): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // 1. External LMS or Oclef integration launch: never show dev tool
+  if (session) return false;
+
+  // 2. Embedded in an iframe or another website: never show dev tool
+  try {
+    if (window.self !== window.top) return false;
+  } catch {
+    return false;
+  }
+
+  // 3. Dev query param on this device (?dev=1 to enable, ?dev=0 to disable)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const devParam = params.get('dev');
+    if (devParam === '0' || devParam === 'false' || devParam === 'hide') {
+      localStorage.removeItem('eartrain_dev_allowed');
+      return false;
+    }
+    if (devParam === '1' || devParam === 'true' || devParam === 'havish') {
+      localStorage.setItem('eartrain_dev_allowed', '1');
+      return true;
+    }
+  } catch {}
+
+  // 4. Saved preference on this Mac's browser
+  try {
+    if (localStorage.getItem('eartrain_dev_allowed') === '1') {
+      return true;
+    }
+  } catch {}
+
+  // 5. Localhost / local development host on this Mac
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local') || host.endsWith('.lan')) {
+    return true;
+  }
+
+  return false;
+}
+
 export default function DiagnosticRouter({ session }: { session: OclefIntegrationSession | null }) {
   const launch = session?.launch;
   const referral = useMemo(() => diagnosticReferral(launch, window.location.search), [launch]);
@@ -80,7 +123,7 @@ export default function DiagnosticRouter({ session }: { session: OclefIntegratio
 
   const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
   const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
-  const tester = true;
+  const [tester] = useState(() => isDevTesterAllowed(session));
 
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
