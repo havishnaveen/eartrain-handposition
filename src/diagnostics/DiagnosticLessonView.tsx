@@ -21,6 +21,49 @@ const MorphingCheckmark = () => (
   </svg>
 );
 
+function sendFailureReport(params: { lessonTitle: string; stageName: string; detail: string; conceptId: string }) {
+  if (typeof window === 'undefined') return;
+  try {
+    const diagnostic = [
+      `EarTrain issue — ${params.lessonTitle}`,
+      `Stage: ${params.stageName}`,
+      `Concept: ${params.conceptId}`,
+      `Detail: ${params.detail}`,
+      `Page: ${window.location.href}`,
+      `Viewport: ${window.innerWidth}×${window.innerHeight}`,
+      `Browser: ${window.navigator.userAgent}`,
+    ].join('\n');
+    fetch('/api/report-problem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        description: `Struggle report: student failed question after reviewing clue on ${params.lessonTitle} (${params.detail})`,
+        diagnostic,
+      }),
+    }).catch(() => {});
+  } catch {}
+}
+
+const AudioCluesPlayer = ({ clues }: { clues?: readonly { label: string; pitches: readonly string[]; tag?: string }[] }) => {
+  if (!clues || clues.length === 0) return null;
+  return (
+    <div className="diagnostic-audio-clues">
+      <div className="diagnostic-audio-clue-title">Listen & Compare Pitch:</div>
+      {clues.map((clue, idx) => (
+        <button
+          key={idx}
+          type="button"
+          className="diagnostic-audio-clue-btn"
+          onClick={() => playDiagnosticExample(clue.pitches)}
+        >
+          <span>🔊 {clue.label}</span>
+          {clue.tag && <span className="diagnostic-audio-clue-tag">{clue.tag}</span>}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('listening');
   const [retrying, setRetrying] = useState(false);
@@ -68,6 +111,12 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
         questionPrompt: 'Did the piano match the notes?',
         attemptsCount: 2,
         details: 'ListenAndJudge: Student failed retry on starter question despite guided clue.',
+      });
+      sendFailureReport({
+        lessonTitle: lesson.title,
+        stageName: 'Stage 1: Starter Question',
+        conceptId: lesson.question.conceptId,
+        detail: 'Student failed retry on starter question despite guided clue.',
       });
       setSubStage('professorNotified');
     } else {
@@ -146,7 +195,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
           onClick={() => setSubStage('identifying')}
         >
           <span className="et-start__dot"><RecordDot /></span>
-          Next question
+          Check clue
         </button>
       </div>
     )}
@@ -154,6 +203,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     {subStage === 'identifying' && (
       <div className="diagnostic-prompt-section">
         <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+        <AudioCluesPlayer clues={featureCheck.audioClues} />
         <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
           {featureCheck.choices.map((choice, i) => {
             const visual = featureCheck.choiceVisuals?.[i];
@@ -357,6 +407,12 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
           attemptsCount: 2,
           details: `Round ${roundIdx + 1}: Student answered "Wrong" when the piano matched, despite guided instruction.`,
         });
+        sendFailureReport({
+          lessonTitle: lesson.title,
+          stageName: `Stage 3: Round ${roundIdx + 1}`,
+          conceptId: lesson.question.conceptId,
+          detail: `Failed retry after clue: answered "Wrong" when piano matched.`,
+        });
         setSubStage('professorNotified');
       } else {
         setSubStage('incorrectFeedback');
@@ -381,6 +437,12 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
           questionPrompt: 'Did the piano match the notes?',
           attemptsCount: 2,
           details: `Round ${roundIdx + 1}: Student answered "Correct" when mismatched, despite guided instruction.`,
+        });
+        sendFailureReport({
+          lessonTitle: lesson.title,
+          stageName: `Stage 3: Round ${roundIdx + 1}`,
+          conceptId: lesson.question.conceptId,
+          detail: `Failed retry after clue: answered "Correct" when mismatched.`,
         });
         setSubStage('professorNotified');
       } else {
@@ -469,6 +531,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       {subStage === 'identifying' && (
         <div className="diagnostic-prompt-section">
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+          <AudioCluesPlayer clues={featureCheck.audioClues} />
           <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
             {featureCheck.choices.map((choice, i) => {
               const visual = featureCheck.choiceVisuals?.[i];
@@ -675,6 +738,12 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
           attemptsCount: 2,
           details: `Round ${roundIdx + 1} (${currentRound.title}): Learner selected "${currentRound.choices[index]}" on retry after guided review.`,
         });
+        sendFailureReport({
+          lessonTitle: lesson.title,
+          stageName: `Stage 3: Round ${roundIdx + 1} (${currentRound.title})`,
+          conceptId: lesson.question.conceptId,
+          detail: `Learner selected "${currentRound.choices[index]}" on retry after guided clue.`,
+        });
         setSubStage('professorNotified');
       } else {
         setSubStage('incorrectFeedback');
@@ -785,6 +854,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       {subStage === 'identifying' && featureCheck && (
         <div className="diagnostic-prompt-section">
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
+          <AudioCluesPlayer clues={featureCheck.audioClues} />
           <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
             {featureCheck.choices.map((choice, i) => {
               const visual = featureCheck.choiceVisuals?.[i];
@@ -920,6 +990,12 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
           attemptsCount: nextCount,
           details: `Stage 2 Concept MCQ: Student failed 2 attempts, selecting "${lesson.mcq.choices[i]}" instead of "${lesson.mcq.choices[lesson.mcq.correct]}".`,
         });
+        sendFailureReport({
+          lessonTitle: lesson.title,
+          stageName: 'Stage 2: Concept Question',
+          conceptId: lesson.question.conceptId,
+          detail: `Failed after clue on: "${lesson.mcq.prompt}". Selected "${lesson.mcq.choices[i]}".`,
+        });
         setProfessorNotified(true);
       }
     }
@@ -952,7 +1028,10 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
           <p><strong>Correct!</strong> {lesson.mcq.explanation}</p>
         </div>
       ) : (
-        <p>Try another answer.</p>
+        <div>
+          <p>Try another answer.</p>
+          {lesson.tip && <p className="diagnostic-feedback__sub"><strong>Clue:</strong> {lesson.tip.text}</p>}
+        </div>
       )}
       {correct && (
         <div className="diagnostic-action-area diagnostic-action-area--feedback">

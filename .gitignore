@@ -13,3 +13,6 @@ dist-ts/
 
 # OS files
 .DS_Store
+
+# Local logs
+logs/

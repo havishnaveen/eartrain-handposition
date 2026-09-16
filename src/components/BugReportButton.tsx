@@ -108,7 +108,11 @@ export default function BugReportButton({
               </button>
             </header>
 
-            <label className="mt-5 block text-sm font-extrabold text-stone-800" htmlFor="et-bug-description">Describe what you saw</label>
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold leading-relaxed text-amber-900">
+              💡 <strong>Before reporting:</strong> If you are stuck on a question, please check the guided clue first! Reports should only be sent if you cannot solve the question even after reviewing the clue.
+            </div>
+
+            <label className="mt-4 block text-sm font-extrabold text-stone-800" htmlFor="et-bug-description">Describe what you saw</label>
             <textarea
               ref={descriptionRef}
               id="et-bug-description"
