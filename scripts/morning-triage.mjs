@@ -64,6 +64,9 @@ function classifyIssue(issue) {
   ];
   const isSubjective = subjectiveKeywords.some(kw => text.includes(kw));
 
+  // 1b. Check for test submissions
+  const isTestReport = text.includes('this is a test') || text.includes('test report') || text.includes('test to see if');
+
   // 2. Check for timing / tempo score complaints
   const isTimingRelated = text.includes('timing') || text.includes('off beat') || text.includes('tempo') || text.includes('score is too low');
 
@@ -82,6 +85,7 @@ function classifyIssue(issue) {
     title: issue.title,
     author: issue.user?.login,
     isSubjective,
+    isTestReport,
     isTimingRelated,
     isGradingRelated,
     lessonInfo,
@@ -142,6 +146,12 @@ async function main() {
     // Rule 1: Subjective complaints
     if (classified.isSubjective) {
       log(`    [POLICY: IGNORE/CLOSE] Subjective/broad feedback detected. No code modification permitted.`);
+      continue;
+    }
+
+    // Rule 1b: Test submissions
+    if (classified.isTestReport) {
+      log(`    [POLICY: TEST SUBMISSION] Verified test report from @${classified.author}. No code fix required.`);
       continue;
     }
 
