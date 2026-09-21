@@ -56,6 +56,7 @@ export interface DiagnosticFeatureCheck {
   visualGuide?: StaffVisualGuide;
   choiceVisuals?: readonly (StaffChoiceVisual | undefined)[];
   audioClues?: readonly DiagnosticAudioClue[];
+  followUpCheck?: DiagnosticFeatureCheck;
 }
 
 export interface WrongClefRound {
@@ -437,6 +438,12 @@ function accidental(): DiagnosticLesson {
         choices: ['No, still Measure 1', 'Yes'],
         correct: 0,
         explanation: 'Still in Measure 1, so the sharp stays active.',
+        followUpCheck: {
+          prompt: 'Does a sharp carry through a full measure or stop for just one note?',
+          choices: ['Carries through a full measure', 'Stops for just one note'],
+          correct: 0,
+          explanation: 'A sharp carries through the full measure until the barline.',
+        },
       },
     },
     {

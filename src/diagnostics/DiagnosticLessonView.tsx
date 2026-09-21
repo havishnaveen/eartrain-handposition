@@ -761,7 +761,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
 function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const rounds = lesson.interactiveRounds ?? [];
   const [roundIdx, setRoundIdx] = useState(0);
-  const [subStage, setSubStage] = useState<'prompting' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('prompting');
+  const [subStage, setSubStage] = useState<'prompting' | 'incorrectFeedback' | 'identifying' | 'identifyingFollowUp' | 'followUpFeedback' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('prompting');
   const [retrying, setRetrying] = useState(false);
   const [playingA, setPlayingA] = useState(false);
   const [playingB, setPlayingB] = useState(false);
@@ -771,6 +771,8 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
   const [enlarged, setEnlarged] = useState(false);
   const [highlightCue, setHighlightCue] = useState(false);
   const [showForced, setShowForced] = useState(false);
+  const [featureHint, setFeatureHint] = useState('');
+  const [followUpHint, setFollowUpHint] = useState('');
   const playback = useRef<ReturnType<typeof playDiagnosticExample> | null>(null);
   const alive = useRef(true);
   const locked = useRef(false);
@@ -786,6 +788,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
   const currentRound = rounds[roundIdx] ?? rounds[0];
   const hasAudio = Boolean(currentRound?.audioClipA && currentRound?.audioClipB);
   const featureCheck = currentRound?.featureCheck ?? lesson.featureCheck;
+  const isAccidentalLesson = Boolean(lesson.question.conceptId.includes('accidental'));
 
   const playAudioClip = async (which: 'A' | 'B') => {
     if (locked.current || !currentRound) return;
@@ -821,6 +824,8 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
     setHeardA(false);
     setHeardB(false);
     setError('');
+    setFeatureHint('');
+    setFollowUpHint('');
     if (roundIdx < rounds.length - 1) {
       setRoundIdx(r => r + 1);
     } else {
@@ -830,6 +835,8 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
   const onPickChoice = (index: number) => {
     playback.current?.stop();
+    setFeatureHint('');
+    setFollowUpHint('');
     if (index === currentRound.correct) {
       setEnlarged(false);
       setHighlightCue(false);
@@ -860,11 +867,33 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
   const onPickFeatureChoice = (index: number) => {
     if (featureCheck && index === featureCheck.correct) {
-      setSubStage('identifyingCorrect');
+      setFeatureHint('');
+      if (featureCheck.followUpCheck) {
+        setSubStage('identifyingFollowUp');
+      } else {
+        setSubStage('identifyingCorrect');
+      }
     } else {
-      setEnlarged(true);
-      setHighlightCue(true);
-      setShowForced(true);
+      setFeatureHint(
+        isAccidentalLesson
+          ? 'Note 3 is before the barline — it is still inside Measure 1.'
+          : (featureCheck?.explanation ?? 'Look closely at the notation.')
+      );
+    }
+  };
+
+  const onPickFollowUpChoice = (index: number) => {
+    const followUp = featureCheck?.followUpCheck;
+    if (!followUp) return;
+    if (index === followUp.correct) {
+      setFollowUpHint('');
+      setSubStage('followUpFeedback');
+    } else {
+      setFollowUpHint(
+        isAccidentalLesson
+          ? 'A sharp doesn’t stop after one note — it carries through the full measure until the barline.'
+          : (followUp.explanation ?? 'Check the rule.')
+      );
     }
   };
 
@@ -885,7 +914,11 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
         highlightClef={highlightCue && Boolean(currentRound?.highlightClef)}
         highlightClefChange={Boolean(currentRound?.highlightClefChange)}
         highlight8va={Boolean(currentRound?.highlight8va)}
-        highlightNoteIndex={subStage === 'identifying' ? (featureCheck?.highlightNoteIndex ?? currentRound?.highlightNoteIndex) : currentRound?.highlightNoteIndex}
+        highlightNoteIndex={
+          subStage === 'identifying' || subStage === 'identifyingFollowUp'
+            ? (featureCheck?.highlightNoteIndex ?? currentRound?.highlightNoteIndex)
+            : currentRound?.highlightNoteIndex
+        }
       />
 
       {hasAudio && (
@@ -950,7 +983,11 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
           <button
             type="button"
             className="et-start diagnostic-brief-btn"
-            onClick={() => setSubStage('identifying')}
+            onClick={() => {
+              setSubStage('identifying');
+              setFeatureHint('');
+              setFollowUpHint('');
+            }}
           >
             <span className="et-start__dot"><RecordDot /></span>
             Check clue
@@ -960,6 +997,9 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
       {subStage === 'identifying' && featureCheck && (
         <div className="diagnostic-prompt-section">
+          {featureCheck.followUpCheck && (
+            <div className="diagnostic-step-pill">Step 1 of 2 · Measure Check</div>
+          )}
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
           <AudioCluesPlayer clues={featureCheck.audioClues} />
           <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
@@ -978,6 +1018,66 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
               );
             })}
           </div>
+          {featureHint && (
+            <p className="diagnostic-inline-hint" role="status">
+              {featureHint}
+            </p>
+          )}
+        </div>
+      )}
+
+      {subStage === 'identifyingFollowUp' && featureCheck?.followUpCheck && (
+        <div className="diagnostic-prompt-section">
+          <div className="diagnostic-step-pill">Step 2 of 2 · Accidental Rule</div>
+          <p className="diagnostic-context-note">Note 3 is in Measure 1 with the C#.</p>
+          <h2 className="diagnostic-prompt">{featureCheck.followUpCheck.prompt}</h2>
+          <div className="diagnostic-choices">
+            {featureCheck.followUpCheck.choices.map((choice, i) => (
+              <button
+                key={choice}
+                type="button"
+                onClick={() => onPickFollowUpChoice(i)}
+              >
+                {choice}
+              </button>
+            ))}
+          </div>
+          {followUpHint && (
+            <p className="diagnostic-inline-hint" role="status">
+              {followUpHint}
+            </p>
+          )}
+        </div>
+      )}
+
+      {subStage === 'followUpFeedback' && featureCheck?.followUpCheck && (
+        <div className="diagnostic-brief-feedback diagnostic-brief-feedback--correct" role="status">
+          <div className="diagnostic-morph-box">
+            <MorphingCheckmark />
+            <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+            <p className="diagnostic-brief-text diagnostic-brief-text--correct">
+              {featureCheck.followUpCheck.explanation}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={() => {
+              setSubStage('prompting');
+              setRetrying(true);
+              setHeardA(false);
+              setHeardB(false);
+              setPlayingA(false);
+              setPlayingB(false);
+              setEnlarged(false);
+              setHighlightCue(false);
+              setFeatureHint('');
+              setFollowUpHint('');
+            }}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            Try question again
+          </button>
         </div>
       )}
 
@@ -1002,6 +1102,8 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
               setPlayingB(false);
               setEnlarged(false);
               setHighlightCue(false);
+              setFeatureHint('');
+              setFollowUpHint('');
             }}
           >
             <span className="et-start__dot"><RecordDot /></span>
