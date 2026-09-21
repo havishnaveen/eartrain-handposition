@@ -199,6 +199,21 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
               noteheads[highlightNoteIndex].parentElement?.insertBefore(halo, noteheads[highlightNoteIndex]);
             }
           }
+          // Clean up position cue text (e.g. "Thumb under to F") and prevent collisions with fingering numbers
+          const positionTexts = Array.from(svg.querySelectorAll('text')).filter(t => 
+            t.textContent?.includes('under') || t.textContent?.includes('over') || t.textContent?.includes('Thumb')
+          );
+          if (positionTexts.length > 1) {
+            positionTexts.slice(1).forEach(el => el.remove());
+          }
+          if (positionTexts.length > 0) {
+            const pText = positionTexts[0];
+            const currentY = parseFloat(pText.getAttribute('y') || '20');
+            pText.setAttribute('y', String(currentY - 10));
+            pText.setAttribute('font-size', '12px');
+            pText.setAttribute('font-weight', 'bold');
+            pText.setAttribute('font-family', 'sans-serif');
+          }
         } catch {
           // getBBox fallback for non-DOM environments
         }

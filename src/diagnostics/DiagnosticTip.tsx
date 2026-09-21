@@ -1,6 +1,7 @@
 import type { DiagnosticLesson } from './registry';
 import { fiveFingerPattern, isBlackKey } from './registry';
 import { StaffChoiceDiagram } from './StaffVisualGuide';
+import { FingerTuckAnimation } from './FingerTuckAnimation';
 
 export default function DiagnosticTip({ lesson }: { lesson: DiagnosticLesson }) {
   const kind = lesson.tip.kind;
@@ -31,18 +32,20 @@ export default function DiagnosticTip({ lesson }: { lesson: DiagnosticLesson }) 
             <small className="diagnostic-tip-sublabel">3rd space inside staff</small>
           </div>
         </div>
+      ) : kind === 'crossing' ? (
+        <div style={{ width: '100%', maxWidth: '440px', margin: '0 auto' }}>
+          <FingerTuckAnimation initialMode="tuck" interactive={true} />
+        </div>
       ) : (
         <div className="diagnostic-metaphor" aria-hidden="true">
           {kind === 'barline' ? (
             <><span>♯ C … C</span><b>┃</b><span>♮ C</span></>
-          ) : kind === 'clef-change' ? (
-            <><span>𝄢</span><b>→</b><span>𝄞</span></>
           ) : (
-            <><span>1 · 2 · 3</span><b>↪</b><span>1 · 2 · 3</span></>
+            <><span>𝄢</span><b>→</b><span>𝄞</span></>
           )}
         </div>
       )}
-      {kind !== 'octave' && <figcaption className="diagnostic-tip__caption">{lesson.tip.text}</figcaption>}
+      {kind !== 'octave' && kind !== 'crossing' && <figcaption className="diagnostic-tip__caption">{lesson.tip.text}</figcaption>}
     </figure>
   );
 }

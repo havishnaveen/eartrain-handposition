@@ -704,70 +704,78 @@ function crossing(): DiagnosticLesson {
   const pitches = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
   const lesson = base('cross-over-under', 'Cross-Over/Under', pitches, ['C5', 'B4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4'], pitches);
   lesson.hesitationBefore = 3; lesson.notation.mistakeIndices = [3];
-  lesson.explanation = 'Prepare the thumb early so the tempo stays steady.';
-  lesson.correctFeedback = 'The piano stumbled on the finger crossing!';
+  lesson.explanation = 'Glide the thumb under finger 3 to keep tempo steady.';
+  lesson.correctFeedback = 'The beat stumbled at the thumb tuck!';
   lesson.interactiveRounds = [
     {
-      title: 'Thumb Tuck',
-      prompt: 'How does finger 1 (thumb) reach Note 4 (F)?',
+      title: 'Thumb Tuck Motion',
+      prompt: 'How does the thumb reach note 4 (F)?',
       choices: [
-        'Tuck under finger 3',
-        'Jump hand across',
-        'Stretch finger 5',
+        'Tuck thumb under finger 3',
+        'Jump hand across keys',
       ],
       correct: 0,
-      explanation: 'The thumb tucks smoothly under finger 3.',
+      explanation: 'Thumb glides smoothly under finger 3.',
       highlightNoteIndex: 3,
       featureCheck: {
-        prompt: 'Does finger 1 tuck under finger 3?',
+        prompt: 'Does the thumb glide under finger 3?',
         choices: ['Yes', 'No'],
         correct: 0,
-        explanation: 'Finger 1 passes under finger 3 to reach F.',
+        explanation: 'Thumb glides under finger 3 to reach F.',
       },
     },
     {
-      title: 'Listen for Continuity',
-      prompt: 'Which clip plays with a steady beat?',
+      title: 'Listen for Smooth Tempo',
+      prompt: 'Which clip plays smoothly without pausing?',
       choices: ['Clip A', 'Clip B'],
       correct: 0,
-      explanation: 'Clip A keeps a steady tempo.',
+      explanation: 'Clip A stays in tempo through the tuck.',
       highlightNoteIndex: 3,
       audioClipA: { label: 'Clip A', pitches: pitches },
       audioClipB: { label: 'Clip B', pitches: pitches, hesitationBefore: 3 },
       featureCheck: {
-        prompt: 'Did Clip B pause before Note 4?',
+        prompt: 'Did Clip B pause before note 4?',
         choices: ['Yes', 'No'],
         correct: 0,
-        explanation: 'Clip B hesitated at the tuck.',
+        explanation: 'Clip B stumbled at the tuck.',
       },
     },
     {
       title: 'Preparation Timing',
       prompt: 'When should the thumb tuck under?',
       choices: [
-        'While finger 2 plays',
-        'After finger 3 lifts',
+        'While finger 2 is playing',
+        'After finger 3 lifts off',
       ],
       correct: 0,
-      explanation: 'Tucking early keeps the tempo smooth.',
+      explanation: 'Early prep keeps the rhythm unbroken.',
       highlightNoteIndex: 3,
       featureCheck: {
-        prompt: 'Does early thumb prep keep the beat steady?',
+        prompt: 'Does early preparation prevent hesitation?',
         choices: ['Yes', 'No'],
         correct: 0,
-        explanation: 'Early preparation prevents hesitation.',
+        explanation: 'Early prep keeps the tempo steady.',
       },
     },
   ];
   lesson.featureCheck = {
-    prompt: 'What technique connects notes past finger 3?',
+    prompt: 'How do you connect notes smoothly past finger 3?',
     choices: ['Tuck thumb under', 'Jump hand across'],
     correct: 0,
-    explanation: 'Tuck thumb under to continue smoothly.',
+    explanation: 'Tuck thumb under finger 3.',
   };
-  lesson.mcq = { prompt: 'When should the thumb start tucking under?', choices: ['While finger 2 plays', 'After finger 3 lifts completely', 'After the phrase ends'], correct: 0, explanation: 'Preparing the thumb early keeps the tempo steady.' };
-  lesson.tip = { kind: 'crossing', text: 'Thumb (1) tucks under · Finger 3 crosses over' };
-  lesson.forcedErrorMessage = 'Prepare the thumb under smoothly while finger 2 plays.';
+  lesson.mcq = {
+    prompt: 'Why do you tuck your thumb under finger 3?',
+    choices: [
+      'To keep a steady beat without jumping',
+      'To play louder',
+      'To skip notes',
+    ],
+    correct: 0,
+    explanation: 'Tucking under keeps the beat smooth and steady.',
+  };
+  lesson.tip = { kind: 'crossing', text: 'Thumb glides under finger 3 — keep hand level and steady.' };
+  lesson.forcedErrorMessage = 'Glide the thumb under early so the tempo stays steady.';
   lesson.question = question('cross-over-under/practice', pitches, 'right', [1, 2, 3, 1, 2, 3, 4, 5], ['C4', 'E4', 'G4']);
   lesson.transfer = question('cross-over-under/transfer', lesson.transfer.expectedSequence, 'right', [5, 4, 3, 2, 1, 3, 2, 1], ['F4', 'A4', 'C5']);
   for (const [q, splitIndex] of [[lesson.question, 3], [lesson.transfer, 5]] as const) {
