@@ -33,7 +33,7 @@ try {
       assert.equal(overflow, false, `${problem} overflow at ${width}`);
       const gap = await page.evaluate(() => {
         const score = document.querySelector('.diagnostic-score')?.getBoundingClientRect();
-        const btn = document.querySelector('button.et-start')?.getBoundingClientRect();
+        const btn = document.querySelector('button.et-start, .diagnostic-choices button')?.getBoundingClientRect();
         return btn && score ? btn.top - score.bottom : 0;
       });
       assert.ok(gap >= 20, `${problem} button overlapping or too close to score at width ${width}: gap=${gap}`);

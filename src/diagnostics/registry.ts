@@ -592,28 +592,63 @@ function handPosition(key: DiagnosticKey): DiagnosticLesson {
   return lesson;
 }
 function clefChange(): DiagnosticLesson {
-  const lesson = base('mid-line-clef-change', 'Mid-Line Clef Change', ['C3', 'E3', 'C4', 'E4', 'G4', 'E4', 'D4', 'C4'], ['C3', 'G3', 'C4', 'G4', 'E4', 'D4', 'E4', 'C4'], ['C3', 'E3', 'C3', 'E3', 'G3', 'E3', 'D3', 'C3'], 'left');
+  const practicePitches = ['C3', 'E3', 'C4', 'E4', 'G4', 'E4', 'D4', 'C4'];
+  const transferPitches = ['C3', 'G3', 'C4', 'G4', 'E4', 'D4', 'E4', 'C4'];
+  const mistakePitches = ['C3', 'E3', 'C3', 'E3', 'G3', 'E3', 'D3', 'C3'];
+  const lesson = base('mid-line-clef-change', 'Mid-Line Clef Change', practicePitches, transferPitches, mistakePitches, 'left');
   lesson.notation.clefChange = { index: 2, clef: 'treble' }; lesson.transferNotation.clefChange = { index: 2, clef: 'treble' };
-  lesson.explanation = 'A treble clef arrived before Note 3. The phrase climbs higher, but the piano stayed low.';
+  lesson.explanation = 'A treble clef arrived in the lower staff before Note 3. The left hand climbs higher, but the piano stayed low.';
   lesson.correctFeedback = 'The piano missed the clef change!';
+
+  const rhPractice = ['E4', 'G4', 'E4', 'G4', 'G4', 'C5', 'G4', 'E4'];
+  const rhTransfer = ['G4', 'E4', 'G4', 'E4', 'E4', 'G4', 'C5', 'G4'];
+  const rhFingers = [1, 3, 1, 3, 3, 5, 3, 1];
+  const rhTransferFingers = [3, 1, 3, 1, 1, 3, 5, 3];
+  const lhPracticeFingers = [5, 3, 5, 3, 1, 3, 4, 5];
+  const lhTransferFingers = [5, 1, 5, 1, 3, 4, 3, 5];
+
+  const buildTwoHandStaves = (rhPitches: string[], rhF: number[], lhPitches: string[], lhF: number[]) => [
+    {
+      clef: 'treble' as const,
+      hand: 'right' as const,
+      notes: rhPitches.map((pitch, i) => ({
+        keys: [cueKey(pitch)],
+        duration: 'q' as const,
+        finger: rhF[i],
+      })),
+    },
+    {
+      clef: 'bass' as const,
+      hand: 'left' as const,
+      notes: lhPitches.map((pitch, i) => ({
+        keys: [cueKey(pitch)],
+        duration: 'q' as const,
+        finger: lhF[i],
+      })),
+    },
+  ];
+
+  lesson.question.cue.staves = buildTwoHandStaves(rhPractice, rhFingers, practicePitches, lhPracticeFingers);
+  lesson.transfer.cue.staves = buildTwoHandStaves(rhTransfer, rhTransferFingers, transferPitches, lhTransferFingers);
+
   lesson.interactiveRounds = [
     {
       title: 'Spot the Change',
-      prompt: 'Which clef appears before Note 3?',
+      prompt: 'Look at the grand staff (both hands). Which clef appears in the lower staff before Note 3?',
       choices: ['Treble clef', 'Bass clef'],
       correct: 0,
-      explanation: 'A treble clef appears before Note 3.',
+      explanation: 'A treble clef appears in the lower staff before Note 3.',
       highlightClefChange: true,
       featureCheck: {
-        prompt: 'Is the new clef a treble clef?',
+        prompt: 'Is the new clef in the lower staff a treble clef?',
         choices: ['Yes', 'No'],
         correct: 0,
-        explanation: 'A treble clef appears before Note 3.',
+        explanation: 'A treble clef appears before Note 3 in the lower staff.',
       },
     },
     {
       title: 'Read in the New Clef',
-      prompt: 'In treble clef, which note is Note 3?',
+      prompt: 'In the lower staff’s new treble clef, which note is Note 3?',
       choices: ['Middle C', 'E3', 'A4'],
       correct: 0,
       explanation: 'In treble clef, the ledger line below is Middle C.',
@@ -636,10 +671,10 @@ function clefChange(): DiagnosticLesson {
     },
     {
       title: 'Listen to the Clef Change',
-      prompt: 'Which clip climbs into treble clef at Note 3?',
+      prompt: 'Which clip has the left hand climb into treble clef at Note 3?',
       choices: ['Clip A', 'Clip B'],
       correct: 0,
-      explanation: 'Clip A climbs into the treble register.',
+      explanation: 'Clip A has the left hand climb into the treble register.',
       highlightClefChange: true,
       audioClipA: { label: 'Clip A', pitches: ['C3', 'E3', 'C4', 'E4', 'G4', 'E4', 'D4', 'C4'] },
       audioClipB: { label: 'Clip B', pitches: ['C3', 'E3', 'C3', 'E3', 'G3', 'E3', 'D3', 'C3'] },
@@ -652,17 +687,16 @@ function clefChange(): DiagnosticLesson {
     },
   ];
   lesson.featureCheck = {
-    prompt: 'Which clef appears midway through the staff?',
+    prompt: 'Which clef appears midway through the lower staff?',
     choices: ['Treble clef', 'Bass clef'],
     correct: 0,
-    explanation: 'The staff switches to treble clef.',
+    explanation: 'The lower staff switches to treble clef.',
   };
   lesson.mcq = { prompt: 'What does the clef symbol midway through the staff mean?', choices: ['Switch to reading treble clef', 'Stop playing', 'Play louder'], correct: 0, explanation: 'Read treble clef from the clef symbol forward.' };
   lesson.tip = { kind: 'clef-change', text: 'Bass → treble: pause your eyes at the new clef before playing.' };
   lesson.forcedErrorMessage = 'The staff switches to treble clef midway through the phrase.';
   for (const q of [lesson.question, lesson.transfer]) {
     q.positionProof = question(q.id, ['C3', 'E3', 'G3'], 'left').positionProof;
-    q.cue.staves[0].notes.forEach((note, i) => { note.finger = ({ C3: 5, E3: 3, G3: 1, C4: 5, D4: 4, E4: 3, G4: 1 } as Record<string, number>)[q.expectedSequence[i]]; });
   }
   return lesson;
 }

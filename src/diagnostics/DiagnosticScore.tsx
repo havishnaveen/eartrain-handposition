@@ -71,8 +71,9 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
       score.Zoom = currentZoom;
       score.render();
       // Ensure all measures fit on 1 single continuous horizontal staff line (never wrap onto line 2)
+      const maxAllowedStafflines = question.cue.staves.length === 2 ? 2 : 1;
       let attempts = 0;
-      while (attempts < 6 && element.querySelectorAll('.staffline').length > 1) {
+      while (attempts < 6 && element.querySelectorAll('.staffline').length > maxAllowedStafflines) {
         currentZoom *= 0.85;
         score.Zoom = currentZoom;
         score.render();
@@ -107,27 +108,43 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
               clefEl.parentElement?.insertBefore(halo, clefEl);
             }
           }
+          // Scale down any in-staff mid-measure clef changes to standard cue-clef size (~68%)
+          const modClefPath = Array.from(svg.querySelectorAll('.vf-modifiers path')).find(p => {
+            try {
+              const b = (p as SVGGraphicsElement).getBBox();
+              return b.height > 35;
+            } catch {
+              return false;
+            }
+          });
+          if (modClefPath) {
+            const pEl = modClefPath as SVGGraphicsElement;
+            const b = pEl.getBBox();
+            const scale = 0.68;
+            const cx = b.x + b.width / 2;
+            const cy = b.y + b.height / 2;
+            pEl.setAttribute('transform', `matrix(${scale}, 0, 0, ${scale}, ${cx * (1 - scale)}, ${cy * (1 - scale)})`);
+          }
+
           if (highlightClefChange) {
-            const modClefPath = Array.from(svg.querySelectorAll('.vf-modifiers path')).find(p => {
-              try {
-                const b = (p as SVGGraphicsElement).getBBox();
-                return b.height > 35;
-              } catch {
-                return false;
-              }
-            });
             const target = modClefPath || svg.querySelectorAll('.vf-clef')[1] || svg.querySelector('.vf-clef');
             if (target) {
-              const cb = (target as SVGGraphicsElement).getBBox();
+              const pEl = target as SVGGraphicsElement;
+              const b = pEl.getBBox();
+              const scale = modClefPath ? 0.68 : 1.0;
+              const cx = b.x + b.width / 2;
+              const cy = b.y + b.height / 2;
+              const w = b.width * scale;
+              const h = b.height * scale;
               const halo = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-              halo.setAttribute('x', String(cb.x - 5));
-              halo.setAttribute('y', String(cb.y - 5));
-              halo.setAttribute('width', String(cb.width + 10));
-              halo.setAttribute('height', String(cb.height + 10));
-              halo.setAttribute('rx', '7');
+              halo.setAttribute('x', String(cx - w / 2 - 4));
+              halo.setAttribute('y', String(cy - h / 2 - 4));
+              halo.setAttribute('width', String(w + 8));
+              halo.setAttribute('height', String(h + 8));
+              halo.setAttribute('rx', '6');
               halo.setAttribute('fill', 'rgba(239, 106, 71, 0.2)');
               halo.setAttribute('stroke', '#ef6a47');
-              halo.setAttribute('stroke-width', '2.5');
+              halo.setAttribute('stroke-width', '2');
               halo.setAttribute('class', 'diagnostic-clef-halo');
               target.parentElement?.insertBefore(halo, target);
             }

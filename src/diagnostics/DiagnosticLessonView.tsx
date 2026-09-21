@@ -7,6 +7,7 @@ import { StaffChoiceDiagram } from './StaffVisualGuide';
 import { playDiagnosticExample } from './playback';
 import { prepareProfessorNotification } from './professorNotifications';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
+import { HandPositionProveItView } from './HandPositionProveItView';
 
 const RecordDot = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -1262,6 +1263,27 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
   const isClefSwap = definition.id === 'clef-transposition' && Boolean(lesson.wrongClefRounds?.length);
   const hasListenRounds = Boolean(lesson.listenRounds?.length || lesson.wrongClefRounds?.length);
   const hasInteractiveRounds = Boolean(lesson.interactiveRounds?.length);
+
+  if (definition.id === 'hand-position' && stage !== 2) {
+    return (
+      <ExerciseLayout
+        lessonNumber={1}
+        totalLessons={1}
+        questionNumber={1}
+        questionsInLoop={1}
+        lessonTitle="Hand Position Mastery"
+        lessonFocus="Find the hand position on your piano and prove your anchors."
+        phaseLabel="Your practice prescription"
+      >
+        <div className="diagnostic-flow" data-diagnostic={definition.id} data-stage={stage}>
+          <HandPositionProveItView
+            selectedKey={selectedKey}
+            onStandard={onStandard}
+          />
+        </div>
+      </ExerciseLayout>
+    );
+  }
 
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={stage} questionsInLoop={isClefSwap ? 3 : 4} lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel="Your practice prescription">
     <div className="diagnostic-flow" data-diagnostic={definition.id} data-stage={stage}>
