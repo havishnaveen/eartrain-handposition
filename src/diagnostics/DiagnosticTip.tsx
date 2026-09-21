@@ -1,7 +1,6 @@
 import type { DiagnosticLesson } from './registry';
 import { fiveFingerPattern, isBlackKey } from './registry';
 import { StaffChoiceDiagram } from './StaffVisualGuide';
-import { FingerTuckAnimation } from './FingerTuckAnimation';
 
 export default function DiagnosticTip({ lesson }: { lesson: DiagnosticLesson }) {
   const kind = lesson.tip.kind;
@@ -33,8 +32,8 @@ export default function DiagnosticTip({ lesson }: { lesson: DiagnosticLesson }) 
           </div>
         </div>
       ) : kind === 'crossing' ? (
-        <div style={{ width: '100%', maxWidth: '440px', margin: '0 auto' }}>
-          <FingerTuckAnimation initialMode="tuck" interactive={true} />
+        <div className="diagnostic-metaphor" aria-hidden="true">
+          <span>1 · 2 · 3</span><b>↪</b><span>1 · 2 · 3</span>
         </div>
       ) : (
         <div className="diagnostic-metaphor" aria-hidden="true">
@@ -45,7 +44,7 @@ export default function DiagnosticTip({ lesson }: { lesson: DiagnosticLesson }) 
           )}
         </div>
       )}
-      {kind !== 'octave' && kind !== 'crossing' && <figcaption className="diagnostic-tip__caption">{lesson.tip.text}</figcaption>}
+      {kind !== 'octave' && <figcaption className="diagnostic-tip__caption">{lesson.tip.text}</figcaption>}
     </figure>
   );
 }
