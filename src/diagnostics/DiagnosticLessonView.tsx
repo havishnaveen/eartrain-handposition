@@ -258,7 +258,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
           <MorphingCheckmark />
           <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
           <p className="diagnostic-brief-text diagnostic-brief-text--correct">
-            {lesson.correctFeedback ?? 'The piano played in the wrong clef!'}
+            {lesson.correctFeedback ?? 'Wrong clef: Played in treble register instead of bass.'}
           </p>
         </div>
         <button
@@ -275,7 +275,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     {subStage === 'professorNotified' && (
       <div className="diagnostic-brief-feedback" role="status">
         <p className="diagnostic-brief-text">
-          Let's keep going to the next question!
+          Ready for next question.
         </p>
         <button
           type="button"
@@ -295,7 +295,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
             {isClefLesson ? 'Check the clef' : isOctaveLesson ? 'Check the octave' : 'Check the notation'}
           </h3>
           <p className="diagnostic-forced-body">
-            {featureCheck.explanation ?? lesson.explanation ?? 'The piano did not match the written notes above.'}
+            {featureCheck.explanation ?? lesson.explanation ?? 'Check the notation.'}
           </p>
           <button
             type="button"
@@ -633,11 +633,11 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
             <p className={`diagnostic-brief-text ${followUpCorrect ? 'diagnostic-brief-text--correct' : 'diagnostic-brief-text--wrong'}`}>
               {followUpCorrect
                 ? (isMatch
-                    ? 'The piano played in the high register (5th octave), matching the sheet music.'
-                    : 'The music is written in High C (5th octave), but the piano played in the wrong register (at Middle C).')
+                    ? 'High register matched (C5).'
+                    : 'Wrong register: Played Middle C (C4) instead of High C (C5).')
                 : (isMatch
-                    ? 'The piano played in the correct register — matching the 5th octave.'
-                    : 'The piano played in the wrong register — it played down at Middle C instead of High C.')}
+                    ? 'Played in the correct high register (C5).'
+                    : 'Played an octave too low at Middle C (C4).')}
             </p>
           </div>
           <button
@@ -691,7 +691,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
             <MorphingCheckmark />
             <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
             <p className="diagnostic-brief-text diagnostic-brief-text--correct">
-              {currentRound?.correctFeedback ?? lesson.correctFeedback ?? (isClefLesson ? 'The piano played in the wrong clef!' : isOctaveLesson ? 'The piano played in the wrong octave!' : 'The piano matched the notes!')}
+              {currentRound?.correctFeedback ?? lesson.correctFeedback ?? (isClefLesson ? 'Wrong clef: Played in wrong register.' : isOctaveLesson ? 'Wrong register: Played Middle C (C4) instead of High C (C5).' : 'Notes matched.')}
             </p>
           </div>
           <button
@@ -708,7 +708,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       {subStage === 'professorNotified' && (
         <div className="diagnostic-brief-feedback" role="status">
           <p className="diagnostic-brief-text">
-            Let's keep going to the next question!
+            Ready for next question.
           </p>
           <button
             type="button"
@@ -730,12 +730,12 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
             <p className="diagnostic-forced-body">
               {isClefLesson
                 ? (isMatch
-                    ? 'This phrase is written in treble clef, and the piano matched the notes.'
+                    ? 'Treble clef: Correctly matched.'
                     : currentRound.notation.clef === 'bass'
-                      ? 'This phrase is written in bass clef, but the piano played in treble clef.'
-                      : 'This phrase is written in treble clef, but the piano played in bass clef.')
+                      ? 'Bass clef: Played in treble clef instead of bass.'
+                      : 'Treble clef: Played in bass clef instead of treble.')
                 : isOctaveLesson
-                  ? 'Note 1 sits in the 3rd space of the treble staff (High C / 5th octave).'
+                  ? 'Space 3 = High C (C5). Ledger line below = Middle C (C4).'
                   : (featureCheck.explanation ?? currentRound.explanation ?? lesson.explanation)}
             </p>
             <button
@@ -878,8 +878,8 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
     } else {
       setFeatureHint(
         isAccidentalLesson
-          ? 'Note 3 is before the barline — it is still inside Measure 1.'
-          : (featureCheck?.explanation ?? 'Look closely at the notation.')
+          ? 'Note 3 is before the barline — still inside Measure 1.'
+          : (featureCheck?.explanation ?? 'Check the notation.')
       );
     }
   };
@@ -893,7 +893,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
     } else {
       setFollowUpHint(
         isAccidentalLesson
-          ? 'A sharp doesn’t stop after one note — it carries through the full measure until the barline.'
+          ? 'Sharps carry through the full measure until the barline.'
           : (followUp.explanation ?? 'Check the rule.')
       );
     }
@@ -1144,7 +1144,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       {subStage === 'professorNotified' && (
         <div className="diagnostic-brief-feedback" role="status">
           <p className="diagnostic-brief-text">
-            Let's keep going to the next question!
+            Ready for next question.
           </p>
           <button
             type="button"
@@ -1232,7 +1232,7 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
     {professorNotified ? (
       <div className="diagnostic-brief-feedback" role="status">
         <p className="diagnostic-brief-text">
-          Let's continue to the piano exercise!
+          Ready for piano exercise.
         </p>
         <button type="button" className="et-start diagnostic-brief-btn" onClick={onNext}>
           <span className="et-start__dot"><RecordDot /></span>
@@ -1247,8 +1247,8 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
         </div>
       ) : (
         <div>
-          <p>Try another answer.</p>
-          {lesson.tip && <p className="diagnostic-feedback__sub"><strong>Clue:</strong> {lesson.tip.text}</p>}
+          <p>Incorrect.</p>
+          {lesson.tip && <p className="diagnostic-feedback__sub"><strong>Rule:</strong> {lesson.tip.text}</p>}
         </div>
       )}
       {correct && (

@@ -39,7 +39,7 @@ const DEFAULT_CHORDS: HandPositionDrillKey[] = [
       { pitch: 'G4', finger: 5, label: 'G4', isBlack: false },
     ],
     blackKeys: [],
-    tip: 'All 5 fingers rest comfortably on white keys: C4 to G4.',
+    tip: 'All 5 fingers rest on white keys (C4–G4).',
   },
   {
     id: 'g-major',
@@ -53,7 +53,7 @@ const DEFAULT_CHORDS: HandPositionDrillKey[] = [
       { pitch: 'D5', finger: 5, label: 'D5', isBlack: false },
     ],
     blackKeys: [],
-    tip: 'G Major position sits on white keys: G4 to D5.',
+    tip: 'All 5 fingers rest on white keys (G4–D5).',
   },
   {
     id: 'd-major',
@@ -67,7 +67,7 @@ const DEFAULT_CHORDS: HandPositionDrillKey[] = [
       { pitch: 'A4', finger: 5, label: 'A4', isBlack: false },
     ],
     blackKeys: ['F#4'],
-    tip: 'Finger 3 rests up on the black key F# (first black key of the group of 3)!',
+    tip: 'Finger 3 on black key F#; 1 and 5 on D and A.',
   },
   {
     id: 'a-major',
@@ -81,7 +81,7 @@ const DEFAULT_CHORDS: HandPositionDrillKey[] = [
       { pitch: 'E5', finger: 5, label: 'E5', isBlack: false },
     ],
     blackKeys: ['C#5'],
-    tip: 'Finger 3 rests up on the black key C# (first black key of the group of 2)!',
+    tip: 'Finger 3 on black key C#; 1 and 5 on A and E.',
   },
   {
     id: 'e-major',
@@ -95,7 +95,7 @@ const DEFAULT_CHORDS: HandPositionDrillKey[] = [
       { pitch: 'B4', finger: 5, label: 'B4', isBlack: false },
     ],
     blackKeys: ['F#4', 'G#4'],
-    tip: 'Fingers 2 and 3 both rest up on black keys (F# and G#)!',
+    tip: 'Fingers 2 (F#) and 3 (G#) on black keys; 1 and 5 on E and B.',
   },
   {
     id: 'b-minor',
@@ -109,7 +109,7 @@ const DEFAULT_CHORDS: HandPositionDrillKey[] = [
       { pitch: 'F#4', finger: 5, label: 'F#4', isBlack: true },
     ],
     blackKeys: ['C#4', 'F#4'],
-    tip: 'Pinky (finger 5) rests on black key F#, with finger 3 on white key D4!',
+    tip: 'Finger 5 on black key F#; 1 on B3 and 3 on D4.',
   },
   {
     id: 'f-major',
@@ -123,7 +123,7 @@ const DEFAULT_CHORDS: HandPositionDrillKey[] = [
       { pitch: 'C5', finger: 5, label: 'C5', isBlack: false },
     ],
     blackKeys: ['Bb4'],
-    tip: 'Anchors 1-3-5 are white keys (F-A-C), while finger 4 rests on Bb!',
+    tip: 'Anchors 1-3-5 on white keys (F4-A4-C5); finger 4 on Bb.',
   },
 ];
 

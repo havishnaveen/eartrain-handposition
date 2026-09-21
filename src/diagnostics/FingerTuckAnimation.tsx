@@ -81,7 +81,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.F4, y: 80, active: false },
       f5: { x: keyCenters.G4, y: 86, active: false },
       activeKey: 'C4',
-      caption: '1. Start in C Position: Fingers 1, 2, 3 play C · D · E',
+      caption: '1. Fingers 1–3 play C · D · E',
     },
     // Step 1: Finger 3 holds E4, Thumb glides UNDER toward F4
     {
@@ -93,7 +93,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.F4 + 8, y: 84, active: false },
       f5: { x: keyCenters.G4 + 10, y: 90, active: false },
       activeKey: 'E4',
-      caption: '2. Finger 3 holds E: Thumb glides UNDER toward F',
+      caption: '2. Thumb glides under finger 3 toward F',
     },
     // Step 2: Thumb arrives cleanly on F4
     {
@@ -105,7 +105,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.G4 + 4, y: 88, active: false },
       f5: { x: keyCenters.A4 + 4, y: 94, active: false },
       activeKey: 'F4',
-      caption: '3. Thumb lands smoothly on F (finger 3 releases)',
+      caption: '3. Thumb lands on F (finger 3 releases)',
     },
     // Step 3: Hand smoothly swivels forward into F-G-A-B-C
     {
@@ -117,7 +117,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.B4, y: 80, active: false },
       f5: { x: keyCenters.C5, y: 86, active: false },
       activeKey: 'G4',
-      caption: '4. Hand unfolds smoothly: tempo stays unbroken!',
+      caption: '4. Hand unfolds: tempo stays unbroken',
     },
   ];
 
@@ -133,7 +133,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.F4, y: 80, active: false },
       f5: { x: keyCenters.G4, y: 86, active: false },
       activeKey: 'C4',
-      caption: '1. Plays C · D · E with fingers 1, 2, 3...',
+      caption: '1. Fingers 1–3 play C · D · E',
     },
     // Step 1: Hand prepares to jump off keys
     {
@@ -145,7 +145,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.F4, y: 84, active: false },
       f5: { x: keyCenters.G4, y: 90, active: false },
       activeKey: 'E4',
-      caption: '2. Finger 3 plays E, but thumb stays stuck outside!',
+      caption: '2. Thumb stays outside without tucking',
     },
     // Step 2: The Mistake - Whole hand leaps into the air
     {
@@ -157,7 +157,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.A4, y: 60, active: false, jumping: true },
       f5: { x: keyCenters.B4, y: 66, active: false, jumping: true },
       activeKey: null,
-      caption: '3. ⚠️ MISTAKE: Entire hand lifts up and leaps across keys!',
+      caption: '3. ⚠️ Mistake: Hand leaps off keys',
     },
     // Step 3: Lands with hesitation
     {
@@ -169,7 +169,7 @@ export function FingerTuckAnimation({
       f4: { x: keyCenters.B4, y: 80, active: false },
       f5: { x: keyCenters.C5, y: 86, active: false },
       activeKey: 'F4',
-      caption: '4. Hand lands on F with an awkward stumble and delay.',
+      caption: '4. Hesitation & delay at Note 4',
     },
   ];
 

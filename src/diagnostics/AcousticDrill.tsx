@@ -236,7 +236,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
     {status === 'report' && !passed && profNotified && (
       <div className="diagnostic-brief-feedback" role="status">
         <p className="diagnostic-brief-text">
-          Let's keep going to the next question!
+          Ready for next question.
         </p>
         <button
           type="button"
@@ -254,7 +254,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
     )}
     {status === 'report' && !passed && !profNotified && !isDiagnosticError && (
       <p className="diagnostic-feedback">
-        Let’s try once more. Keep the correct notes and a steady beat{question.anchorShift ? ', including the move' : ''}.
+        Keep accurate notes and a steady tempo{question.anchorShift ? ' through the move' : ''}.
       </p>
     )}
     {status === 'report' && !passed && !profNotified && isDiagnosticError && forcedErrorMessage && !forcedDismissed && (
