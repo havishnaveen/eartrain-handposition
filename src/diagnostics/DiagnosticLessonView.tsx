@@ -319,7 +319,18 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
 function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const rounds = lesson.listenRounds ?? lesson.wrongClefRounds ?? [];
   const [roundIdx, setRoundIdx] = useState(0);
-  const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('listening');
+  const [subStage, setSubStage] = useState<
+    | 'listening'
+    | 'incorrectFeedback'
+    | 'identifying'
+    | 'identifyingFollowUp'
+    | 'followUpFeedback'
+    | 'identifyingCorrect'
+    | 'correctFeedback'
+    | 'professorNotified'
+  >('listening');
+  const [featureHint, setFeatureHint] = useState<string | null>(null);
+  const [followUpCorrect, setFollowUpCorrect] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(false);
@@ -380,6 +391,8 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
     setRetrying(false);
     setHeard(false);
     setError('');
+    setFeatureHint(null);
+    setFollowUpCorrect(false);
     if (roundIdx < rounds.length - 1) {
       setRoundIdx(r => r + 1);
     } else {
@@ -453,12 +466,27 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
 
   const onPickFeatureChoice = (index: number) => {
     if (index === featureCheck.correct) {
-      setSubStage('identifyingCorrect');
+      setFeatureHint(null);
+      if (isOctaveLesson) {
+        setSubStage('identifyingFollowUp');
+      } else {
+        setSubStage('identifyingCorrect');
+      }
     } else {
-      setEnlarged(true);
-      setHighlightClef(isClefLesson);
-      setShowForced(true);
+      setFeatureHint(
+        isOctaveLesson
+          ? 'Note 1 sits in the 3rd space of the staff (High C, 5th octave).'
+          : (featureCheck.explanation ?? 'Check the notes on the sheet music.')
+      );
     }
+  };
+
+  const onPickFollowUp = (choiceIndex: number) => {
+    // 0 = "Correct register", 1 = "Wrong register"
+    const correctIndex = isMatch ? 0 : 1;
+    const isCorrect = choiceIndex === correctIndex;
+    setFollowUpCorrect(isCorrect);
+    setSubStage('followUpFeedback');
   };
 
   return (
@@ -548,6 +576,83 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
               );
             })}
           </div>
+          {featureHint && (
+            <p className="diagnostic-inline-hint" role="status">
+              {featureHint}
+            </p>
+          )}
+        </div>
+      )}
+
+      {subStage === 'identifyingFollowUp' && (
+        <div className="diagnostic-prompt-section">
+          <div className="diagnostic-step-pill">Step 2 of 2 · Register Check</div>
+          <p className="diagnostic-context-note">Note 1 is High C (5th octave).</p>
+          <h2 className="diagnostic-prompt">Does the example play the music in the right register?</h2>
+          <div className="diagnostic-action-area" style={{ marginBottom: '16px' }}>
+            <button
+              type="button"
+              className="et-start diagnostic-brief-btn"
+              disabled={playing}
+              onClick={() => { void play(); }}
+            >
+              <span className="et-start__dot"><RecordDot /></span>
+              {playing ? 'Playing…' : '🔊 Replay piano example'}
+            </button>
+          </div>
+          <div className="diagnostic-choices">
+            <button
+              type="button"
+              onClick={() => onPickFollowUp(0)}
+            >
+              Correct register
+            </button>
+            <button
+              type="button"
+              onClick={() => onPickFollowUp(1)}
+            >
+              Wrong register
+            </button>
+          </div>
+        </div>
+      )}
+
+      {subStage === 'followUpFeedback' && (
+        <div className={`diagnostic-brief-feedback ${followUpCorrect ? 'diagnostic-brief-feedback--correct' : 'diagnostic-brief-feedback--wrong'}`} role="status">
+          <div className="diagnostic-morph-box">
+            {followUpCorrect ? (
+              <>
+                <MorphingCheckmark />
+                <span className="diagnostic-brief-badge diagnostic-brief-badge--correct">Correct!</span>
+              </>
+            ) : (
+              <span className="diagnostic-brief-badge diagnostic-brief-badge--wrong">Incorrect</span>
+            )}
+            <p className={`diagnostic-brief-text ${followUpCorrect ? 'diagnostic-brief-text--correct' : 'diagnostic-brief-text--wrong'}`}>
+              {followUpCorrect
+                ? (isMatch
+                    ? 'The piano played in the high register (5th octave), matching the sheet music.'
+                    : 'The music is written in High C (5th octave), but the piano played in the wrong register (at Middle C).')
+                : (isMatch
+                    ? 'The piano played in the correct register — matching the 5th octave.'
+                    : 'The piano played in the wrong register — it played down at Middle C instead of High C.')}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="et-start diagnostic-brief-btn"
+            onClick={() => {
+              setSubStage('listening');
+              setRetrying(true);
+              setHeard(false);
+              setPlaying(false);
+              setEnlarged(false);
+              setHighlightClef(false);
+            }}
+          >
+            <span className="et-start__dot"><RecordDot /></span>
+            Try question again
+          </button>
         </div>
       )}
 
@@ -627,7 +732,9 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
                     : currentRound.notation.clef === 'bass'
                       ? 'This phrase is written in bass clef, but the piano played in treble clef.'
                       : 'This phrase is written in treble clef, but the piano played in bass clef.')
-                : (featureCheck.explanation ?? currentRound.explanation ?? lesson.explanation)}
+                : isOctaveLesson
+                  ? 'Note 1 sits in the 3rd space of the treble staff (High C / 5th octave).'
+                  : (featureCheck.explanation ?? currentRound.explanation ?? lesson.explanation)}
             </p>
             <button
               type="button"

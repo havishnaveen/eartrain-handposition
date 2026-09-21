@@ -300,8 +300,8 @@ function octave(): DiagnosticLesson {
   const r2Pitches = ['C5', 'E5', 'G5', 'E5', 'D5', 'F5', 'E5', 'C5'];
   const r2Question = question('octave-displacement/round-2', r2Pitches, 'right', [1, 3, 5, 3, 2, 4, 3, 1]);
 
-  const r3Pitches = ['G5', 'E5', 'C5', 'E5', 'G5', 'F5', 'D5', 'C5'];
-  const r3Question = question('octave-displacement/round-3', r3Pitches, 'right', [5, 3, 1, 3, 5, 4, 2, 1]);
+  const r3Pitches = ['C5', 'E5', 'G5', 'E5', 'G5', 'F5', 'D5', 'C5'];
+  const r3Question = question('octave-displacement/round-3', r3Pitches, 'right', [1, 3, 5, 3, 5, 4, 2, 1]);
 
   const r4Question = question('octave-displacement/round-4', ['C5', 'E5', 'D5', 'F5', 'E5', 'C5'], 'right', [1, 3, 2, 4, 3, 1]);
   const r5Question = question('octave-displacement/round-5', ['C5', 'D5', 'E5', 'F5', 'G5', 'E5', 'D5', 'C5'], 'right');
@@ -314,6 +314,22 @@ function octave(): DiagnosticLesson {
     });
   });
 
+  const octaveFeatureCheck = {
+    prompt: 'Where does Note 1 sit on the treble staff?',
+    choices: ['In the 3rd space of the staff', 'Below the staff on a ledger line'],
+    correct: 0,
+    explanation: 'Note 1 is C5, in the 5th octave.',
+    highlightNoteIndex: 0,
+    choiceVisuals: [
+      { clef: 'treble' as const, position: 'space-3' as const, highlight: true },
+      { clef: 'treble' as const, position: 'ledger-below' as const, highlight: true },
+    ],
+    audioClues: [
+      { label: 'Hear High C (Space 3)', pitches: ['C5'], tag: 'High' },
+      { label: 'Hear Middle C (Ledger)', pitches: ['C4'], tag: 'Low' },
+    ],
+  };
+
   lesson.listenRounds = [
     {
       question: r1Question,
@@ -322,21 +338,7 @@ function octave(): DiagnosticLesson {
       isMatch: false,
       explanation: 'Written in High C; piano played at Middle C.',
       correctFeedback: 'Piano played down at Middle C instead of High C!',
-      featureCheck: {
-        prompt: 'Where does Note 1 sit on the treble staff?',
-        choices: ['In the 3rd space of the staff', 'Below the staff on a ledger line'],
-        correct: 0,
-        explanation: 'Note 1 is C5, in the 5th octave.',
-        highlightNoteIndex: 0,
-        choiceVisuals: [
-          { clef: 'treble', position: 'space-3', highlight: true },
-          { clef: 'treble', position: 'ledger-below', highlight: true },
-        ],
-        audioClues: [
-          { label: 'Hear High C (Space 3)', pitches: ['C5'], tag: 'High' },
-          { label: 'Hear Middle C (Ledger)', pitches: ['C4'], tag: 'Low' },
-        ],
-      },
+      featureCheck: octaveFeatureCheck,
     },
     {
       question: r2Question,
@@ -345,65 +347,33 @@ function octave(): DiagnosticLesson {
       isMatch: true,
       explanation: 'The piano matched the high register notes.',
       correctFeedback: 'The piano matched the notes in the high register!',
-      featureCheck: {
-        prompt: 'Where do these notes sit on the treble staff?',
-        choices: ['Inside and above the staff', 'Below the bottom line'],
-        correct: 0,
-        explanation: 'These notes are in the 5th octave.',
-        highlightNoteIndex: 2,
-        choiceVisuals: [
-          { clef: 'treble', position: 'above-line-5', highlight: true },
-          { clef: 'treble', position: 'ledger-below', highlight: true },
-        ],
-        audioClues: [
-          { label: 'Hear High Register (5th Octave)', pitches: ['C5', 'E5', 'G5'], tag: 'High' },
-          { label: 'Hear Middle Register (4th Octave)', pitches: ['C4', 'E4', 'G4'], tag: 'Low' },
-        ],
-      },
+      featureCheck: octaveFeatureCheck,
     },
     {
       question: r3Question,
       notation: { clef: 'treble', mistakeIndices: [0, 1, 2, 3, 4, 5, 6, 7] },
-      wrongClefPitches: ['G4', 'E4', 'C4', 'E4', 'G4', 'F4', 'D4', 'C4'],
+      wrongClefPitches: ['C4', 'E4', 'G4', 'E4', 'G4', 'F4', 'D4', 'C4'],
       isMatch: false,
-      explanation: 'The notes climb high on the staff.',
+      explanation: 'Written in High C; piano played at Middle C.',
       correctFeedback: 'Piano played down at Middle C instead of High C!',
-      featureCheck: {
-        prompt: 'Where does Note 1 sit on the staff?',
-        choices: ['Above the 5th line', 'On the 2nd line'],
-        correct: 0,
-        explanation: 'Note 1 is G5 in the 5th octave.',
-        highlightNoteIndex: 0,
-        choiceVisuals: [
-          { clef: 'treble', position: 'above-line-5', highlight: true },
-          { clef: 'treble', position: 'line-2', highlight: true },
-        ],
-        audioClues: [
-          { label: 'Hear High G (G5)', pitches: ['G5'], tag: 'High' },
-          { label: 'Hear Low G (G4)', pitches: ['G4'], tag: 'Low' },
-        ],
-      },
+      featureCheck: octaveFeatureCheck,
     },
-  ];
-  lesson.listenRounds = [
-    ...lesson.listenRounds,
-    ...[r4Question, r5Question].map(round => ({
-      question: round,
-      notation: { clef: 'treble' as const, mistakeIndices: [] },
-      wrongClefPitches: round.expectedSequence,
+    {
+      question: r4Question,
+      notation: { clef: 'treble', mistakeIndices: [] },
+      wrongClefPitches: r4Question.expectedSequence,
       explanation: 'These notes are in the 5th octave.',
-      featureCheck: {
-        prompt: 'Is Note 1 higher or lower in pitch than Middle C?',
-        choices: ['Higher (5th octave)', 'Lower (4th octave)'],
-        correct: 0,
-        explanation: 'Note 1 is C5, higher than Middle C.',
-        highlightNoteIndex: 0,
-        audioClues: [
-          { label: 'Hear High C (C5)', pitches: ['C5'], tag: 'High' },
-          { label: 'Hear Middle C (C4)', pitches: ['C4'], tag: 'Low' },
-        ],
-      },
-    })),
+      correctFeedback: 'The piano matched the 5th-octave notes!',
+      featureCheck: octaveFeatureCheck,
+    },
+    {
+      question: r5Question,
+      notation: { clef: 'treble', mistakeIndices: [] },
+      wrongClefPitches: r5Question.expectedSequence,
+      explanation: 'These notes are in the 5th octave.',
+      correctFeedback: 'The piano matched the 5th-octave notes!',
+      featureCheck: octaveFeatureCheck,
+    },
   ];
   // Choose once per lesson, retain it on retries, and never alternate throughout.
   const answerPatterns = [

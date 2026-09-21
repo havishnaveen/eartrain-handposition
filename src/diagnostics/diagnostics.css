@@ -1089,3 +1089,51 @@
   border-color: #3d3856;
 }
 
+.diagnostic-step-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+
+.diagnostic-context-note {
+  font-size: 15px;
+  font-weight: 600;
+  color: #4b5563;
+  margin: 0 0 14px 0;
+}
+
+.diagnostic-inline-hint {
+  margin: 14px auto 0 auto;
+  max-width: 500px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #be123c;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+:root[data-theme='dark'] .diagnostic-step-pill {
+  background: #43281c;
+  color: #fdba74;
+}
+
+:root[data-theme='dark'] .diagnostic-context-note {
+  color: #cbd5e1;
+}
+
+:root[data-theme='dark'] .diagnostic-inline-hint {
+  background: #3f1d24;
+  border-color: #881337;
+  color: #fda4af;
+}
+
