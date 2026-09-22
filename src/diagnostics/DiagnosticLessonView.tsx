@@ -8,6 +8,7 @@ import { playDiagnosticExample } from './playback';
 import { prepareProfessorNotification } from './professorNotifications';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
 import { HandPositionProveItView } from './HandPositionProveItView';
+import { FingerTuckVideoGuide } from './FingerTuckVideoGuide';
 
 const RecordDot = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -921,6 +922,10 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
             : currentRound?.highlightNoteIndex
         }
       />
+
+      {lesson.question.conceptId === 'cross-over-under' && (roundIdx === 0 || subStage === 'identifying') && (
+        <FingerTuckVideoGuide compact={true} />
+      )}
 
       {hasAudio && (
         <div className="diagnostic-ab-row" aria-label="Audio clips comparison">
