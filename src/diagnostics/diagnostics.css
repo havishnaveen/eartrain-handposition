@@ -324,6 +324,104 @@
   color: #f3f1f8;
 }
 
+/* Interactive A/B Video Comparison Player */
+.diagnostic-video-ab-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: stretch;
+  margin: 16px 0 24px;
+  flex-wrap: wrap;
+}
+
+.diagnostic-video-ab-card {
+  flex: 1 1 320px;
+  max-width: 460px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.diagnostic-video-ab-card.is-playing {
+  border-color: #ef6a47;
+  background: #fff8f5;
+  box-shadow: 0 6px 20px rgba(239, 106, 71, 0.18);
+}
+
+.diagnostic-video-ab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.diagnostic-video-ab-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.diagnostic-sound-indicator {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.diagnostic-video-frame-wrap {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  aspect-ratio: 1280 / 560;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diagnostic-ab-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+:root[data-theme='dark'] .diagnostic-video-ab-card {
+  background: #1e1b2e;
+  border-color: #3d3856;
+}
+
+:root[data-theme='dark'] .diagnostic-video-ab-card.is-playing {
+  background: #2e1a14;
+  border-color: #f97316;
+}
+
+:root[data-theme='dark'] .diagnostic-video-ab-label {
+  color: #f3f1f8;
+}
+
+:root[data-theme='dark'] .diagnostic-sound-indicator {
+  background: #064e3b;
+  color: #6ee7b7;
+  border-color: #059669;
+}
+
 /* Brief feedback banner when learner answers */
 .diagnostic-brief-feedback {
   margin: 24px auto 16px;

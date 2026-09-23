@@ -769,6 +769,11 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
   const [playingB, setPlayingB] = useState(false);
   const [heardA, setHeardA] = useState(false);
   const [heardB, setHeardB] = useState(false);
+  const [playingVideo, setPlayingVideo] = useState<'A' | 'B' | null>(null);
+  const [heardVideoA, setHeardVideoA] = useState(false);
+  const [heardVideoB, setHeardVideoB] = useState(false);
+  const videoRefA = useRef<HTMLVideoElement | null>(null);
+  const videoRefB = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState('');
   const [enlarged, setEnlarged] = useState(false);
   const [highlightCue, setHighlightCue] = useState(false);
@@ -784,13 +789,47 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
     return () => {
       alive.current = false;
       playback.current?.stop();
+      if (videoRefA.current) videoRefA.current.pause();
+      if (videoRefB.current) videoRefB.current.pause();
     };
   }, []);
 
   const currentRound = rounds[roundIdx] ?? rounds[0];
   const hasAudio = Boolean(currentRound?.audioClipA && currentRound?.audioClipB);
+  const hasVideo = Boolean(currentRound?.videoClipA && currentRound?.videoClipB);
   const featureCheck = currentRound?.featureCheck ?? lesson.featureCheck;
   const isAccidentalLesson = Boolean(lesson.question.conceptId.includes('accidental'));
+
+  const playVideoClip = (which: 'A' | 'B') => {
+    playback.current?.stop();
+    if (which === 'A') {
+      if (videoRefB.current) {
+        videoRefB.current.pause();
+        videoRefB.current.currentTime = 0;
+      }
+      if (videoRefA.current) {
+        videoRefA.current.muted = false;
+        videoRefA.current.volume = 1.0;
+        videoRefA.current.currentTime = 0;
+        const p = videoRefA.current.play();
+        if (p) p.catch(() => {});
+        setPlayingVideo('A');
+      }
+    } else {
+      if (videoRefA.current) {
+        videoRefA.current.pause();
+        videoRefA.current.currentTime = 0;
+      }
+      if (videoRefB.current) {
+        videoRefB.current.muted = false;
+        videoRefB.current.volume = 1.0;
+        videoRefB.current.currentTime = 0;
+        const p = videoRefB.current.play();
+        if (p) p.catch(() => {});
+        setPlayingVideo('B');
+      }
+    }
+  };
 
   const playAudioClip = async (which: 'A' | 'B') => {
     if (locked.current || !currentRound) return;
@@ -819,12 +858,17 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
   const advanceRound = () => {
     playback.current?.stop();
+    if (videoRefA.current) videoRefA.current.pause();
+    if (videoRefB.current) videoRefB.current.pause();
+    setPlayingVideo(null);
     setEnlarged(false);
     setHighlightCue(false);
     setSubStage('prompting');
     setRetrying(false);
     setHeardA(false);
     setHeardB(false);
+    setHeardVideoA(false);
+    setHeardVideoB(false);
     setError('');
     setFeatureHint('');
     setFollowUpHint('');
@@ -837,6 +881,9 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 
   const onPickChoice = (index: number) => {
     playback.current?.stop();
+    if (videoRefA.current) videoRefA.current.pause();
+    if (videoRefB.current) videoRefB.current.pause();
+    setPlayingVideo(null);
     setFeatureHint('');
     setFollowUpHint('');
     if (index === currentRound.correct) {
@@ -923,8 +970,90 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
         }
       />
 
-      {lesson.question.conceptId === 'cross-over-under' && (roundIdx === 0 || subStage === 'identifying') && (
+      {lesson.question.conceptId === 'cross-over-under' && subStage === 'identifying' && (
         <FingerTuckVideoGuide compact={true} />
+      )}
+
+      {hasVideo && subStage !== 'identifying' && subStage !== 'identifyingCorrect' && (
+        <div className="diagnostic-video-ab-row" aria-label="Video recordings comparison">
+          <div className={`diagnostic-video-ab-card ${playingVideo === 'A' ? 'is-playing' : ''}`}>
+            <div className="diagnostic-video-ab-header">
+              <span className="diagnostic-ab-tag">Option A</span>
+              <span className="diagnostic-video-ab-label">{currentRound.videoClipA!.label}</span>
+              <span className="diagnostic-sound-indicator" title="Audio unmuted">🔊 Sound On</span>
+            </div>
+            <div className="diagnostic-video-frame-wrap">
+              <video
+                ref={videoRefA}
+                className="diagnostic-ab-video"
+                src={currentRound.videoClipA!.src}
+                poster={currentRound.videoClipA!.poster}
+                playsInline
+                preload="auto"
+                controls
+                onPlay={() => {
+                  if (videoRefB.current) videoRefB.current.pause();
+                  if (videoRefA.current) videoRefA.current.muted = false;
+                  setPlayingVideo('A');
+                }}
+                onPause={() => {
+                  setPlayingVideo(prev => (prev === 'A' ? null : prev));
+                }}
+                onEnded={() => {
+                  setPlayingVideo(null);
+                  setHeardVideoA(true);
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="diagnostic-ab-btn"
+              onClick={() => playVideoClip('A')}
+            >
+              <span className="et-start__dot"><RecordDot /></span>
+              <span>{playingVideo === 'A' ? 'Playing Recording A…' : heardVideoA ? 'Replay Recording A' : `Play ${currentRound.videoClipA!.label}`}</span>
+            </button>
+          </div>
+
+          <div className={`diagnostic-video-ab-card ${playingVideo === 'B' ? 'is-playing' : ''}`}>
+            <div className="diagnostic-video-ab-header">
+              <span className="diagnostic-ab-tag">Option B</span>
+              <span className="diagnostic-video-ab-label">{currentRound.videoClipB!.label}</span>
+              <span className="diagnostic-sound-indicator" title="Audio unmuted">🔊 Sound On</span>
+            </div>
+            <div className="diagnostic-video-frame-wrap">
+              <video
+                ref={videoRefB}
+                className="diagnostic-ab-video"
+                src={currentRound.videoClipB!.src}
+                poster={currentRound.videoClipB!.poster}
+                playsInline
+                preload="auto"
+                controls
+                onPlay={() => {
+                  if (videoRefA.current) videoRefA.current.pause();
+                  if (videoRefB.current) videoRefB.current.muted = false;
+                  setPlayingVideo('B');
+                }}
+                onPause={() => {
+                  setPlayingVideo(prev => (prev === 'B' ? null : prev));
+                }}
+                onEnded={() => {
+                  setPlayingVideo(null);
+                  setHeardVideoB(true);
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="diagnostic-ab-btn"
+              onClick={() => playVideoClip('B')}
+            >
+              <span className="et-start__dot"><RecordDot /></span>
+              <span>{playingVideo === 'B' ? 'Playing Recording B…' : heardVideoB ? 'Replay Recording B' : `Play ${currentRound.videoClipB!.label}`}</span>
+            </button>
+          </div>
+        </div>
       )}
 
       {hasAudio && (
@@ -1075,6 +1204,11 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
               setHeardB(false);
               setPlayingA(false);
               setPlayingB(false);
+              setPlayingVideo(null);
+              setHeardVideoA(false);
+              setHeardVideoB(false);
+              if (videoRefA.current) videoRefA.current.pause();
+              if (videoRefB.current) videoRefB.current.pause();
               setEnlarged(false);
               setHighlightCue(false);
               setFeatureHint('');
@@ -1106,6 +1240,11 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
               setHeardB(false);
               setPlayingA(false);
               setPlayingB(false);
+              setPlayingVideo(null);
+              setHeardVideoA(false);
+              setHeardVideoB(false);
+              if (videoRefA.current) videoRefA.current.pause();
+              if (videoRefB.current) videoRefB.current.pause();
               setEnlarged(false);
               setHighlightCue(false);
               setFeatureHint('');

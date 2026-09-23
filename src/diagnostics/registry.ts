@@ -76,6 +76,12 @@ export interface DiagnosticAudioClip {
   hesitationBefore?: number;
 }
 
+export interface DiagnosticVideoClip {
+  label: string;
+  src: string;
+  poster?: string;
+}
+
 export interface DiagnosticInteractiveRound {
   title?: string;
   badge?: string;
@@ -90,6 +96,8 @@ export interface DiagnosticInteractiveRound {
   highlightClefChange?: boolean;
   audioClipA?: DiagnosticAudioClip;
   audioClipB?: DiagnosticAudioClip;
+  videoClipA?: DiagnosticVideoClip;
+  videoClipB?: DiagnosticVideoClip;
   question?: Question;
   notation?: DiagnosticNotation;
 }
@@ -710,53 +718,27 @@ function crossing(): DiagnosticLesson {
   lesson.correctFeedback = 'Hesitation at Note 4: Beat stumbled at the thumb tuck.';
   lesson.interactiveRounds = [
     {
-      title: 'Thumb Tuck Motion',
-      prompt: 'How does the thumb reach note 4 (F)?',
-      choices: [
-        'Tuck thumb under finger 3',
-        'Jump hand across keys',
-      ],
+      title: 'Finger Numbers & Movement',
+      prompt: 'In which of the following recordings did the person play the finger numbers correctly?',
+      choices: ['Recording A', 'Recording B'],
       correct: 0,
-      explanation: 'Thumb glides under finger 3 to reach F4 smoothly.',
+      explanation: 'Recording A tucked the thumb smoothly under finger 3 to play all finger numbers correctly.',
       highlightNoteIndex: 3,
+      videoClipA: {
+        label: 'Recording A',
+        src: '/videos/finger-tuck-correct.mp4',
+        poster: '/videos/finger-tuck-correct.webp',
+      },
+      videoClipB: {
+        label: 'Recording B',
+        src: '/videos/finger-tuck-wrong-jump.mp4',
+        poster: '/videos/finger-tuck-wrong-jump.webp',
+      },
       featureCheck: {
         prompt: 'Does the thumb glide under finger 3?',
         choices: ['Yes', 'No'],
         correct: 0,
-        explanation: 'Thumb glides under finger 3 to reach F4.',
-      },
-    },
-    {
-      title: 'Listen for Smooth Tempo',
-      prompt: 'Which clip plays smoothly without pausing?',
-      choices: ['Clip A', 'Clip B'],
-      correct: 0,
-      explanation: 'Clip A stays in tempo through the tuck.',
-      highlightNoteIndex: 3,
-      audioClipA: { label: 'Clip A', pitches: pitches },
-      audioClipB: { label: 'Clip B', pitches: pitches, hesitationBefore: 3 },
-      featureCheck: {
-        prompt: 'Did Clip B pause before note 4?',
-        choices: ['Yes', 'No'],
-        correct: 0,
-        explanation: 'Clip B stumbled before Note 4.',
-      },
-    },
-    {
-      title: 'Preparation Timing',
-      prompt: 'When should the thumb tuck under?',
-      choices: [
-        'While finger 2 is playing',
-        'After finger 3 lifts off',
-      ],
-      correct: 0,
-      explanation: 'Tucking early while finger 2 plays keeps tempo steady.',
-      highlightNoteIndex: 3,
-      featureCheck: {
-        prompt: 'Does early preparation prevent hesitation?',
-        choices: ['Yes', 'No'],
-        correct: 0,
-        explanation: 'Early tuck keeps the tempo unbroken.',
+        explanation: 'Thumb glides under finger 3 to reach F4 smoothly.',
       },
     },
   ];
