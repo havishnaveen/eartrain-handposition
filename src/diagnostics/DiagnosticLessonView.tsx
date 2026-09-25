@@ -989,7 +989,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
                 src={currentRound.videoClipA!.src}
                 poster={currentRound.videoClipA!.poster}
                 playsInline
-                preload="auto"
+                preload="metadata"
                 controls
                 onPlay={() => {
                   if (videoRefB.current) videoRefB.current.pause();
@@ -1028,7 +1028,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
                 src={currentRound.videoClipB!.src}
                 poster={currentRound.videoClipB!.poster}
                 playsInline
-                preload="auto"
+                preload="metadata"
                 controls
                 onPlay={() => {
                   if (videoRefA.current) videoRefA.current.pause();

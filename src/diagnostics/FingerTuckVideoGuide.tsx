@@ -23,13 +23,16 @@ export function FingerTuckVideoGuide({
       ? '/videos/finger-tuck-correct.webp'
       : '/videos/finger-tuck-wrong-jump.webp';
 
+  const hasSwitchedMode = useRef(false);
+
   useEffect(() => {
-    if (videoRef.current) {
+    if (hasSwitchedMode.current && videoRef.current) {
       videoRef.current.currentTime = 0;
       void videoRef.current.play().catch(() => {
         // Auto-play policies may prevent playback if unmuted
       });
     }
+    hasSwitchedMode.current = true;
   }, [mode]);
 
   return (
