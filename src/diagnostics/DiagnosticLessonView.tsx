@@ -8,7 +8,6 @@ import { playDiagnosticExample } from './playback';
 import { prepareProfessorNotification } from './professorNotifications';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
 import { HandPositionProveItView } from './HandPositionProveItView';
-import { FingerTuckVideoGuide } from './FingerTuckVideoGuide';
 
 const RecordDot = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -772,6 +771,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
   const [playingVideo, setPlayingVideo] = useState<'A' | 'B' | null>(null);
   const [heardVideoA, setHeardVideoA] = useState(false);
   const [heardVideoB, setHeardVideoB] = useState(false);
+  const [gotFollowUpWrong, setGotFollowUpWrong] = useState(false);
   const videoRefA = useRef<HTMLVideoElement | null>(null);
   const videoRefB = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState('');
@@ -869,6 +869,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
     setHeardB(false);
     setHeardVideoA(false);
     setHeardVideoB(false);
+    setGotFollowUpWrong(false);
     setError('');
     setFeatureHint('');
     setFollowUpHint('');
@@ -891,7 +892,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       setHighlightCue(false);
       setSubStage('correctFeedback');
     } else {
-      if (retrying) {
+      if (retrying && gotFollowUpWrong) {
         prepareProfessorNotification({
           diagnosticId: lesson.question.conceptId,
           lessonTitle: lesson.title,
@@ -899,13 +900,13 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
           questionIndex: roundIdx,
           questionPrompt: currentRound.prompt,
           attemptsCount: 2,
-          details: `Round ${roundIdx + 1} (${currentRound.title}): Learner selected "${currentRound.choices[index]}" on retry after guided review.`,
+          details: `Round ${roundIdx + 1} (${currentRound.title}): Learner selected "${currentRound.choices[index]}" on retry after failing both the follow-up clue and the retest.`,
         });
         sendFailureReport({
           lessonTitle: lesson.title,
           stageName: `Stage 3: Round ${roundIdx + 1} (${currentRound.title})`,
           conceptId: lesson.question.conceptId,
-          detail: `Learner selected "${currentRound.choices[index]}" on retry after guided clue.`,
+          detail: `Learner selected "${currentRound.choices[index]}" on retry after failing follow-up.`,
         });
         setSubStage('professorNotified');
       } else {
@@ -923,6 +924,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
         setSubStage('identifyingCorrect');
       }
     } else {
+      setGotFollowUpWrong(true);
       setFeatureHint(
         isAccidentalLesson
           ? 'Note 3 is before the barline — still inside Measure 1.'
@@ -938,6 +940,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
       setFollowUpHint('');
       setSubStage('followUpFeedback');
     } else {
+      setGotFollowUpWrong(true);
       setFollowUpHint(
         isAccidentalLesson
           ? 'Sharps carry through the full measure until the barline.'
@@ -969,10 +972,6 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
             : currentRound?.highlightNoteIndex
         }
       />
-
-      {lesson.question.conceptId === 'cross-over-under' && subStage === 'identifying' && (
-        <FingerTuckVideoGuide compact={true} />
-      )}
 
       {hasVideo && subStage !== 'identifying' && subStage !== 'identifyingCorrect' && (
         <div className="diagnostic-video-ab-row" aria-label="Video recordings comparison">

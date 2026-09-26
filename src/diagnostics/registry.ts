@@ -735,18 +735,18 @@ function crossing(): DiagnosticLesson {
         poster: '/videos/finger-tuck-wrong-jump.webp',
       },
       featureCheck: {
-        prompt: 'Does the thumb glide under finger 3?',
-        choices: ['Yes', 'No'],
+        prompt: 'What do you do on Note 4 (F)?',
+        choices: ['Tuck finger under', 'Jump to keep playing'],
         correct: 0,
-        explanation: 'Thumb glides under finger 3 to reach F4 smoothly.',
+        explanation: 'Tuck finger under to reach Note 4 smoothly without jumping.',
       },
     },
   ];
   lesson.featureCheck = {
-    prompt: 'How do you connect notes smoothly past finger 3?',
-    choices: ['Tuck thumb under', 'Jump hand across'],
+    prompt: 'What do you do on Note 4 (F)?',
+    choices: ['Tuck finger under', 'Jump to keep playing'],
     correct: 0,
-    explanation: 'Tuck thumb under finger 3 to avoid pausing.',
+    explanation: 'Tuck finger under to reach Note 4 smoothly without jumping.',
   };
   lesson.mcq = {
     prompt: 'Why do you tuck your thumb under finger 3?',
