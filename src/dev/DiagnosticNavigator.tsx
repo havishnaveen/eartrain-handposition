@@ -84,6 +84,13 @@ export default function DiagnosticNavigator({
             currentStage
           );
         }
+      } else if (!selection && (event.key === '[' || event.key === ']')) {
+        event.preventDefault();
+        const delta = event.key === '[' ? -1 : 1;
+        const nextLesson = Math.min(24, Math.max(1, currentLesson + delta));
+        if (onJumpStandard) {
+          onJumpStandard(nextLesson, 1, true);
+        }
       }
     };
     window.addEventListener('keydown', handle);

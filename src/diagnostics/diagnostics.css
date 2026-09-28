@@ -746,17 +746,22 @@
 /* Diagnostic Dev Studio & Tester Console */
 .diagnostic-navigator {
   position: fixed;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  right: 16px;
-  left: auto;
-  transform: none;
+  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  left: 50%;
+  transform: translateX(-50%);
+  right: auto;
   z-index: 1000;
   display: flex;
   flex-direction: column-reverse;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   max-width: calc(100vw - 24px);
   pointer-events: none;
+}
+@media (max-width: 640px) {
+  .diagnostic-navigator {
+    bottom: calc(max(16px, env(safe-area-inset-bottom, 0px)) + 52px);
+  }
 }
 .diagnostic-navigator > * {
   pointer-events: auto;
