@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import PathwayRouter from '../components/PathwayRouter';
+import DevLessonJumper from '../dev/DevLessonJumper';
 import DiagnosticNavigator from '../dev/DiagnosticNavigator';
 import type { DiagnosticSelection } from '../dev/DiagnosticNavigator';
 import type { OclefIntegrationSession } from '../integration/oclefBridge';
@@ -128,15 +129,19 @@ export default function DiagnosticRouter({ session }: { session: OclefIntegratio
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
       selection && definition ? <DiagnosticLessonView key={`${selection.problem}/${selection.key}/${selection.revision}`} definition={definition} selectedKey={selectedKey} initialStage={selection.stage} onStandard={standard} /> :
-        <PathwayRouter
-          key={standardRevision}
-          initialLesson={standardState ? standardState.lesson : initialLesson}
-          initialQuestion={standardState ? standardState.question : initialQuestion}
-          initialProofCompleted={standardState ? standardState.proofCompleted : initialProofCompleted}
-          sessionQuestionCap={launch?.assignment?.questionCap}
-          returnUrl={launch?.assignment?.returnUrl}
-          externalLaunch={launch}
-        />}
+        <DevLessonJumper baseInitialLesson={standardState ? standardState.lesson : initialLesson}>
+          {({ initialLesson: routedLesson, initialProofCompleted: jumperProofCompleted, remountKey }) => (
+            <PathwayRouter
+              key={`${standardRevision}-${remountKey}`}
+              initialLesson={routedLesson}
+              initialQuestion={standardState ? standardState.question : initialQuestion}
+              initialProofCompleted={jumperProofCompleted || (standardState ? standardState.proofCompleted : initialProofCompleted)}
+              sessionQuestionCap={launch?.assignment?.questionCap}
+              returnUrl={launch?.assignment?.returnUrl}
+              externalLaunch={launch}
+            />
+          )}
+        </DevLessonJumper>}
     {tester && (
       <DiagnosticNavigator
         selection={selection}

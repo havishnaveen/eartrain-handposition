@@ -63,10 +63,10 @@ export default function DiagnosticNavigator({
 
       if (event.key === 'Escape') {
         setOpen(false);
-      } else if (['1', '2', '3', '4'].includes(event.key)) {
+      } else if (selection && ['1', '2', '3', '4'].includes(event.key)) {
         event.preventDefault();
         select(problem.id, key.id, Number(event.key) as DiagnosticStage);
-      } else if (event.key === '[' || event.key === ']') {
+      } else if (selection && (event.key === '[' || event.key === ']')) {
         event.preventDefault();
         const delta = event.key === '[' ? -1 : 1;
         if (problem.usesKey && !event.shiftKey) {
