@@ -170,31 +170,38 @@ export function DevLessonJumper({ baseInitialLesson, children }: DevLessonJumper
 const panelStyle: CSSProperties = {
   position: 'fixed',
   left: '50%',
-  bottom: 16,
+  bottom: 'max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px))',
   transform: 'translateX(-50%)',
   zIndex: 2147483647,
   display: 'flex',
   alignItems: 'stretch',
   gap: 10,
-  padding: '10px 14px',
+  padding: '8px 12px',
   background: '#111',
   color: '#fff',
   borderRadius: 14,
   boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
   border: '2px solid #f97316',
   fontFamily: 'system-ui, -apple-system, sans-serif',
+  maxWidth: 'calc(100vw - 16px)',
+  width: 'max-content',
+  boxSizing: 'border-box',
+  touchAction: 'manipulation',
 };
 
 const buttonStyle: CSSProperties = {
-  minWidth: 64,
-  fontSize: 22,
+  minWidth: 48,
+  fontSize: 20,
   fontWeight: 800,
   color: '#111',
   background: '#f97316',
   border: 'none',
   borderRadius: 10,
   cursor: 'pointer',
-  padding: '4px 14px',
+  padding: '4px 12px',
+  touchAction: 'manipulation',
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
 };
 
 const labelStyle: CSSProperties = {
@@ -202,9 +209,12 @@ const labelStyle: CSSProperties = {
   flexDirection: 'column',
   justifyContent: 'center',
   alignItems: 'center',
-  minWidth: 220,
+  minWidth: 0,
+  flex: 1,
   textAlign: 'center',
   gap: 2,
+  userSelect: 'none',
+  WebkitUserSelect: 'none',
 };
 
 export default DevLessonJumper;

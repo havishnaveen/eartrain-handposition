@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import PathwayRouter from '../components/PathwayRouter';
-import DevLessonJumper from '../dev/DevLessonJumper';
 import DiagnosticNavigator from '../dev/DiagnosticNavigator';
 import type { DiagnosticSelection } from '../dev/DiagnosticNavigator';
 import type { OclefIntegrationSession } from '../integration/oclefBridge';
@@ -23,37 +22,27 @@ function isDevTesterAllowed(session: OclefIntegrationSession | null): boolean {
     return false;
   }
 
-  // 3. Dev query param on this device (?dev=1 to enable, ?dev=0 to disable)
+  // 3. Dev query param on this device (?dev=0 to disable)
   try {
     const params = new URLSearchParams(window.location.search);
     const devParam = params.get('dev');
     if (devParam === '0' || devParam === 'false' || devParam === 'hide') {
-      localStorage.removeItem('eartrain_dev_allowed');
       return false;
     }
-    if (devParam === '1' || devParam === 'true' || devParam === 'havish') {
-      localStorage.setItem('eartrain_dev_allowed', '1');
-      return true;
-    }
   } catch {}
 
-  // 4. Saved preference on this Mac's browser
-  try {
-    if (localStorage.getItem('eartrain_dev_allowed') === '1') {
-      return true;
-    }
-  } catch {}
-
-  // 5. Localhost / local development host on this Mac
-  const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local') || host.endsWith('.lan')) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
-export default function DiagnosticRouter({ session }: { session: OclefIntegrationSession | null }) {
+export default function DiagnosticRouter({
+  session,
+  initialLesson: propInitialLesson,
+  initialProofCompleted: propInitialProofCompleted,
+}: {
+  session: OclefIntegrationSession | null;
+  initialLesson?: number;
+  initialProofCompleted?: boolean;
+}) {
   const launch = session?.launch;
   const referral = useMemo(() => diagnosticReferral(launch, window.location.search), [launch]);
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -69,10 +58,10 @@ export default function DiagnosticRouter({ session }: { session: OclefIntegratio
   } | null>(null);
 
   const parsedLesson = searchParams ? parseInt(searchParams.get('lesson') || '', 10) : NaN;
-  const initialLesson = !isNaN(parsedLesson)
+  const initialLesson = propInitialLesson ?? (!isNaN(parsedLesson)
     ? parsedLesson
-    : (launch?.assignment?.recommendedLessonIndex ?? launch?.checkpoint?.lessonIndex ?? 1);
-  const initialProofCompleted = searchParams ? searchParams.get('noproof') === '1' : false;
+    : (launch?.assignment?.recommendedLessonIndex ?? launch?.checkpoint?.lessonIndex ?? 1));
+  const initialProofCompleted = propInitialProofCompleted ?? (searchParams ? searchParams.get('noproof') === '1' : false);
   const parsedQuestion = searchParams ? parseInt(searchParams.get('drill') || '', 10) : NaN;
   const initialQuestion = !isNaN(parsedQuestion) ? parsedQuestion : 1;
 
@@ -129,19 +118,15 @@ export default function DiagnosticRouter({ session }: { session: OclefIntegratio
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
       selection && definition ? <DiagnosticLessonView key={`${selection.problem}/${selection.key}/${selection.revision}`} definition={definition} selectedKey={selectedKey} initialStage={selection.stage} onStandard={standard} /> :
-        <DevLessonJumper baseInitialLesson={standardState ? standardState.lesson : initialLesson}>
-          {({ initialLesson: routedLesson, initialProofCompleted: jumperProofCompleted, remountKey }) => (
-            <PathwayRouter
-              key={`${standardRevision}-${remountKey}`}
-              initialLesson={routedLesson}
-              initialQuestion={standardState ? standardState.question : initialQuestion}
-              initialProofCompleted={jumperProofCompleted || (standardState ? standardState.proofCompleted : initialProofCompleted)}
-              sessionQuestionCap={launch?.assignment?.questionCap}
-              returnUrl={launch?.assignment?.returnUrl}
-              externalLaunch={launch}
-            />
-          )}
-        </DevLessonJumper>}
+        <PathwayRouter
+          key={standardRevision}
+          initialLesson={standardState ? standardState.lesson : initialLesson}
+          initialQuestion={standardState ? standardState.question : initialQuestion}
+          initialProofCompleted={standardState ? standardState.proofCompleted : initialProofCompleted}
+          sessionQuestionCap={launch?.assignment?.questionCap}
+          returnUrl={launch?.assignment?.returnUrl}
+          externalLaunch={launch}
+        />}
     {tester && (
       <DiagnosticNavigator
         selection={selection}
