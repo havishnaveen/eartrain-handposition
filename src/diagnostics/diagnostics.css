@@ -17,7 +17,7 @@
 .diagnostic-action-area .et-start { margin: 0; }
 .diagnostic-error { color: #dc2626; font-size: 14px; font-weight: 500; margin: 8px 0 0; }
 .diagnostic-feedback { padding: 22px 24px; margin: 28px 0; background: #fff5ef; border-left: 4px solid #ef6a47; border-radius: 16px; color: #242237; line-height: 1.6; }
-.diagnostic-feedback strong { display: block; font-size: 1.15rem; margin-bottom: 8px; color: #c2410c; }
+.diagnostic-feedback strong { font-size: 1.15rem; margin-bottom: 8px; color: #c2410c; }
 .diagnostic-feedback p { margin: 6px 0; font-size: 16px; }
 .diagnostic-feedback__sub { color: #78716c; font-size: 15px; }
 .diagnostic-tip { margin: 24px auto 32px; padding: 24px 28px; background: #f8f7fb; border-radius: 18px; border: 1px solid #eeebf4; text-align: center; max-width: 580px; box-sizing: border-box; }
@@ -554,6 +554,111 @@
   margin: 8px 0 0 !important;
   opacity: 1 !important;
 }
+
+/* Concept Question Feedback Card (Stage 1 MCQ) */
+.diagnostic-concept-feedback {
+  margin: 24px auto 12px;
+  max-width: 540px;
+  padding: 24px 28px;
+  border-radius: 20px;
+  text-align: center;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.diagnostic-concept-feedback--correct {
+  background: #f0fdf4 !important;
+  border: 2px solid #22c55e !important;
+  box-shadow: 0 6px 24px rgba(34, 197, 94, 0.14) !important;
+}
+
+.diagnostic-concept-feedback--retry {
+  background: #fffbeb !important;
+  border: 2px solid #f59e0b !important;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.12) !important;
+}
+
+.diagnostic-concept-feedback--exhausted {
+  background: #fff7ed !important;
+  border: 2px solid #ef6a47 !important;
+  box-shadow: 0 6px 24px rgba(239, 106, 71, 0.14) !important;
+}
+
+.diagnostic-concept-badge {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
+}
+
+.diagnostic-concept-badge--correct {
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.diagnostic-concept-badge--retry {
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+
+.diagnostic-concept-badge--incorrect {
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+}
+
+.diagnostic-concept-answer,
+.diagnostic-concept-hint,
+.diagnostic-concept-explanation {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #242237;
+  max-width: 480px;
+}
+
+.diagnostic-concept-hint {
+  font-weight: 600;
+  color: #78350f;
+  font-size: 16.5px;
+}
+
+.diagnostic-concept-answer {
+  color: #431407;
+  font-size: 16px;
+}
+
+.diagnostic-concept-answer strong {
+  display: inline !important;
+  font-weight: 700;
+  color: #c2410c;
+  background: rgba(239, 106, 71, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-left: 4px;
+}
+
+.diagnostic-concept-explanation {
+  color: #14532d;
+  font-size: 15.5px;
+}
+
+.diagnostic-concept-btn {
+  margin-top: 4px !important;
+}
+
 
 /* Minimalistic morphing checkmark animation */
 .diagnostic-morph-box {
@@ -1097,6 +1202,13 @@
 :root[data-theme='dark'] .diagnostic-choices button:hover:not(:disabled) { background: #322b42; }
 :root[data-theme='dark'] .diagnostic-choices button[aria-pressed="true"] { background: #3c2420; border-color: #f97316; }
 :root[data-theme='dark'] .diagnostic-feedback { background: #2e1a14; color: #fde68a; border-left-color: #f97316; }
+:root[data-theme='dark'] .diagnostic-concept-feedback--correct { background: #052e16 !important; border-color: #22c55e !important; box-shadow: 0 6px 24px rgba(34, 197, 94, 0.2) !important; }
+:root[data-theme='dark'] .diagnostic-concept-feedback--retry { background: #2a1f0a !important; border-color: #f59e0b !important; box-shadow: 0 6px 24px rgba(245, 158, 11, 0.2) !important; }
+:root[data-theme='dark'] .diagnostic-concept-feedback--exhausted { background: #2d1610 !important; border-color: #ef6a47 !important; box-shadow: 0 6px 24px rgba(239, 106, 71, 0.2) !important; }
+:root[data-theme='dark'] .diagnostic-concept-hint { color: #fde68a !important; }
+:root[data-theme='dark'] .diagnostic-concept-answer { color: #fed7aa !important; }
+:root[data-theme='dark'] .diagnostic-concept-answer strong { color: #ffedd5 !important; background: rgba(239, 106, 71, 0.25) !important; }
+:root[data-theme='dark'] .diagnostic-concept-explanation { color: #bbf7d0 !important; }
 :root[data-theme='dark'] .diagnostic-tip { background: #262338; border-color: #3d3856; }
 :root[data-theme='dark'] .diagnostic-fingers .is-white { background: #262338; color: #f3f1f8; border-color: #3d3856; }
 :root[data-theme='dark'] .diagnostic-complete__p { color: #d6d3d1; }

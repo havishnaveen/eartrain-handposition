@@ -1355,32 +1355,35 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
       </div>
 
       {choice !== null && (
-        <div className={`diagnostic-feedback ${correct ? 'diagnostic-feedback--correct' : ''}`} role="status">
-          {correct ? (
+        correct ? (
+          <div className="diagnostic-concept-feedback diagnostic-concept-feedback--correct" role="status">
             <div className="diagnostic-morph-box">
               <MorphingCheckmark />
-              <p><strong>Correct!</strong> {lesson.mcq.explanation}</p>
+              <span className="diagnostic-concept-badge diagnostic-concept-badge--correct">Correct</span>
+              <p className="diagnostic-concept-explanation">{lesson.mcq.explanation}</p>
             </div>
-          ) : isExhausted ? (
-            <div>
-              <p>Incorrect.</p>
-              <p>The right answer is: <strong>{lesson.mcq.choices[lesson.mcq.correct]}</strong>.</p>
-            </div>
-          ) : (
-            <div>
-              <p>{retryHint}</p>
-            </div>
-          )}
-
-          {(correct || isExhausted) && (
-            <div className="diagnostic-action-area diagnostic-action-area--feedback">
-              <button type="button" className="et-start" onClick={onNext}>
-                <span className="et-start__dot"><RecordDot /></span>
-                Continue to piano
-              </button>
-            </div>
-          )}
-        </div>
+            <button type="button" className="et-start diagnostic-concept-btn" onClick={onNext}>
+              <span className="et-start__dot"><RecordDot /></span>
+              Continue to piano
+            </button>
+          </div>
+        ) : isExhausted ? (
+          <div className="diagnostic-concept-feedback diagnostic-concept-feedback--exhausted" role="status">
+            <span className="diagnostic-concept-badge diagnostic-concept-badge--incorrect">Incorrect</span>
+            <p className="diagnostic-concept-answer">
+              The right answer is: <strong>{lesson.mcq.choices[lesson.mcq.correct]}</strong>
+            </p>
+            <button type="button" className="et-start diagnostic-concept-btn" onClick={onNext}>
+              <span className="et-start__dot"><RecordDot /></span>
+              Continue to piano
+            </button>
+          </div>
+        ) : (
+          <div className="diagnostic-concept-feedback diagnostic-concept-feedback--retry" role="status">
+            <span className="diagnostic-concept-badge diagnostic-concept-badge--retry">Try Again</span>
+            <p className="diagnostic-concept-hint">{retryHint}</p>
+          </div>
+        )
       )}
     </section>
   );
