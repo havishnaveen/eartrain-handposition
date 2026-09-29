@@ -1304,8 +1304,9 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
 function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [choice, setChoice] = useState<number | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
-  const [professorNotified, setProfessorNotified] = useState(false);
   const correct = choice === lesson.mcq.correct;
+  const isExhausted = wrongAttempts >= 2;
+  const isClefLesson = Boolean(lesson.question.conceptId.includes('clef'));
 
   const onSelectChoice = (i: number) => {
     setChoice(i);
@@ -1327,53 +1328,62 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
           conceptId: lesson.question.conceptId,
           detail: `Failed after clue on: "${lesson.mcq.prompt}". Selected "${lesson.mcq.choices[i]}".`,
         });
-        setProfessorNotified(true);
       }
     }
   };
 
-  return <section className="diagnostic-card" aria-label="Discover the clue">
-    <h2 className="diagnostic-prompt">{lesson.mcq.prompt}</h2>
-    <DiagnosticTip lesson={lesson} />
-    <div className="diagnostic-choices">
-      {lesson.mcq.choices.map((answer, i) => (
-        <button key={answer} type="button" disabled={correct || professorNotified} aria-pressed={choice === i} onClick={() => onSelectChoice(i)}>
-          {answer}
-        </button>
-      ))}
-    </div>
-    {professorNotified ? (
-      <div className="diagnostic-brief-feedback" role="status">
-        <p className="diagnostic-brief-text">
-          Ready for piano exercise.
-        </p>
-        <button type="button" className="et-start diagnostic-brief-btn" onClick={onNext}>
-          <span className="et-start__dot"><RecordDot /></span>
-          Continue to piano
-        </button>
-      </div>
-    ) : choice !== null && <div className={`diagnostic-feedback ${correct ? 'diagnostic-feedback--correct' : ''}`} role="status">
-      {correct ? (
-        <div className="diagnostic-morph-box">
-          <MorphingCheckmark />
-          <p><strong>Correct!</strong> {lesson.mcq.explanation}</p>
-        </div>
-      ) : (
-        <div>
-          <p>Incorrect.</p>
-          {lesson.tip && <p className="diagnostic-feedback__sub"><strong>Rule:</strong> {lesson.tip.text}</p>}
-        </div>
-      )}
-      {correct && (
-        <div className="diagnostic-action-area diagnostic-action-area--feedback">
-          <button type="button" className="et-start" onClick={onNext}>
-            <span className="et-start__dot"><RecordDot /></span>
-            Continue to piano
+  const retryHint = isClefLesson
+    ? 'Try again. Was the music played in the right clef?'
+    : 'Try again.';
+
+  return (
+    <section className="diagnostic-card" aria-label="Discover the clue">
+      <h2 className="diagnostic-prompt">{lesson.mcq.prompt}</h2>
+      <DiagnosticTip lesson={lesson} />
+      <div className="diagnostic-choices">
+        {lesson.mcq.choices.map((answer, i) => (
+          <button
+            key={answer}
+            type="button"
+            disabled={correct || isExhausted}
+            aria-pressed={choice === i}
+            onClick={() => onSelectChoice(i)}
+          >
+            {answer}
           </button>
+        ))}
+      </div>
+
+      {choice !== null && (
+        <div className={`diagnostic-feedback ${correct ? 'diagnostic-feedback--correct' : ''}`} role="status">
+          {correct ? (
+            <div className="diagnostic-morph-box">
+              <MorphingCheckmark />
+              <p><strong>Correct!</strong> {lesson.mcq.explanation}</p>
+            </div>
+          ) : isExhausted ? (
+            <div>
+              <p>Incorrect.</p>
+              <p>The right answer is: <strong>{lesson.mcq.choices[lesson.mcq.correct]}</strong>.</p>
+            </div>
+          ) : (
+            <div>
+              <p>{retryHint}</p>
+            </div>
+          )}
+
+          {(correct || isExhausted) && (
+            <div className="diagnostic-action-area diagnostic-action-area--feedback">
+              <button type="button" className="et-start" onClick={onNext}>
+                <span className="et-start__dot"><RecordDot /></span>
+                Continue to piano
+              </button>
+            </div>
+          )}
         </div>
       )}
-    </div>}
-  </section>;
+    </section>
+  );
 }
 
 export default function DiagnosticLessonView({ definition, selectedKey, initialStage, onStandard }: {
