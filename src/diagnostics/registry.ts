@@ -247,7 +247,7 @@ function clefSwap(): DiagnosticLesson {
     },
   ];
   lesson.mcq = {
-    prompt: 'What was the mistake in the music?',
+    prompt: 'What were the mistakes in the music examples?',
     choices: [
       'Played in the wrong clef',
       'Played in the wrong octave',
