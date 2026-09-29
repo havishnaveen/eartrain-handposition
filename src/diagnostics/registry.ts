@@ -41,12 +41,6 @@ export interface StaffVisualGuide {
   compareLedger?: boolean;
 }
 
-export interface DiagnosticAudioClue {
-  label: string;
-  pitches: readonly string[];
-  tag?: string;
-}
-
 export interface DiagnosticFeatureCheck {
   prompt: string;
   choices: readonly string[];
@@ -55,7 +49,6 @@ export interface DiagnosticFeatureCheck {
   highlightNoteIndex?: number;
   visualGuide?: StaffVisualGuide;
   choiceVisuals?: readonly (StaffChoiceVisual | undefined)[];
-  audioClues?: readonly DiagnosticAudioClue[];
   followUpCheck?: DiagnosticFeatureCheck;
 }
 
@@ -196,10 +189,6 @@ function clefSwap(): DiagnosticLesson {
       { clef: 'bass', position: 'clef-only' },
       { clef: 'treble', position: 'clef-only' },
     ],
-    audioClues: [
-      { label: 'Bass Clef (Lower pitch)', pitches: ['C3', 'E3', 'G3'], tag: 'Low' },
-      { label: 'Treble Clef (Higher pitch)', pitches: ['C4', 'E4', 'G4'], tag: 'High' },
-    ],
   };
   lesson.wrongClefRounds = [
     {
@@ -217,10 +206,6 @@ function clefSwap(): DiagnosticLesson {
         choiceVisuals: [
           { clef: 'bass', position: 'clef-only' },
           { clef: 'treble', position: 'clef-only' },
-        ],
-        audioClues: [
-          { label: 'Bass Clef (Lower pitch)', pitches: ['C3', 'E3', 'G3'], tag: 'Low' },
-          { label: 'Treble Clef (Higher pitch)', pitches: ['C4', 'E4', 'G4'], tag: 'High' },
         ],
       },
     },
@@ -240,10 +225,6 @@ function clefSwap(): DiagnosticLesson {
           { clef: 'treble', position: 'clef-only' },
           { clef: 'bass', position: 'clef-only' },
         ],
-        audioClues: [
-          { label: 'Treble Clef (Higher pitch)', pitches: ['C4', 'E4', 'G4'], tag: 'High' },
-          { label: 'Bass Clef (Lower pitch)', pitches: ['C3', 'E3', 'G3'], tag: 'Low' },
-        ],
       },
     },
     {
@@ -261,10 +242,6 @@ function clefSwap(): DiagnosticLesson {
         choiceVisuals: [
           { clef: 'treble', position: 'clef-only' },
           { clef: 'bass', position: 'clef-only' },
-        ],
-        audioClues: [
-          { label: 'Treble Clef (Higher pitch)', pitches: ['C4', 'E4', 'G4'], tag: 'High' },
-          { label: 'Bass Clef (Lower pitch)', pitches: ['C3', 'E3', 'G3'], tag: 'Low' },
         ],
       },
     },
@@ -332,10 +309,6 @@ function octave(): DiagnosticLesson {
     choiceVisuals: [
       { clef: 'treble' as const, position: 'space-3' as const, highlight: true },
       { clef: 'treble' as const, position: 'ledger-below' as const, highlight: true },
-    ],
-    audioClues: [
-      { label: 'Hear High C (Space 3)', pitches: ['C5'], tag: 'High' },
-      { label: 'Hear Middle C (Ledger)', pitches: ['C4'], tag: 'Low' },
     ],
   };
 
@@ -407,10 +380,6 @@ function octave(): DiagnosticLesson {
     choiceVisuals: [
       { clef: 'treble', position: 'space-3', highlight: true },
       { clef: 'treble', position: 'ledger-below', highlight: true },
-    ],
-    audioClues: [
-      { label: 'Hear High C (5th Octave)', pitches: ['C5'], tag: 'High' },
-      { label: 'Hear Middle C (4th Octave)', pitches: ['C4'], tag: 'Low' },
     ],
   };
   lesson.mcq = {
@@ -672,10 +641,6 @@ function clefChange(): DiagnosticLesson {
         choiceVisuals: [
           { clef: 'treble', position: 'ledger-below', highlight: true },
           { clef: 'treble', position: 'space-3', highlight: true },
-        ],
-        audioClues: [
-          { label: 'Hear Middle C (Treble Clef)', pitches: ['C4'], tag: 'Treble' },
-          { label: 'Hear Low C (Bass Clef)', pitches: ['C3'], tag: 'Bass' },
         ],
       },
     },

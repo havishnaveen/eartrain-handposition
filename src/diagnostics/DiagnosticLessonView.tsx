@@ -45,25 +45,6 @@ function sendFailureReport(params: { lessonTitle: string; stageName: string; det
   } catch {}
 }
 
-const AudioCluesPlayer = ({ clues }: { clues?: readonly { label: string; pitches: readonly string[]; tag?: string }[] }) => {
-  if (!clues || clues.length === 0) return null;
-  return (
-    <div className="diagnostic-audio-clues">
-      <div className="diagnostic-audio-clue-title">Listen & Compare Pitch:</div>
-      {clues.map((clue, idx) => (
-        <button
-          key={idx}
-          type="button"
-          className="diagnostic-audio-clue-btn"
-          onClick={() => playDiagnosticExample(clue.pitches)}
-        >
-          <span>🔊 {clue.label}</span>
-          {clue.tag && <span className="diagnostic-audio-clue-tag">{clue.tag}</span>}
-        </button>
-      ))}
-    </div>
-  );
-};
 
 function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: () => void }) {
   const [subStage, setSubStage] = useState<'listening' | 'incorrectFeedback' | 'identifying' | 'identifyingCorrect' | 'correctFeedback' | 'professorNotified'>('listening');
@@ -204,7 +185,6 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
     {subStage === 'identifying' && (
       <div className="diagnostic-prompt-section">
         <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
-        <AudioCluesPlayer clues={featureCheck.audioClues} />
         <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
           {featureCheck.choices.map((choice, i) => {
             const visual = featureCheck.choiceVisuals?.[i];
@@ -560,7 +540,6 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
       {subStage === 'identifying' && (
         <div className="diagnostic-prompt-section">
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
-          <AudioCluesPlayer clues={featureCheck.audioClues} />
           <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
             {featureCheck.choices.map((choice, i) => {
               const visual = featureCheck.choiceVisuals?.[i];
@@ -1135,7 +1114,6 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
             <div className="diagnostic-step-pill">Step 1 of 2 · Measure Check</div>
           )}
           <h2 className="diagnostic-prompt">{featureCheck.prompt}</h2>
-          <AudioCluesPlayer clues={featureCheck.audioClues} />
           <div className={`diagnostic-choices ${featureCheck.choiceVisuals?.length ? 'diagnostic-choices--with-visuals' : ''}`}>
             {featureCheck.choices.map((choice, i) => {
               const visual = featureCheck.choiceVisuals?.[i];
