@@ -357,13 +357,17 @@ function octave(): DiagnosticLesson {
       featureCheck: octaveFeatureCheck,
     },
   ];
-  // Choose once per lesson, retain it on retries, and never alternate throughout.
+  // First question must ALWAYS have an answer of 'Wrong' (isMatch: false). Subsequent questions can be switched up.
   const answerPatterns = [
-    [false, false, true, false, true], [true, false, false, true, false],
-    [false, true, true, false, true], [true, true, false, true, false],
-    [false, false, true, true, false], [true, true, false, false, true],
+    [false, false, true, false, true],
+    [false, true, false, true, false],
+    [false, true, true, false, true],
+    [false, false, true, true, false],
+    [false, true, false, false, true],
+    [false, true, true, true, false],
   ];
   const answers = answerPatterns[Math.floor(Math.random() * answerPatterns.length)];
+  answers[0] = false;
   lesson.listenRounds = lesson.listenRounds.map((round, i) => ({
     ...round,
     isMatch: answers[i],
