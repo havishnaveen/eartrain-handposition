@@ -448,11 +448,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
   const onPickFeatureChoice = (index: number) => {
     if (index === featureCheck.correct) {
       setFeatureHint(null);
-      if (isOctaveLesson) {
-        setSubStage('identifyingFollowUp');
-      } else {
-        setSubStage('identifyingCorrect');
-      }
+      setSubStage('identifyingCorrect');
     } else {
       setFeatureHint(
         isOctaveLesson
@@ -566,8 +562,6 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
 
       {subStage === 'identifyingFollowUp' && (
         <div className="diagnostic-prompt-section">
-          <div className="diagnostic-step-pill">Step 2 of 2 · Register Check</div>
-          <p className="diagnostic-context-note">Note 1 is High C (5th octave).</p>
           <h2 className="diagnostic-prompt">Does the example play the music in the right register?</h2>
           <div className="diagnostic-action-area" style={{ marginBottom: '16px' }}>
             <button
@@ -577,7 +571,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
               onClick={() => { void play(); }}
             >
               <span className="et-start__dot"><RecordDot /></span>
-              {playing ? 'Playing…' : '🔊 Replay piano example'}
+              {playing ? 'Playing…' : 'Replay piano example'}
             </button>
           </div>
           <div className="diagnostic-choices">
@@ -649,16 +643,20 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
             type="button"
             className="et-start diagnostic-brief-btn"
             onClick={() => {
-              setSubStage('listening');
-              setRetrying(true);
-              setHeard(false);
-              setPlaying(false);
-              setEnlarged(false);
-              setHighlightClef(false);
+              if (isOctaveLesson) {
+                setSubStage('identifyingFollowUp');
+              } else {
+                setSubStage('listening');
+                setRetrying(true);
+                setHeard(false);
+                setPlaying(false);
+                setEnlarged(false);
+                setHighlightClef(false);
+              }
             }}
           >
             <span className="et-start__dot"><RecordDot /></span>
-            Try question again
+            {isOctaveLesson ? 'Continue' : 'Try question again'}
           </button>
         </div>
       )}

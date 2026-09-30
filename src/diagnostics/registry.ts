@@ -360,7 +360,7 @@ function octave(): DiagnosticLesson {
   // First question must ALWAYS have an answer of 'Wrong' (isMatch: false). Subsequent questions can be switched up.
   const answerPatterns = [
     [false, false, true, false, true],
-    [false, true, false, true, false],
+    [false, false, false, true, false],
     [false, true, true, false, true],
     [false, false, true, true, false],
     [false, true, false, false, true],
