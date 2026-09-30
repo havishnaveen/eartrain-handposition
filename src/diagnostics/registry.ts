@@ -47,6 +47,7 @@ export interface DiagnosticFeatureCheck {
   correct: number;
   explanation: string;
   highlightNoteIndex?: number;
+  highlightClefChange?: boolean;
   visualGuide?: StaffVisualGuide;
   choiceVisuals?: readonly (StaffChoiceVisual | undefined)[];
   followUpCheck?: DiagnosticFeatureCheck;
@@ -617,16 +618,16 @@ function clefChange(): DiagnosticLesson {
   lesson.interactiveRounds = [
     {
       title: 'Spot the Change',
-      prompt: 'Look at the grand staff (both hands). Which clef appears in the lower staff before Note 3?',
-      choices: ['Treble clef', 'Bass clef'],
+      prompt: 'Look at the grand staff (both hands). Does the lower staff change clefs?',
+      choices: ['Yes', 'No'],
       correct: 0,
-      explanation: 'Treble clef appears in the lower staff before Note 3.',
-      highlightClefChange: true,
+      explanation: 'The lower staff changes to treble clef before Note 3.',
       featureCheck: {
-        prompt: 'Is the new clef in the lower staff a treble clef?',
-        choices: ['Yes', 'No'],
+        prompt: 'Look at the grand staff (both hands). Which clef appears in the lower staff before Note 3?',
+        choices: ['Treble clef', 'Bass clef'],
         correct: 0,
-        explanation: 'Treble clef appears before Note 3.',
+        explanation: 'Treble clef appears in the lower staff before Note 3.',
+        highlightClefChange: true,
       },
     },
     {

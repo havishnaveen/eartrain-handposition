@@ -109,6 +109,7 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
             }
           }
           // Scale down any in-staff mid-measure clef changes to standard cue-clef size (~68%)
+          // and position slightly lower to sit naturally on staff lines
           const modClefPath = Array.from(svg.querySelectorAll('.vf-modifiers path')).find(p => {
             try {
               const b = (p as SVGGraphicsElement).getBBox();
@@ -117,13 +118,14 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
               return false;
             }
           });
+          const clefOffsetY = 9;
           if (modClefPath) {
             const pEl = modClefPath as SVGGraphicsElement;
             const b = pEl.getBBox();
             const scale = 0.68;
             const cx = b.x + b.width / 2;
             const cy = b.y + b.height / 2;
-            pEl.setAttribute('transform', `matrix(${scale}, 0, 0, ${scale}, ${cx * (1 - scale)}, ${cy * (1 - scale)})`);
+            pEl.setAttribute('transform', `matrix(${scale}, 0, 0, ${scale}, ${cx * (1 - scale)}, ${cy * (1 - scale) + clefOffsetY})`);
           }
 
           if (highlightClefChange) {
@@ -131,9 +133,10 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
             if (target) {
               const pEl = target as SVGGraphicsElement;
               const b = pEl.getBBox();
-              const scale = modClefPath ? 0.68 : 1.0;
+              const isMod = target === modClefPath;
+              const scale = isMod ? 0.68 : 1.0;
               const cx = b.x + b.width / 2;
-              const cy = b.y + b.height / 2;
+              const cy = b.y + b.height / 2 + (isMod ? clefOffsetY : 0);
               const w = b.width * scale;
               const h = b.height * scale;
               const halo = document.createElementNS('http://www.w3.org/2000/svg', 'rect');

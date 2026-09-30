@@ -941,7 +941,11 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
         notation={lesson.notation}
         enlarged={enlarged}
         highlightClef={highlightCue && Boolean(currentRound?.highlightClef)}
-        highlightClefChange={Boolean(currentRound?.highlightClefChange)}
+        highlightClefChange={
+          (subStage === 'identifying' || subStage === 'identifyingFollowUp' || subStage === 'identifyingCorrect')
+            ? Boolean(featureCheck?.highlightClefChange ?? currentRound?.highlightClefChange)
+            : Boolean(currentRound?.highlightClefChange)
+        }
         highlight8va={Boolean(currentRound?.highlight8va)}
         highlightNoteIndex={
           subStage === 'identifying' || subStage === 'identifyingFollowUp'
