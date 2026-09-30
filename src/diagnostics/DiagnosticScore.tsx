@@ -171,9 +171,19 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
             }
           }
           if (highlightNoteIndex !== undefined) {
-            const noteheads = svg.querySelectorAll('.vf-notehead');
-            if (noteheads[highlightNoteIndex]) {
-              const nb = (noteheads[highlightNoteIndex] as SVGGraphicsElement).getBBox();
+            const isLeft = question.cue.staves.length === 2 && question.handScope === 'left';
+            const offset = isLeft
+              ? question.cue.staves[0].notes.filter(n => !n.duration.endsWith('r')).length
+              : 0;
+            const targetIndex = offset + highlightNoteIndex;
+            const noteheads = Array.from(svg.querySelectorAll('.vf-notehead'));
+            const targetHead = noteheads.find(nh => {
+              const fill = nh.getAttribute('fill') || nh.querySelector('path')?.getAttribute('fill') || '';
+              return fill.toLowerCase() === '#ef6a47' || fill.includes('239');
+            }) || noteheads[targetIndex];
+
+            if (targetHead) {
+              const nb = (targetHead as SVGGraphicsElement).getBBox();
               const centerX = nb.x + nb.width / 2;
               const centerY = nb.y + nb.height / 2;
 
@@ -187,7 +197,7 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
               rowBand.setAttribute('rx', '4');
               rowBand.setAttribute('fill', 'rgba(239, 106, 71, 0.25)');
               rowBand.setAttribute('class', 'diagnostic-staff-row-highlight');
-              noteheads[highlightNoteIndex].parentElement?.insertBefore(rowBand, noteheads[highlightNoteIndex]);
+              targetHead.parentElement?.insertBefore(rowBand, targetHead);
 
               // 2. Beacon halo around the notehead
               const halo = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
@@ -199,7 +209,7 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
               halo.setAttribute('stroke', '#ef6a47');
               halo.setAttribute('stroke-width', '2.5');
               halo.setAttribute('class', 'diagnostic-note-halo');
-              noteheads[highlightNoteIndex].parentElement?.insertBefore(halo, noteheads[highlightNoteIndex]);
+              targetHead.parentElement?.insertBefore(halo, targetHead);
             }
           }
           // Clean up position cue text (e.g. "Thumb under to F") and prevent collisions with fingering numbers

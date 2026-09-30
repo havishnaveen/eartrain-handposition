@@ -53,7 +53,8 @@ export function diagnosticMusicXML(question: Question, notation: DiagnosticNotat
             const sign = alter !== previous ? `<accidental>${alter === 1 ? 'sharp' : alter === -1 ? 'flat' : alter === 2 ? 'double-sharp' : alter === -2 ? 'flat-flat' : 'natural'}</accidental>` : '';
             accidentals.set(identity, alter);
             const finger = noteObj.finger;
-            const isHighlighted = (highlight && notation.mistakeIndices.includes(i)) || highlightNoteIndex === i;
+            const isTargetStaff = question.handScope === 'both' || (question.handScope === 'left' ? isLeftStaff : !isLeftStaff);
+            const isHighlighted = isTargetStaff && ((highlight && notation.mistakeIndices.includes(i)) || highlightNoteIndex === i);
             const color = isHighlighted ? '#ef6a47' : '#242237';
             contents += `<note color="${color}"><pitch><step>${step}</step><alter>${alter}</alter><octave>${octave}</octave></pitch><duration>1</duration><type>quarter</type>${sign}${finger ? `<notations><technical><fingering placement="${isLeftStaff ? 'below' : 'above'}">${finger}</fingering></technical></notations>` : ''}</note>`;
           }
