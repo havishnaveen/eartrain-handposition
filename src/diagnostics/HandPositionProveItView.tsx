@@ -346,7 +346,7 @@ export function HandPositionProveItView({
     <section className="diagnostic-card" aria-label={`Hand Position Prove-It ${currentIndex + 1} of ${queue.length}`}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <div className="diagnostic-step-pill">
-          Position {currentIndex + 1} of {queue.length} · Physical Hand Placement
+          Position {currentIndex + 1} of {queue.length}
         </div>
         {isStruggling && (
           <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ef6a47', backgroundColor: 'rgba(239, 106, 71, 0.12)', padding: '2px 8px', borderRadius: '12px' }}>
@@ -355,11 +355,11 @@ export function HandPositionProveItView({
         )}
       </div>
 
-      <h2 className="diagnostic-prompt" style={{ marginBottom: '0.4rem' }}>
-        Find <strong>{currentKey.name}</strong> Hand Position
+      <h2 className="diagnostic-prompt" style={{ marginBottom: '0.35rem' }}>
+        {currentKey.name} Hand Position
       </h2>
-      <p style={{ margin: '0 0 1rem', color: '#4b5563', fontSize: '0.95rem' }}>
-        Place your right hand over <strong>{currentKey.pattern.join(' - ')}</strong>. Play fingers <strong>1 · 3 · 5</strong> on your piano to prove it!
+      <p style={{ margin: '0 0 1.25rem', color: '#4b5563', fontSize: '1rem' }}>
+        Play fingers <strong>1, 3, 5</strong> on your piano.
       </p>
 
       {/* Sheet-music-free Piano Keyboard SVG (inside .diagnostic-score for audit compliance and zero overflow) */}
@@ -480,13 +480,15 @@ export function HandPositionProveItView({
         </svg>
       </div>
 
-      {/* Live Anchor Target Progress Cards */}
+      {/* Clean Anchor Target Progress Pills */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           gap: '12px',
-          marginBottom: '24px',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
         }}
       >
         {currentKey.anchors.map((anchor, i) => {
@@ -497,23 +499,36 @@ export function HandPositionProveItView({
             <div
               key={anchor.pitch}
               style={{
-                padding: '12px 10px',
-                borderRadius: '10px',
-                border: isDone ? '2px solid #10b981' : isCurrentTarget ? '2px solid #ef6a47' : '1px solid #e5e7eb',
-                backgroundColor: isDone ? '#f0fdf4' : isCurrentTarget ? 'rgba(239, 106, 71, 0.06)' : '#ffffff',
-                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 18px',
+                borderRadius: '999px',
+                border: isDone ? '2px solid #22c55e' : isCurrentTarget ? '2px solid #ef6a47' : '1px solid #e5e7eb',
+                backgroundColor: isDone ? '#f0fdf4' : isCurrentTarget ? '#fff7ed' : '#ffffff',
+                color: isDone ? '#15803d' : isCurrentTarget ? '#c2410c' : '#4b5563',
+                fontWeight: isCurrentTarget || isDone ? 700 : 500,
+                fontSize: '0.95rem',
                 transition: 'all 0.2s ease',
               }}
             >
-              <div style={{ fontSize: '0.8rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>
-                Finger {anchor.finger}
-              </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: isDone ? '#10b981' : '#1f2937', margin: '2px 0' }}>
-                {anchor.label}
-              </div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: anchor.isBlack ? '#ea580c' : '#6b7280' }}>
-                {anchor.isBlack ? '● Black Key' : '○ White Key'}
-              </div>
+              <span
+                style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  backgroundColor: isDone ? '#22c55e' : isCurrentTarget ? '#ef6a47' : '#e5e7eb',
+                  color: isDone || isCurrentTarget ? '#ffffff' : '#6b7280',
+                }}
+              >
+                {isDone ? '✓' : anchor.finger}
+              </span>
+              <span>{anchor.label}</span>
             </div>
           );
         })}
@@ -524,22 +539,17 @@ export function HandPositionProveItView({
         <div
           role="status"
           style={{
-            padding: '12px 16px',
+            padding: '10px 16px',
             borderRadius: '8px',
             backgroundColor: '#fff7ed',
             border: '1px solid #fdba74',
             color: '#9a3412',
-            fontSize: '0.9rem',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
+            fontSize: '0.875rem',
+            marginBottom: '16px',
+            textAlign: 'center',
           }}
         >
-          <span style={{ fontSize: '1.2rem' }}>💡</span>
-          <div>
-            <strong>Position Clue:</strong> {currentKey.tip}
-          </div>
+          <strong>Tip:</strong> {currentKey.tip}
         </div>
       )}
 
@@ -555,11 +565,11 @@ export function HandPositionProveItView({
             color: '#166534',
             fontSize: '1rem',
             fontWeight: 600,
-            marginBottom: '20px',
+            marginBottom: '16px',
             textAlign: 'center',
           }}
         >
-          ✓ {currentKey.name} Hand Position Locked!
+          {currentKey.name} Hand Position Locked!
         </div>
       )}
 
@@ -572,7 +582,7 @@ export function HandPositionProveItView({
           onClick={() => { void startProof(); }}
         >
           <span className="et-start__dot"><RecordDot /></span>
-          {starting ? 'Starting microphone…' : isListening ? `Listening for Finger ${currentKey.anchors[proofProgress]?.finger ?? 1} (${currentKey.anchors[proofProgress]?.label ?? ''})…` : 'Restart Position Proof'}
+          {starting ? 'Starting microphone…' : isListening ? 'Listening for piano…' : 'Restart Microphone'}
         </button>
       </div>
     </section>
