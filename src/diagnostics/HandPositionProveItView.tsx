@@ -180,7 +180,11 @@ export function HandPositionProveItView({
   const [queue, setQueue] = useState<HandPositionDrillKey[]>(initialQueue);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [struggledKeys, setStruggledKeys] = useState<Set<string>>(new Set());
-  const [showStruggleTip, setShowStruggleTip] = useState(false);
+  const isDevTest = typeof window !== 'undefined' && (
+    new URLSearchParams(window.location.search).get('dev') === 'diagnostics' ||
+    window.location.search.includes('showpiano')
+  );
+  const [showPiano, setShowPiano] = useState(isDevTest);
   const [proofProgress, setProofProgress] = useState<0 | 1 | 2 | 3>(0);
   const [isListening, setIsListening] = useState(false);
   const [successCelebration, setSuccessCelebration] = useState(false);
@@ -199,7 +203,7 @@ export function HandPositionProveItView({
     setTimeout(() => {
       setSuccessCelebration(false);
       setProofProgress(0);
-      setShowStruggleTip(false);
+      if (!isDevTest) setShowPiano(false);
       audioStartedRef.current = false;
 
       if (currentIndex + 1 >= queue.length) {
@@ -208,7 +212,7 @@ export function HandPositionProveItView({
         setCurrentIndex(prev => prev + 1);
       }
     }, 1400);
-  }, [currentIndex, queue.length]);
+  }, [currentIndex, queue.length, isDevTest]);
 
   const audio = useDrillAudio({
     onProofListenStart: () => {
@@ -255,11 +259,11 @@ export function HandPositionProveItView({
       setStarting(false);
     }
 
-    // Adaptive struggle timer: If user takes > 11 seconds on a key, surface tip & re-queue it
+    // Adaptive struggle timer: If user takes > 7.5 seconds on a key, show keyboard guide and re-queue
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      setShowPiano(true);
       setStruggledKeys(prev => new Set(prev).add(currentKey.id));
-      setShowStruggleTip(true);
 
       // Re-insert this struggled key 2 positions later in the queue (if not already done)
       setQueue(prevQueue => {
@@ -270,18 +274,19 @@ export function HandPositionProveItView({
         newQueue.splice(insertIdx, 0, currentKey);
         return newQueue;
       });
-    }, 11000);
+    }, 7500);
   }, [audio, currentKey, currentIndex]);
 
   // Auto-start listening when key changes
   useEffect(() => {
     if (!allDone && currentKey) {
+      if (!isDevTest) setShowPiano(false);
       void startProof();
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [currentIndex, currentKey?.id, allDone]);
+  }, [currentIndex, currentKey?.id, allDone, isDevTest]);
 
   // Handle clicking anchor or keys directly (for web audit / manual interaction)
   const onKeyClick = (pitch: string) => {
@@ -294,9 +299,9 @@ export function HandPositionProveItView({
         handleProofSuccess();
       }
     } else {
-      // Missed key: count as struggle
+      // Missed key: count as struggle and reveal piano guide
+      setShowPiano(true);
       setStruggledKeys(prev => new Set(prev).add(currentKey.id));
-      setShowStruggleTip(true);
       setQueue(prevQueue => {
         const alreadyRequeued = prevQueue.slice(currentIndex + 1).some(k => k.id === currentKey.id);
         if (alreadyRequeued) return prevQueue;
@@ -340,145 +345,208 @@ export function HandPositionProveItView({
   const blackKeyH = 82;
   const totalSvgWidth = WHITE_KEYS.length * whiteKeyW;
 
-  const isStruggling = struggledKeys.has(currentKey.id);
-
   return (
     <section className="diagnostic-card" aria-label={`Hand Position Prove-It ${currentIndex + 1} of ${queue.length}`}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
         <div className="diagnostic-step-pill">
           Position {currentIndex + 1} of {queue.length}
         </div>
-        {isStruggling && (
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ef6a47', backgroundColor: 'rgba(239, 106, 71, 0.12)', padding: '2px 8px', borderRadius: '12px' }}>
-            Reinforcement key
-          </span>
-        )}
       </div>
 
-      <h2 className="diagnostic-prompt" style={{ marginBottom: '0.35rem' }}>
+      <h2 className="diagnostic-prompt" style={{ marginBottom: '0.35rem', textAlign: 'center' }}>
         {currentKey.name} Hand Position
       </h2>
-      <p style={{ margin: '0 0 1.25rem', color: '#4b5563', fontSize: '1rem' }}>
+      <p style={{ margin: '0 0 1.5rem', color: '#4b5563', fontSize: '1.05rem', textAlign: 'center' }}>
         Play fingers <strong>1, 3, 5</strong> on your piano.
       </p>
 
-      {/* Sheet-music-free Piano Keyboard SVG (inside .diagnostic-score for audit compliance and zero overflow) */}
-      <div
-        className="diagnostic-score diagnostic-score--keyboard"
-        aria-label={`${currentKey.name} piano keyboard hand position`}
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '12px 8px',
-          background: '#fafaf9',
-          borderRadius: '12px',
-          border: '1px solid #e5e7eb',
-          marginBottom: '24px',
-        }}
-      >
-        <svg
-          viewBox={`0 0 ${totalSvgWidth} ${whiteKeyH}`}
-          style={{ width: '100%', maxWidth: `${totalSvgWidth}px`, height: 'auto', maxHeight: '135px', display: 'block' }}
-          role="img"
-          aria-label="Piano keyboard showing hand position"
+      {/* Sheet-music-free Piano Keyboard SVG (shown only after 7.5s struggle, or in dev audit) */}
+      {showPiano && (
+        <div
+          className="diagnostic-score diagnostic-score--keyboard"
+          aria-label={`${currentKey.name} piano keyboard hand position`}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '14px 8px',
+            background: '#fafaf9',
+            borderRadius: '14px',
+            border: '1.5px solid #fed7aa',
+            marginBottom: '20px',
+            boxShadow: '0 4px 12px rgba(234, 88, 12, 0.08)',
+          }}
         >
-          {/* White keys */}
-          {WHITE_KEYS.map((pitch, idx) => {
-            const isPatternKey = currentKey.pattern.includes(pitch);
-            const anchor = currentKey.anchors.find(a => a.pitch === pitch);
-            const anchorIdx = anchor ? currentKey.anchors.indexOf(anchor) : -1;
-            const isHeard = anchorIdx >= 0 && proofProgress > anchorIdx;
+          <svg
+            viewBox={`0 0 ${totalSvgWidth} ${whiteKeyH}`}
+            style={{ width: '100%', maxWidth: `${totalSvgWidth}px`, height: 'auto', maxHeight: '135px', display: 'block' }}
+            role="img"
+            aria-label="Piano keyboard showing hand position"
+          >
+            {/* White keys */}
+            {WHITE_KEYS.map((pitch, idx) => {
+              const isPatternKey = currentKey.pattern.includes(pitch);
+              const anchor = currentKey.anchors.find(a => a.pitch === pitch);
+              const anchorIdx = anchor ? currentKey.anchors.indexOf(anchor) : -1;
+              const isHeard = anchorIdx >= 0 && proofProgress > anchorIdx;
+              const isTarget = anchorIdx >= 0 && proofProgress === anchorIdx;
 
-            return (
-              <g key={pitch} onClick={() => onKeyClick(pitch)} style={{ cursor: 'pointer' }}>
-                <rect
-                  x={idx * whiteKeyW}
-                  y={0}
-                  width={whiteKeyW}
-                  height={whiteKeyH}
-                  fill={isHeard ? '#dcfce7' : isPatternKey ? 'rgba(239, 106, 71, 0.15)' : '#ffffff'}
-                  stroke="#242237"
-                  strokeWidth="1.5"
-                  rx="3"
-                  ry="3"
-                />
-                {/* Note name at bottom */}
-                <text
-                  x={idx * whiteKeyW + whiteKeyW / 2}
-                  y={whiteKeyH - 10}
-                  textAnchor="middle"
-                  fill="#4b5563"
-                  fontSize="11"
-                  fontWeight="600"
-                >
-                  {pitch.replace(/\d/, '')}
-                </text>
-                {/* Anchor finger badge */}
-                {anchor && (
-                  <g transform={`translate(${idx * whiteKeyW + whiteKeyW / 2}, ${whiteKeyH - 32})`}>
-                    <circle
-                      r="12"
-                      fill={isHeard ? '#10b981' : '#ef6a47'}
-                    />
-                    <text
-                      textAnchor="middle"
-                      dy="4"
-                      fill="#ffffff"
-                      fontSize="12"
-                      fontWeight="bold"
-                    >
-                      {isHeard ? '✓' : anchor.finger}
-                    </text>
-                  </g>
-                )}
-              </g>
-            );
-          })}
+              let keyFill = '#ffffff';
+              let keyStroke = '#242237';
+              let strokeW = 1.5;
 
-          {/* Black keys */}
-          {BLACK_KEYS.map(({ pitch, betweenWhiteIdx }) => {
-            const isPatternKey = currentKey.pattern.some(p => isKeyMatch(p, pitch));
-            const anchor = currentKey.anchors.find(a => isKeyMatch(a.pitch, pitch));
-            const anchorIdx = anchor ? currentKey.anchors.indexOf(anchor) : -1;
-            const isHeard = anchorIdx >= 0 && proofProgress > anchorIdx;
-            const bx = (betweenWhiteIdx + 1) * whiteKeyW - blackKeyW / 2;
+              if (isHeard) {
+                keyFill = '#dcfce7';
+                keyStroke = '#16a34a';
+                strokeW = 2;
+              } else if (isTarget) {
+                keyFill = '#ffedd5';
+                keyStroke = '#ea580c';
+                strokeW = 2.5;
+              } else if (anchor) {
+                keyFill = '#fff7ed';
+                keyStroke = '#fdba74';
+                strokeW = 1.5;
+              } else if (isPatternKey) {
+                keyFill = '#f8fafc';
+                keyStroke = '#cbd5e1';
+              }
 
-            return (
-              <g key={pitch} onClick={() => onKeyClick(pitch)} style={{ cursor: 'pointer' }}>
-                <rect
-                  x={bx}
-                  y={0}
-                  width={blackKeyW}
-                  height={blackKeyH}
-                  fill={isHeard ? '#15803d' : isPatternKey ? '#9a3412' : '#242237'}
-                  stroke="#111827"
-                  strokeWidth="1"
-                  rx="2"
-                  ry="2"
-                />
-                {anchor && (
-                  <g transform={`translate(${bx + blackKeyW / 2}, ${blackKeyH - 18})`}>
-                    <circle
-                      r="10"
-                      fill={isHeard ? '#10b981' : '#ef6a47'}
-                    />
-                    <text
-                      textAnchor="middle"
-                      dy="3.5"
-                      fill="#ffffff"
-                      fontSize="10"
-                      fontWeight="bold"
-                    >
-                      {isHeard ? '✓' : anchor.finger}
-                    </text>
-                  </g>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
+              return (
+                <g key={pitch} onClick={() => onKeyClick(pitch)} style={{ cursor: 'pointer' }}>
+                  <rect
+                    x={idx * whiteKeyW}
+                    y={0}
+                    width={whiteKeyW}
+                    height={whiteKeyH}
+                    fill={keyFill}
+                    stroke={keyStroke}
+                    strokeWidth={strokeW}
+                    rx="3"
+                    ry="3"
+                  />
+                  {/* Note name at bottom */}
+                  <text
+                    x={idx * whiteKeyW + whiteKeyW / 2}
+                    y={whiteKeyH - 10}
+                    textAnchor="middle"
+                    fill={isTarget ? '#ea580c' : isHeard ? '#16a34a' : isPatternKey ? '#1e293b' : '#94a3b8'}
+                    fontSize={isTarget ? '12' : '11'}
+                    fontWeight={isTarget || isHeard ? 'bold' : '600'}
+                  >
+                    {pitch.replace(/\d/, '')}
+                  </text>
+                  {/* Anchor finger badge */}
+                  {anchor && (
+                    <g transform={`translate(${idx * whiteKeyW + whiteKeyW / 2}, ${whiteKeyH - 34})`}>
+                      {isTarget && (
+                        <circle
+                          r="16"
+                          fill="none"
+                          stroke="#ea580c"
+                          strokeWidth="2"
+                          strokeDasharray="3 2"
+                          opacity="0.8"
+                        />
+                      )}
+                      <circle
+                        r={isTarget ? 13 : 11}
+                        fill={isHeard ? '#16a34a' : isTarget ? '#ea580c' : '#fdba74'}
+                        stroke={isTarget ? '#ffffff' : 'none'}
+                        strokeWidth={isTarget ? 2 : 0}
+                      />
+                      <text
+                        textAnchor="middle"
+                        dy={isTarget ? 4.5 : 4}
+                        fill="#ffffff"
+                        fontSize={isTarget ? 12 : 11}
+                        fontWeight="bold"
+                      >
+                        {isHeard ? '✓' : anchor.finger}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Black keys */}
+            {BLACK_KEYS.map(({ pitch, betweenWhiteIdx }) => {
+              const isPatternKey = currentKey.pattern.some(p => isKeyMatch(p, pitch));
+              const anchor = currentKey.anchors.find(a => isKeyMatch(a.pitch, pitch));
+              const anchorIdx = anchor ? currentKey.anchors.indexOf(anchor) : -1;
+              const isHeard = anchorIdx >= 0 && proofProgress > anchorIdx;
+              const isTarget = anchorIdx >= 0 && proofProgress === anchorIdx;
+              const bx = (betweenWhiteIdx + 1) * whiteKeyW - blackKeyW / 2;
+
+              let keyFill = '#1e293b';
+              let keyStroke = '#0f172a';
+              let strokeW = 1;
+
+              if (isHeard) {
+                keyFill = '#15803d';
+                keyStroke = '#86efac';
+                strokeW = 2;
+              } else if (isTarget) {
+                keyFill = '#ea580c';
+                keyStroke = '#ffffff';
+                strokeW = 2;
+              } else if (anchor) {
+                keyFill = '#7c2d12';
+                keyStroke = '#ea580c';
+                strokeW = 1.5;
+              } else if (isPatternKey) {
+                keyFill = '#334155';
+                keyStroke = '#475569';
+              }
+
+              return (
+                <g key={pitch} onClick={() => onKeyClick(pitch)} style={{ cursor: 'pointer' }}>
+                  <rect
+                    x={bx}
+                    y={0}
+                    width={blackKeyW}
+                    height={blackKeyH}
+                    fill={keyFill}
+                    stroke={keyStroke}
+                    strokeWidth={strokeW}
+                    rx="3"
+                    ry="3"
+                  />
+                  {anchor && (
+                    <g transform={`translate(${bx + blackKeyW / 2}, ${blackKeyH - 18})`}>
+                      {isTarget && (
+                        <circle
+                          r="13"
+                          fill="none"
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                          strokeDasharray="2 2"
+                          opacity="0.9"
+                        />
+                      )}
+                      <circle
+                        r={isTarget ? 10 : 9}
+                        fill={isHeard ? '#22c55e' : isTarget ? '#ffffff' : '#ea580c'}
+                      />
+                      <text
+                        textAnchor="middle"
+                        dy={3.5}
+                        fill={isTarget ? '#ea580c' : '#ffffff'}
+                        fontSize={isTarget ? 11 : 10}
+                        fontWeight="bold"
+                      >
+                        {isHeard ? '✓' : anchor.finger}
+                      </text>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      )}
 
       {/* Clean Anchor Target Progress Pills */}
       <div
@@ -533,25 +601,6 @@ export function HandPositionProveItView({
           );
         })}
       </div>
-
-      {/* Adaptive Struggle Clue Card */}
-      {showStruggleTip && (
-        <div
-          role="status"
-          style={{
-            padding: '10px 16px',
-            borderRadius: '8px',
-            backgroundColor: '#fff7ed',
-            border: '1px solid #fdba74',
-            color: '#9a3412',
-            fontSize: '0.875rem',
-            marginBottom: '16px',
-            textAlign: 'center',
-          }}
-        >
-          <strong>Tip:</strong> {currentKey.tip}
-        </div>
-      )}
 
       {/* Success Banner */}
       {successCelebration && (

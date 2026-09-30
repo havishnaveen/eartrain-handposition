@@ -13,6 +13,16 @@ const server = await createServer({
 const { PROGRESSIVE_CONCEPTS } = await server.ssrLoadModule('/src/curriculum/progressiveCurriculum.ts');
 await server.close();
 
+let liveServer = null;
+const isLive = await fetch(`${base}/visual-audit.html?lesson=1&slot=1`).then(r => r.ok).catch(() => false);
+if (!isLive) {
+  liveServer = await createServer({
+    server: { port: 5187, host: '127.0.0.1' },
+    logLevel: 'silent',
+  });
+  await liveServer.listen();
+}
+
 const browser = await puppeteer.launch({ headless: true });
 const page = await browser.newPage();
 await page.setViewport({ width: 1024, height: 800 });
@@ -62,6 +72,7 @@ for (const lesson of PROGRESSIVE_CONCEPTS) {
 }
 
 await browser.close();
+if (liveServer) await liveServer.close();
 
 console.log(`Audited ${totalChecks} curriculum drills.`);
 if (violations.length > 0) {
