@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { DiagnosticKey } from './registry';
 import { useDrillAudio } from '../audio/useDrillAudio';
+import StaffCue from '../components/StaffCue';
+import type { CueSpec } from '../curriculum/types';
 
 const RecordDot = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -158,6 +160,11 @@ function isKeyMatch(pitchA: string, pitchB: string): boolean {
   return enharmonics[pitchA] === pitchB;
 }
 
+function proofPitchToStaffKey(pitch: string): string {
+  const match = /^([A-G])([#b]?)(-?\d+)$/.exec(pitch);
+  return match ? `${match[1].toLowerCase()}${match[2]}/${match[3]}` : 'c/4';
+}
+
 export function HandPositionProveItView({
   selectedKey,
   onStandard,
@@ -180,11 +187,10 @@ export function HandPositionProveItView({
   const [queue, setQueue] = useState<HandPositionDrillKey[]>(initialQueue);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [struggledKeys, setStruggledKeys] = useState<Set<string>>(new Set());
-  const isDevTest = typeof window !== 'undefined' && (
-    new URLSearchParams(window.location.search).get('dev') === 'diagnostics' ||
-    window.location.search.includes('showpiano')
+  const [showPiano, setShowPiano] = useState(
+    typeof window !== 'undefined' && window.location.search.includes('showpiano')
   );
-  const [showPiano, setShowPiano] = useState(isDevTest);
+  const [hasStarted, setHasStarted] = useState(false);
   const [proofProgress, setProofProgress] = useState<0 | 1 | 2 | 3>(0);
   const [isListening, setIsListening] = useState(false);
   const [successCelebration, setSuccessCelebration] = useState(false);
@@ -203,7 +209,9 @@ export function HandPositionProveItView({
     setTimeout(() => {
       setSuccessCelebration(false);
       setProofProgress(0);
-      if (!isDevTest) setShowPiano(false);
+      setShowPiano(false);
+      setHasStarted(false);
+      setIsListening(false);
       audioStartedRef.current = false;
 
       if (currentIndex + 1 >= queue.length) {
@@ -212,7 +220,7 @@ export function HandPositionProveItView({
         setCurrentIndex(prev => prev + 1);
       }
     }, 1400);
-  }, [currentIndex, queue.length, isDevTest]);
+  }, [currentIndex, queue.length]);
 
   const audio = useDrillAudio({
     onProofListenStart: () => {
@@ -259,7 +267,7 @@ export function HandPositionProveItView({
       setStarting(false);
     }
 
-    // Adaptive struggle timer: If user takes > 7.5 seconds on a key, show keyboard guide and re-queue
+    // Adaptive struggle timer: If user takes > 10 seconds on a key, show keyboard guide and re-queue
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setShowPiano(true);
@@ -274,19 +282,44 @@ export function HandPositionProveItView({
         newQueue.splice(insertIdx, 0, currentKey);
         return newQueue;
       });
-    }, 7500);
+    }, 10000);
   }, [audio, currentKey, currentIndex]);
 
-  // Auto-start listening when key changes
+  // Reset proof state and timer when key changes (do NOT auto-start listening; wait for Start button)
   useEffect(() => {
-    if (!allDone && currentKey) {
-      if (!isDevTest) setShowPiano(false);
-      void startProof();
+    setHasStarted(false);
+    setShowPiano(typeof window !== 'undefined' && window.location.search.includes('showpiano'));
+    setProofProgress(0);
+    setIsListening(false);
+    audioStartedRef.current = false;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [currentIndex, currentKey?.id, allDone, isDevTest]);
+  }, [currentIndex, currentKey?.id]);
+
+  const currentCue: CueSpec = useMemo(() => ({
+    showTimeSignature: false,
+    timeSignature: '3/4',
+    staves: [{
+      clef: currentKey.hand === 'left' ? 'bass' : 'treble',
+      hand: currentKey.hand,
+      notes: currentKey.anchors.map((anchor, idx) => ({
+        keys: [proofPitchToStaffKey(anchor.pitch)],
+        duration: 'q',
+        finger: anchor.finger,
+        anchor: hasStarted && proofProgress === idx,
+      })),
+    }],
+  }), [currentKey, hasStarted, proofProgress]);
+
+  const successPitches = useMemo(() => {
+    if (!hasStarted || proofProgress === 0) return [];
+    return currentKey.anchors.slice(0, proofProgress).map(a => a.pitch);
+  }, [currentKey, hasStarted, proofProgress]);
 
   // Handle clicking anchor or keys directly (for web audit / manual interaction)
   const onKeyClick = (pitch: string) => {
@@ -356,14 +389,42 @@ export function HandPositionProveItView({
       <h2 className="diagnostic-prompt" style={{ marginBottom: '0.35rem', textAlign: 'center' }}>
         {currentKey.name} Hand Position
       </h2>
-      <p style={{ margin: '0 0 1.5rem', color: '#4b5563', fontSize: '1.05rem', textAlign: 'center' }}>
+      <p style={{ margin: '0 0 1.25rem', color: '#4b5563', fontSize: '1.05rem', textAlign: 'center' }}>
         Play fingers <strong>1, 3, 5</strong> on your piano.
       </p>
 
-      {/* Sheet-music-free Piano Keyboard SVG (shown only after 7.5s struggle, or in dev audit) */}
+      {/* Sheet Music Score - always displayed */}
+      <div
+        className="diagnostic-score"
+        aria-label={`${currentKey.name} sheet music`}
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '140px',
+          padding: '12px 16px',
+          background: '#fafaf9',
+          borderRadius: '14px',
+          border: '1.5px solid #e7e5e4',
+          marginBottom: '20px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+        }}
+      >
+        <StaffCue
+          cue={currentCue}
+          notationScale={2.2}
+          compact
+          accentColor="#ea580c"
+          inkColor="#242237"
+          successColor="#16a34a"
+          successPitches={successPitches}
+        />
+      </div>
+
+      {/* Piano Keyboard Guide (shown only after 10s struggle or key miss) */}
       {showPiano && (
         <div
-          className="diagnostic-score diagnostic-score--keyboard"
+          className="diagnostic-keyboard-guide"
           aria-label={`${currentKey.name} piano keyboard hand position`}
           style={{
             display: 'flex',
@@ -628,10 +689,21 @@ export function HandPositionProveItView({
           type="button"
           className="et-start"
           disabled={starting || successCelebration}
-          onClick={() => { void startProof(); }}
+          onClick={() => {
+            if (!hasStarted) {
+              setHasStarted(true);
+            }
+            void startProof();
+          }}
         >
           <span className="et-start__dot"><RecordDot /></span>
-          {starting ? 'Starting microphone…' : isListening ? 'Listening for piano…' : 'Restart Microphone'}
+          {!hasStarted
+            ? 'Start'
+            : starting
+            ? 'Starting microphone…'
+            : isListening
+            ? 'Listening for piano…'
+            : 'Restart Microphone'}
         </button>
       </div>
     </section>
