@@ -1305,6 +1305,10 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
   const correct = choice === lesson.mcq.correct;
   const isExhausted = wrongAttempts >= 2;
   const isClefLesson = Boolean(lesson.question.conceptId.includes('clef'));
+  const isOctaveLesson = Boolean(lesson.question.conceptId.includes('octave'));
+  const isAccidentalLesson = Boolean(lesson.question.conceptId.includes('accidental'));
+  const isCrossingLesson = Boolean(lesson.question.conceptId.includes('cross'));
+  const isHandPositionLesson = Boolean(lesson.question.conceptId.includes('hand-position'));
 
   const onSelectChoice = (i: number) => {
     setChoice(i);
@@ -1330,9 +1334,17 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
     }
   };
 
-  const retryHint = isClefLesson
-    ? 'Try again. Was the music played in the right clef?'
-    : 'Try again.';
+  const retryHint = isOctaveLesson
+    ? "That's not quite it. Were they playing in the right octave?"
+    : isClefLesson
+    ? "That's not quite it. Was the music played in the right clef?"
+    : isAccidentalLesson
+    ? "That's not quite it. Did the sharp carry through the full measure?"
+    : isCrossingLesson
+    ? "That's not quite it. How does the thumb glide to reach Note 4?"
+    : isHandPositionLesson
+    ? "That's not quite it. Check which keys each finger rests on."
+    : "That's not quite it. Check the sheet music and try again.";
 
   return (
     <section className="diagnostic-card" aria-label="Discover the clue">
@@ -1343,7 +1355,7 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
           <button
             key={answer}
             type="button"
-            disabled={correct || isExhausted}
+            disabled={choice !== null}
             aria-pressed={choice === i}
             onClick={() => onSelectChoice(i)}
           >
@@ -1377,9 +1389,17 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
             </button>
           </div>
         ) : (
-          <div className="diagnostic-concept-feedback diagnostic-concept-feedback--retry" role="status">
-            <span className="diagnostic-concept-badge diagnostic-concept-badge--retry">Try Again</span>
-            <p className="diagnostic-concept-hint">{retryHint}</p>
+          <div className="diagnostic-concept-feedback diagnostic-concept-feedback--exhausted" role="status">
+            <span className="diagnostic-concept-badge diagnostic-concept-badge--incorrect">Incorrect</span>
+            <p className="diagnostic-concept-hint" style={{ color: '#9a3412' }}>{retryHint}</p>
+            <button
+              type="button"
+              className="et-start diagnostic-concept-btn"
+              onClick={() => setChoice(null)}
+            >
+              <span className="et-start__dot"><RecordDot /></span>
+              Try question again
+            </button>
           </div>
         )
       )}
