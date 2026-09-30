@@ -311,15 +311,15 @@ export function HandPositionProveItView({
         keys: [proofPitchToStaffKey(anchor.pitch)],
         duration: 'q',
         finger: anchor.finger,
-        anchor: hasStarted && proofProgress === idx,
+        anchor: proofProgress === idx,
       })),
     }],
-  }), [currentKey, hasStarted, proofProgress]);
+  }), [currentKey, proofProgress]);
 
   const successPitches = useMemo(() => {
-    if (!hasStarted || proofProgress === 0) return [];
+    if (proofProgress === 0) return [];
     return currentKey.anchors.slice(0, proofProgress).map(a => a.pitch);
-  }, [currentKey, hasStarted, proofProgress]);
+  }, [currentKey, proofProgress]);
 
   // Handle clicking anchor or keys directly (for web audit / manual interaction)
   const onKeyClick = (pitch: string) => {
@@ -418,6 +418,7 @@ export function HandPositionProveItView({
           inkColor="#242237"
           successColor="#16a34a"
           successPitches={successPitches}
+          highlightNoteIndex={proofProgress < currentKey.anchors.length ? proofProgress : undefined}
         />
       </div>
 

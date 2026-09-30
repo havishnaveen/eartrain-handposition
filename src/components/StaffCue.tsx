@@ -47,6 +47,8 @@ export interface StaffCueProps {
   noteGlyphScale?: number;
   /** Zooms the complete engraving—staff, clef, notes, and annotations—together. */
   notationScale?: number;
+  /** Index of note in the cue that should have a focus circle / highlight halo. */
+  highlightNoteIndex?: number;
 }
 
 export interface StaffCueHandle {
@@ -464,6 +466,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
     minimumTimelineBeats = 0,
     compact = false,
     notationScale = 1,
+    highlightNoteIndex,
   },
   ref,
 ) {
@@ -741,6 +744,42 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
         }
       }
 
+      if (highlightNoteIndex !== undefined) {
+        const noteheads = Array.from(svg.querySelectorAll('.vf-notehead'));
+        const targetHead = noteheads[highlightNoteIndex] || noteheads.find((nh) => {
+          const fill = nh.getAttribute('fill') || nh.querySelector('path')?.getAttribute('fill') || '';
+          return fill.toLowerCase() === accentColor.toLowerCase();
+        });
+        if (targetHead) {
+          try {
+            const path = targetHead.querySelector('path') || targetHead;
+            const nb = (path as SVGGraphicsElement).getBBox();
+            if (nb.width > 0 && nb.height > 0) {
+              const centerX = nb.x + nb.width / 2;
+              const centerY = nb.y + nb.height / 2;
+              const radius = Math.max(nb.width, nb.height) / 2 + 8;
+              const halo = document.createElementNS(SVG_NS, 'circle');
+              halo.setAttribute('cx', String(centerX));
+              halo.setAttribute('cy', String(centerY));
+              halo.setAttribute('r', String(radius));
+              halo.setAttribute('fill', 'rgba(239, 106, 71, 0.22)');
+              halo.setAttribute('stroke', accentColor || '#ef6a47');
+              halo.setAttribute('stroke-width', '2.5');
+              halo.setAttribute('class', 'diagnostic-note-halo');
+              targetHead.parentElement?.insertBefore(halo, targetHead);
+
+              const noteText = targetHead.parentElement?.querySelector('text');
+              if (noteText) {
+                noteText.setAttribute('fill', accentColor || '#ef6a47');
+                noteText.setAttribute('font-weight', 'bold');
+              }
+            }
+          } catch {
+            // getBBox fallback
+          }
+        }
+      }
+
       // Apply the crop computed above (before the scrubber/shift-overlay
       // elements were appended, so their own geometry never fed back into
       // it). The viewBox stays the FULL measured content — it must never be
@@ -797,7 +836,7 @@ export const StaffCue = forwardRef<StaffCueHandle, StaffCueProps>(function Staff
       lineRef.current = null;
       trailRef.current = null;
     };
-  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats, resolvedNotationScale]);
+  }, [cue, accentColor, compact, inkColor, successPitchKey, successColor, shiftMarker, minimumTimelineBeats, resolvedNotationScale, highlightNoteIndex]);
 
   const engraving = (
     <div

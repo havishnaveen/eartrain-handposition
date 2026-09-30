@@ -150,3 +150,13 @@
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+@keyframes noteHaloPulse {
+  0%, 100% { opacity: 0.95; stroke-width: 2.5px; }
+  50% { opacity: 0.4; stroke-width: 3.5px; }
+}
+
+.diagnostic-note-halo {
+  animation: noteHaloPulse 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
