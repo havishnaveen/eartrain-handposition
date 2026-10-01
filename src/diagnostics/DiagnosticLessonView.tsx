@@ -958,11 +958,9 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
         <div className="diagnostic-video-ab-row" aria-label="Video recordings comparison">
           <div className={`diagnostic-video-ab-card ${playingVideo === 'A' ? 'is-playing' : ''}`}>
             <div className="diagnostic-video-ab-header">
-              <span className="diagnostic-ab-tag">Option A</span>
               <span className="diagnostic-video-ab-label">{currentRound.videoClipA!.label}</span>
-              <span className="diagnostic-sound-indicator" title="Audio unmuted">🔊 Sound On</span>
             </div>
-            <div className="diagnostic-video-frame-wrap">
+            <div className="diagnostic-video-frame-wrap" onClick={() => playVideoClip('A')} style={{ cursor: 'pointer' }}>
               <video
                 ref={videoRefA}
                 className="diagnostic-ab-video"
@@ -971,6 +969,8 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
                 playsInline
                 preload="metadata"
                 controls
+                controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
+                disablePictureInPicture
                 onPlay={() => {
                   if (videoRefB.current) videoRefB.current.pause();
                   if (videoRefA.current) videoRefA.current.muted = false;
@@ -991,17 +991,15 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
               onClick={() => playVideoClip('A')}
             >
               <span className="et-start__dot"><RecordDot /></span>
-              <span>{playingVideo === 'A' ? 'Playing Recording A…' : heardVideoA ? 'Replay Recording A' : `Play ${currentRound.videoClipA!.label}`}</span>
+              <span>{playingVideo === 'A' ? `Playing ${currentRound.videoClipA!.label}…` : heardVideoA ? `Replay ${currentRound.videoClipA!.label}` : `Play ${currentRound.videoClipA!.label}`}</span>
             </button>
           </div>
 
           <div className={`diagnostic-video-ab-card ${playingVideo === 'B' ? 'is-playing' : ''}`}>
             <div className="diagnostic-video-ab-header">
-              <span className="diagnostic-ab-tag">Option B</span>
               <span className="diagnostic-video-ab-label">{currentRound.videoClipB!.label}</span>
-              <span className="diagnostic-sound-indicator" title="Audio unmuted">🔊 Sound On</span>
             </div>
-            <div className="diagnostic-video-frame-wrap">
+            <div className="diagnostic-video-frame-wrap" onClick={() => playVideoClip('B')} style={{ cursor: 'pointer' }}>
               <video
                 ref={videoRefB}
                 className="diagnostic-ab-video"
@@ -1010,6 +1008,8 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
                 playsInline
                 preload="metadata"
                 controls
+                controlsList="nodownload nofullscreen noremoteplayback noplaybackrate"
+                disablePictureInPicture
                 onPlay={() => {
                   if (videoRefA.current) videoRefA.current.pause();
                   if (videoRefB.current) videoRefB.current.muted = false;
@@ -1030,7 +1030,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
               onClick={() => playVideoClip('B')}
             >
               <span className="et-start__dot"><RecordDot /></span>
-              <span>{playingVideo === 'B' ? 'Playing Recording B…' : heardVideoB ? 'Replay Recording B' : `Play ${currentRound.videoClipB!.label}`}</span>
+              <span>{playingVideo === 'B' ? `Playing ${currentRound.videoClipB!.label}…` : heardVideoB ? `Replay ${currentRound.videoClipB!.label}` : `Play ${currentRound.videoClipB!.label}`}</span>
             </button>
           </div>
         </div>

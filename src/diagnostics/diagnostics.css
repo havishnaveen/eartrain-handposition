@@ -358,7 +358,7 @@
 .diagnostic-video-ab-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
   padding: 0 4px;
   box-sizing: border-box;
@@ -368,19 +368,7 @@
   font-size: 15px;
   font-weight: 700;
   color: #1e293b;
-}
-
-.diagnostic-sound-indicator {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: #ecfdf5;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  text-align: center;
 }
 
 .diagnostic-video-frame-wrap {
@@ -400,6 +388,22 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* Make native video controls much less prominent */
+.diagnostic-ab-video::-webkit-media-controls-fullscreen-button,
+.diagnostic-ab-video::-webkit-media-controls-picture-in-picture-button,
+.diagnostic-ab-video::-webkit-media-controls-overflow-button {
+  display: none !important;
+}
+
+.diagnostic-ab-video::-webkit-media-controls-panel {
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.diagnostic-ab-video:hover::-webkit-media-controls-panel {
+  opacity: 0.95;
 }
 
 :root[data-theme='dark'] .diagnostic-video-ab-card {

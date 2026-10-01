@@ -690,17 +690,17 @@ function crossing(): DiagnosticLesson {
     {
       title: 'Finger Numbers & Movement',
       prompt: 'In which of the following recordings did the person play the finger numbers correctly?',
-      choices: ['Recording A', 'Recording B'],
+      choices: ['Option 1', 'Option 2'],
       correct: 0,
-      explanation: 'Recording A tucked the thumb smoothly under finger 3 to play all finger numbers correctly.',
+      explanation: 'Option 1 tucked the thumb smoothly under finger 3 to play all finger numbers correctly.',
       highlightNoteIndex: 3,
       videoClipA: {
-        label: 'Recording A',
+        label: 'Option 1',
         src: '/videos/finger-tuck-correct.mp4',
         poster: '/videos/finger-tuck-correct.webp',
       },
       videoClipB: {
-        label: 'Recording B',
+        label: 'Option 2',
         src: '/videos/finger-tuck-wrong-jump.mp4',
         poster: '/videos/finger-tuck-wrong-jump.webp',
       },
