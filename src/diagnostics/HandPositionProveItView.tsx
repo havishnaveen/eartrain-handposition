@@ -380,12 +380,6 @@ export function HandPositionProveItView({
 
   return (
     <section className="diagnostic-card" aria-label={`Hand Position Prove-It ${currentIndex + 1} of ${queue.length}`}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
-        <div className="diagnostic-step-pill">
-          Position {currentIndex + 1} of {queue.length}
-        </div>
-      </div>
-
       <h2 className="diagnostic-prompt" style={{ marginBottom: '0.35rem', textAlign: 'center' }}>
         {currentKey.name} Hand Position
       </h2>
