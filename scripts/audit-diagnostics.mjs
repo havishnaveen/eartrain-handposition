@@ -9,7 +9,7 @@ try {
   const { parseLaunch } = await server.ssrLoadModule('/src/integration/oclefBridge.ts');
   const { gradeSequence, pitchToMidi, planForQuestion } = await server.ssrLoadModule('/src/audio/timing.ts');
   const { passesDiagnosticDrill, isClefTranspositionMistake } = await server.ssrLoadModule('/src/diagnostics/AcousticDrill.tsx');
-  assert.equal(DIAGNOSTIC_REGISTRY.length, 6);
+  assert.equal(DIAGNOSTIC_REGISTRY.length, 7);
   assert.equal(DIAGNOSTIC_KEYS.length, 24);
   assert.equal(new Set(DIAGNOSTIC_KEYS.map(k => k.id)).size, 24);
   for (const key of DIAGNOSTIC_KEYS) {
@@ -109,6 +109,12 @@ try {
   assert.match(diagnosticMusicXML(octave.question, octave.notation), /<octave>5<\/octave>/);
   const clef = DIAGNOSTIC_REGISTRY.find(d => d.id === 'mid-line-clef-change').create(DIAGNOSTIC_KEYS[0]);
   assert.match(diagnosticMusicXML(clef.question, clef.notation), /<\/note><attributes><clef><sign>G/);
+  const keySig = DIAGNOSTIC_REGISTRY.find(d => d.id === 'key-signature').create(DIAGNOSTIC_KEYS[0]);
+  assert.equal(keySig.notation.fifths, 1);
+  const keySigXml = diagnosticMusicXML(keySig.question, keySig.notation);
+  assert.match(keySigXml, /<fifths>1<\/fifths>/);
+  assert.equal((keySigXml.match(/<accidental>/g) ?? []).length, 0, 'Key signature notes must not reprint accidental signs');
+  assert.equal((keySigXml.match(/<alter>1<\/alter>/g) ?? []).length, 2, 'Both F notes in the two measures sound sharp');
 
   // Clef transposition 40%+ threshold verification:
   const bassSeq = ['C3', 'E3', 'G3', 'A3'];
@@ -178,5 +184,5 @@ try {
   assert.ok(freezeGrade.scores.continuity < 3.0,
     `Long freeze (>4 beats) must fail continuity (<3.0): ${freezeGrade.scores.continuity}`);
 
-  console.log('Diagnostic audit passed: six problems, 24 keys, continuity grading (smooth, pauses, stumbles, freeze), 40%+ clef threshold and transfer gates.');
+  console.log('Diagnostic audit passed: seven problems, 24 keys, continuity grading (smooth, pauses, stumbles, freeze), 40%+ clef threshold and transfer gates.');
 } finally { await server.close(); }

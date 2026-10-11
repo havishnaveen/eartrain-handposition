@@ -38,6 +38,8 @@ export default function DiagnosticTip({ lesson }: { lesson: DiagnosticLesson }) 
         <div className="diagnostic-metaphor" aria-hidden="true">
           {kind === 'barline' ? (
             <><span>♯ C … C</span><b>┃</b><span>♮ C</span></>
+          ) : kind === 'key-signature' ? (
+            <><span>𝄞 ♯</span><b>→</b><span>Measure 1, 2… All F = F♯</span></>
           ) : (
             <><span>𝄢</span><b>→</b><span>𝄞</span></>
           )}

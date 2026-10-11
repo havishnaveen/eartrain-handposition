@@ -1311,6 +1311,7 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
   const isClefLesson = Boolean(lesson.question.conceptId.includes('clef'));
   const isOctaveLesson = Boolean(lesson.question.conceptId.includes('octave'));
   const isAccidentalLesson = Boolean(lesson.question.conceptId.includes('accidental'));
+  const isKeySignatureLesson = Boolean(lesson.question.conceptId.includes('key-signature'));
   const isCrossingLesson = Boolean(lesson.question.conceptId.includes('cross'));
   const isHandPositionLesson = Boolean(lesson.question.conceptId.includes('hand-position'));
 
@@ -1342,6 +1343,8 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
     ? "That's not quite it. Were they playing in the right octave?"
     : isClefLesson
     ? "That's not quite it. Was the music played in the right clef?"
+    : isKeySignatureLesson
+    ? "That's not quite it. Does the key signature apply to all matching notes throughout the entire piece?"
     : isAccidentalLesson
     ? "That's not quite it. Did the sharp carry through the full measure?"
     : isCrossingLesson

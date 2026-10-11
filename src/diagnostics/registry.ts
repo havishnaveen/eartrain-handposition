@@ -107,7 +107,7 @@ export interface DiagnosticLesson {
   hesitationBefore?: number;
   explanation: string;
   mcq: { prompt: string; choices: readonly string[]; correct: number; explanation: string };
-  tip: { kind: 'clef' | 'octave' | 'barline' | 'keyboard' | 'clef-change' | 'crossing'; text: string };
+  tip: { kind: 'clef' | 'octave' | 'barline' | 'keyboard' | 'clef-change' | 'crossing' | 'key-signature'; text: string };
   key?: DiagnosticKey;
   wrongClefRounds?: readonly WrongClefRound[];
   listenRounds?: readonly WrongClefRound[];
@@ -740,8 +740,156 @@ function crossing(): DiagnosticLesson {
   return lesson;
 }
 
+function keySignature(): DiagnosticLesson {
+  const practicePitches = ['D4', 'E4', 'F#4', 'G4', 'A4', 'G4', 'F#4', 'G4'];
+  const mistakePitches = ['D4', 'E4', 'F4', 'G4', 'A4', 'G4', 'F4', 'G4'];
+  const transferPitches = ['G4', 'A4', 'G4', 'F#4', 'E4', 'D4', 'F#4', 'G4'];
+
+  const lesson = base('key-signature', 'Key Signature Reading', practicePitches, transferPitches, mistakePitches);
+  lesson.notation.fifths = 1;
+  lesson.transferNotation.fifths = 1;
+  lesson.explanation = 'The key signature sharp on F applies to every F throughout the entire piece.';
+  lesson.correctFeedback = 'Missed key signature: Played F natural instead of F# in the phrase.';
+
+  lesson.interactiveRounds = [
+    {
+      title: 'Spot the Key Signature',
+      prompt: 'Look at the beginning of the staff right after the clef. What does the sharp symbol tell you?',
+      choices: [
+        'Every F is sharp (F#) throughout the whole piece',
+        'Only the very first note of the piece is sharp',
+        'Play only white keys in this piece',
+      ],
+      correct: 0,
+      explanation: 'The sharp on the F line at the start means EVERY F in this piece must be played as F#, unless marked with a natural sign.',
+      highlightNoteIndex: 2,
+      featureCheck: {
+        prompt: 'Where is the key signature located in sheet music?',
+        choices: [
+          'At the start of the staff, right after the clef',
+          'Directly under each individual note',
+        ],
+        correct: 0,
+        explanation: 'Key signatures are placed at the start of the staff so composers do not need to print sharps on every single note.',
+        followUpCheck: {
+          prompt: 'How long does a key signature stay in effect?',
+          choices: [
+            'Throughout the entire piece (every measure)',
+            'Only in Measure 1 until the first barline',
+          ],
+          correct: 0,
+          explanation: 'Unlike temporary accidentals, key signatures apply continuously across every measure from start to finish.',
+        },
+      },
+    },
+    {
+      title: 'Reading Later in the Piece',
+      prompt: 'Look at Note 7 in Measure 2. There is no sharp symbol printed next to it. Which note must you play?',
+      choices: [
+        'F# — the key signature still applies here',
+        'F natural — because there is no sharp sign next to this note',
+      ],
+      correct: 0,
+      explanation: 'Even though there is no sharp symbol on Note 7, the key signature at the start applies throughout the entire piece! Play F#.',
+      highlightNoteIndex: 6,
+      featureCheck: {
+        prompt: 'Why isn\'t a sharp sign drawn next to Note 7?',
+        choices: [
+          'The key signature at the start already sets all Fs as sharp',
+          'The composer forgot to draw it',
+        ],
+        correct: 0,
+        explanation: 'Standard notation never reprints accidentals that are already covered by the key signature.',
+        followUpCheck: {
+          prompt: 'When would an F in this piece ever be played as F natural?',
+          choices: [
+            'Only if an explicit natural sign (♮) cancels it',
+            'Whenever crossing a barline into Measure 2',
+          ],
+          correct: 0,
+          explanation: 'A key signature note is only played natural if a natural sign (♮) explicitly cancels it.',
+        },
+      },
+    },
+    {
+      title: 'Listen for the Key Signature',
+      prompt: 'Listen to both recordings. Which recording remembered the key signature on every F throughout the phrase?',
+      choices: ['Clip A', 'Clip B'],
+      correct: 0,
+      explanation: 'Clip A played F# correctly on both Note 3 and Note 7. Clip B slipped and played F natural because there was no sharp sign next to Note 7.',
+      highlightNoteIndex: 6,
+      audioClipA: {
+        label: 'Clip A (F# remembered)',
+        pitches: practicePitches,
+      },
+      audioClipB: {
+        label: 'Clip B (slipped to F natural)',
+        pitches: mistakePitches,
+      },
+      featureCheck: {
+        prompt: 'In Clip B, did Note 7 slip to a white key (F natural) instead of the black key (F#)?',
+        choices: ['Yes, it slipped to F natural', 'No, it played F#'],
+        correct: 0,
+        explanation: 'Clip B missed the key signature and played F natural instead of F#.',
+      },
+    },
+    {
+      title: 'Full Piece Awareness',
+      prompt: 'Why do readers often miss notes affected by the key signature later in a piece?',
+      choices: [
+        'They look for an accidental next to the notehead and forget the key signature applies everywhere',
+        'They played with the wrong hand',
+        'Key signatures expire after 4 beats',
+      ],
+      correct: 0,
+      explanation: 'Because no sharp is drawn next to the notehead, readers forget the key signature. Always remember the key signature applies across the entire piece!',
+      featureCheck: {
+        prompt: 'Does crossing a barline cancel a key signature?',
+        choices: [
+          'No — key signatures continue across all barlines',
+          'Yes — key signatures reset at each barline',
+        ],
+        correct: 0,
+        explanation: 'Barlines only reset measure accidentals; key signatures apply to every measure in the piece.',
+      },
+    },
+  ];
+
+  lesson.featureCheck = {
+    prompt: 'How long does a key signature stay active?',
+    choices: [
+      'Throughout the entire piece (all measures)',
+      'Only for the first measure',
+    ],
+    correct: 0,
+    explanation: 'Key signatures apply to every measure throughout the entire piece unless cancelled by an accidental.',
+  };
+
+  lesson.mcq = {
+    prompt: 'What is the rule for reading notes with a key signature throughout a full piece?',
+    choices: [
+      'All matching notes are sharp or flat everywhere in the piece, even with no symbol on the notehead',
+      'The key signature only applies to the first measure of the piece',
+      'You only play sharps or flats if a symbol is drawn directly next to the notehead',
+    ],
+    correct: 0,
+    explanation: 'The key signature at the beginning of each staff applies to all matching notes in every measure, unless cancelled by a natural sign (♮).',
+  };
+
+  lesson.tip = {
+    kind: 'key-signature',
+    text: 'Key signature applies to every measure: play F# throughout the piece unless marked with a natural (♮).',
+  };
+  lesson.forcedErrorMessage = 'Remember the key signature: play F# on every F throughout the entire piece.';
+
+  lesson.question = question('key-signature/practice', practicePitches, 'right', [1, 2, 3, 4, 5, 4, 3, 4], ['D4', 'F#4', 'A4']);
+  lesson.transfer = question('key-signature/transfer', transferPitches, 'right', [4, 5, 4, 3, 2, 1, 3, 4], ['D4', 'F#4', 'A4']);
+  return lesson;
+}
+
 /** Add a definition here: routing and the tester discover entries automatically. */
 export const DIAGNOSTIC_REGISTRY: readonly DiagnosticDefinition[] = [
+  { id: 'key-signature', label: 'Key Signature Reading', aliases: ['key-signatures', 'key-signature-reading', 'key-signature-carryover', 'missed-key-signature', 'key-signature-rule', 'key-signature-unmarked'], create: keySignature },
   { id: 'clef-transposition', label: 'Clef Swap', aliases: ['clef-swap', 'treble-for-bass', 'clef-differentiation', 'bass-clef-recognition'], create: clefSwap },
   { id: 'octave-displacement', label: 'High Register', aliases: ['8va', '8va-blindspot', 'register-placement', 'octave-register', 'octave'], create: octave },
   { id: 'accidental-carryover', label: 'Accidental Carryover', aliases: ['accidental-carry-over', 'accidental-carry-over-failure', 'measure-long-amnesia'], create: accidental },
