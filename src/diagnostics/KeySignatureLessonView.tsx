@@ -72,7 +72,6 @@ function ReadingCheck({ check, stage, index, onNext }: {
           {playing ? 'Playing…' : heard ? 'Replay piano example' : 'Play piano example'}
         </button>
       </div>}
-      {check.audio && !heard && <p className="diagnostic-context-note">Listen before choosing.</p>}
       <div className="diagnostic-choices">
         {options.map(option => <button key={option.answer} type="button" disabled={playing || Boolean(check.audio && !heard)}
           onClick={() => answer(option.answer)}>{option.text}</button>)}
