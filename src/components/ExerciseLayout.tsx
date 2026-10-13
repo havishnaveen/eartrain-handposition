@@ -158,7 +158,7 @@ export function ExerciseLayout({
           <div className="et-sidebar__brand">
             <span className="et-sidebar__mark"><NoteMark /></span>
             <span>
-              <strong>EarTrain</strong>
+              <strong>KeyStance</strong>
               <small>Sight-reading studio · Oclef</small>
             </span>
           </div>

@@ -1,6 +1,6 @@
-# EarTrain child-clarity and grading-preservation update
+# KeyStance child-clarity and grading-preservation update
 
-Copy each file over the same relative path in the current EarTrain project.
+Copy each file over the same relative path in the current KeyStance project.
 
 ## Production files
 

@@ -22,7 +22,7 @@ export default function BugReportButton({
   const diagnostic = useMemo(() => {
     if (typeof window === 'undefined') return '';
     return [
-      `EarTrain issue — Lesson ${lessonNumber}: ${lessonTitle}, drill ${questionNumber}`,
+      `KeyStance issue — Lesson ${lessonNumber}: ${lessonTitle}, drill ${questionNumber}`,
       `Page: ${window.location.href}`,
       `Viewport: ${window.innerWidth}×${window.innerHeight}`,
       `Browser: ${window.navigator.userAgent}`,

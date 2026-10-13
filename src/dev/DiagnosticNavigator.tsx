@@ -128,7 +128,7 @@ export default function DiagnosticNavigator({
       {open && (
         <div id="diagnostic-controls" className="diagnostic-navigator__panel">
           <div className="diagnostic-navigator__header">
-            <strong>EarTrain Dev Studio</strong>
+            <strong>KeyStance Dev Studio</strong>
             <div className="diagnostic-navigator__mode-tabs">
               <button
                 type="button"

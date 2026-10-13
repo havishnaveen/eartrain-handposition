@@ -13,12 +13,12 @@ for (const required of [
   'name="viewport"',
   'name="description"',
   'rel="icon"',
-  '<title>EarTrain - Piano Ear Training</title>',
+  '<title>KeyStance - Piano Ear Training</title>',
 ]) {
   if (!html.includes(required)) throw new Error(`Production metadata is missing: ${required}`);
 }
 
-for (const asset of html.matchAll(/(?:src|href)="\/(assets\/[^"?]+|eartrain-favicon\.svg)/g)) {
+for (const asset of html.matchAll(/(?:src|href)="\/(assets\/[^"?]+|eartrain-favicon\.svg|keystance-favicon\.svg)/g)) {
   if (!existsSync(new URL(asset[1], dist))) throw new Error(`Built asset is missing: /${asset[1]}`);
 }
 const sourceRoot = new URL('../src/', import.meta.url);

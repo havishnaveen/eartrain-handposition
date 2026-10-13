@@ -27,7 +27,7 @@ function sendFailureReport(params: { lessonTitle: string; stageName: string; det
   if (typeof window === 'undefined') return;
   try {
     const diagnostic = [
-      `EarTrain issue — ${params.lessonTitle}`,
+      `KeyStance issue — ${params.lessonTitle}`,
       `Stage: ${params.stageName}`,
       `Concept: ${params.conceptId}`,
       `Detail: ${params.detail}`,
