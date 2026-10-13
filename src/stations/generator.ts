@@ -1,6 +1,6 @@
 import type { Question } from '../curriculum/types';
-import type { Archetype, DailyTriad, QuestionKind, StationQuestion, StationTopic } from './types';
-import { hash, seeded } from './engine';
+import type { DailyTriad, QuestionKind, StationQuestion, StationTopic } from './types';
+import { hash } from './engine';
 
 const KEYS = [
   { name: 'G major', tonic: 'G', fifths: 1 }, { name: 'F major', tonic: 'F', fifths: -1 },
@@ -11,12 +11,21 @@ const LETTERS = 'CDEFGAB';
 const bars = [['q', 'q', 'q', 'q'], ['q', '8', '8', 'q', 'q'], ['h', 'q', 'q'], ['q', 'q', '16', '16', '16', '16', 'q']];
 const beats = (duration: string) => duration === 'h' ? 2 : duration === '8' ? .5 : duration === '16' ? .25 : 1;
 const midi = (pitch: string) => { const [, letter, sign, octave] = /^([A-G])([#b]?)(\d)$/.exec(pitch)!; return (Number(octave) + 1) * 12 + ({ C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letter] ?? 0) + (sign === '#' ? 1 : sign === 'b' ? -1 : 0); };
-const pick = <T,>(values: readonly T[], random: () => number): T => values[Math.floor(random() * values.length)];
-function shuffle<T>(values: readonly T[], random: () => number): T[] {
-  const result = [...values];
-  for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; }
-  return result;
-}
+// Written scale fragments, turns, and arches. Each row is a complete two-bar phrase.
+const CONTOURS = [
+  [0, 1, 2, 3, 4, 3, 2, 0], [2, 3, 4, 2, 1, 2, 1, 0], [4, 3, 2, 1, 0, 1, 2, 0],
+  [0, 2, 4, 3, 2, 1, 2, 0], [2, 1, 0, 1, 2, 3, 2, 0], [0, 1, 2, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 5, 4, 3, 2, 0], [2, 3, 4, 5, 4, 3, 2, 1, 2, 0], [4, 3, 2, 1, 0, 1, 2, 3, 1, 0],
+  [0, 2, 3, 4, 2, 1, 0, 1, 2, 0], [2, 1, 0, 2, 3, 4, 3, 2, 1, 0], [0, 1, 3, 4, 3, 2, 1, 2, 1, 0],
+  [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 1, 0], [2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 4, 2, 1, 0], [4, 3, 2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 2, 0],
+  [0, 2, 4, 3, 2, 1, 0, 1, 2, 3, 4, 2, 1, 0], [2, 1, 0, 1, 2, 3, 4, 3, 2, 1, 0, 2, 1, 0], [0, 1, 2, 4, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0],
+];
+export const BATCH_COUNT = 6;
+export const BATCH_KINDS: readonly (readonly QuestionKind[])[] = [
+  ['visual', 'rule', 'audio'], ['visual', 'audio', 'cause'],
+  ['audio', 'visual', 'cause'], ['visual', 'cause', 'audio'],
+  ['audio', 'audio', 'cause'], ['cause', 'audio', 'visual'],
+];
 const signatureAlter = (letter: string, fifths: number) => (fifths > 0 ? 'FCGDAEB' : 'BEADGCF').slice(0, Math.abs(fifths)).includes(letter) ? Math.sign(fifths) : 0;
 const spelling = (letter: string, octave: number, alter: number) => `${letter}${alter === 1 ? '#' : alter === -1 ? 'b' : ''}${octave}`;
 const displayPitch = (pitch: string) => pitch.replace('#', '♯').replace('b', '♭');
@@ -51,20 +60,21 @@ export function stationMusicXML(question: Question, fifths: number, clefChange?:
 }
 
 export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: string, subtlety: number, forceWrong: boolean, keyOffset: number): StationQuestion {
-  const random = seeded(seed), key = KEYS[keyOffset % KEYS.length];
-  const rhythmLimit = subtlety === 0 ? 2 : subtlety === 1 ? 3 : 4;
-  const firstBar = kind === 'audio' ? bars[subtlety === 0 ? 0 : subtlety === 1 ? 1 : 3] : pick(bars.slice(0, rhythmLimit), random);
-  const secondBar = kind === 'audio' ? firstBar : pick(bars.slice(0, rhythmLimit), random);
+  const example = keyOffset % CONTOURS.length;
+  const batch = Math.floor(example / 3);
+  const key = KEYS[batch];
+  const firstBar = bars[subtlety === 0 ? 0 : subtlety === 1 ? 1 : 3];
+  const secondBar = firstBar;
   const durations = [...firstBar, ...secondBar];
   const count = durations.length;
   let fifths = key.fifths, clef: 'treble' | 'bass' = 'treble';
   let target = firstBar.length + secondBar.length - 2;
   let change: { index: number; clef: 'treble' | 'bass' } | undefined;
-  let contour = Math.floor(random() * 7);
-  const pitches = durations.map(() => {
-    contour = Math.max(0, Math.min(7, contour + pick([-2, -1, 1, 2], random)));
-    const letter = LETTERS[contour % 7];
-    return spelling(letter, 4 + Math.floor(contour / 7), signatureAlter(letter, fifths));
+  const shape = CONTOURS[example];
+  const pitches = durations.map((_, i) => {
+    const degree = LETTERS.indexOf(key.tonic) + shape[i];
+    const letter = LETTERS[degree % 7];
+    return spelling(letter, 4 + Math.floor(degree / 7), signatureAlter(letter, fifths));
   });
   const wrong = [...pitches];
   let explanation: string, cause: string, cluePrompt: string, clueChoices: string[], clueCorrect: number, clueExplanation: string;
@@ -76,10 +86,17 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
   let fingers: number[] | undefined;
 
   if (topic === 'key-signature') {
-    const letter = pick([...(fifths > 0 ? 'FCGDAEB' : 'BEADGCF').slice(0, Math.abs(fifths))], random);
-    const octave = subtlety >= 1 && random() > .5 ? 5 : 4;
-    pitches[1] = spelling(letter, 4, Math.sign(fifths));
-    pitches[target] = spelling(letter, octave, Math.sign(fifths));
+    // Descending scale fragments put the signature tone naturally in both bars.
+    const letter = (fifths > 0 ? 'FCGDAEB' : 'BEADGCF')[Math.abs(fifths) - 1];
+    const base = LETTERS.indexOf(letter) + (batch >= 2 ? 7 : 0);
+    for (let i = 0; i < count; i++) {
+      const degree = base + shape[i];
+      const step = LETTERS[degree % 7];
+      pitches[i] = spelling(step, 4 + Math.floor(degree / 7), signatureAlter(step, fifths));
+    }
+    target = count - 1;
+    pitches[0] = spelling(letter, 4 + Math.floor(base / 7), Math.sign(fifths));
+    const octave = Number(pitches[target].slice(-1));
     wrong.splice(0, count, ...pitches); wrong[target] = `${letter}${octave}`;
     explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}. The signature continues across barlines and octaves unless overridden.`;
     cause = 'The key signature was missed';
@@ -91,10 +108,16 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     visualPrompt = `What pitch is Note ${target + 1} in Measure 2?`;
   } else if (topic === 'accidental-carryover') {
     fifths = 0; keyName = 'No key signature';
-    const letter = pick(['C', 'D', 'F', 'G', 'B'], random), alter = pick([1, -1], random);
-    for (let i = 0; i < count; i++) pitches[i] = `${pick([...LETTERS].filter(l => l !== letter), random)}4`;
-    const reset = random() > .5;
+    const letter = ['F', 'B', 'C', 'E', 'G', 'A'][batch], alter = batch % 2 === 0 ? 1 : -1;
+    const reset = example % 3 !== 0;
+    const base = LETTERS.indexOf(letter);
+    for (let i = 0; i < count; i++) {
+      const degree = base + shape[i] % 4;
+      pitches[i] = spelling(LETTERS[degree % 7], 4 + Math.floor(degree / 7), 0);
+    }
     target = reset ? firstBar.length : firstBar.length - 1;
+    // Carry the alteration to every repeated occurrence in the first measure.
+    for (let i = 0; i < firstBar.length; i++) if (pitches[i] === `${letter}4`) pitches[i] = spelling(letter, 4, alter);
     pitches[0] = spelling(letter, 4, alter);
     pitches[target] = spelling(letter, 4, reset ? 0 : alter);
     wrong.splice(0, count, ...pitches); wrong[target] = spelling(letter, 4, reset ? alter : 0);
@@ -106,7 +129,8 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     ruleChoices = ['At the next barline, unless the note is tied across it', 'After just one note', 'At the end of the piece'];
     visualPrompt = `What pitch is Note ${target + 1}?`;
   } else if (topic === 'octave-displacement') {
-    for (let i = 0; i < count; i++) { const letter = pick(['C', 'D', 'E', 'F'], random); pitches[i] = spelling(letter, 5, signatureAlter(letter, fifths)); }
+    fifths = 0; keyName = 'C major';
+    for (let i = 0; i < count; i++) pitches[i] = `${LETTERS[shape[i]]}5`;
     target = kind === 'audio' && subtlety > 0 ? count - 2 : 0;
     wrong.splice(0, count, ...pitches.map((p, i) => subtlety === 0 || subtlety === 1 && i >= firstBar.length || i === target ? p.replace('5', '4') : p));
     explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}, in the fifth octave.`;
@@ -118,7 +142,7 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
   } else if (topic === 'mid-line-clef-change') {
     clef = 'bass'; fifths = 0; keyName = 'No key signature';
     change = { index: firstBar.length, clef: 'treble' }; target = firstBar.length;
-    for (let i = 0; i < count; i++) pitches[i] = `${pick(['C', 'D', 'E', 'F', 'G', 'A'], random)}${i < firstBar.length ? 3 : 4}`;
+    for (let i = 0; i < count; i++) pitches[i] = `${LETTERS[shape[i]]}${i < firstBar.length ? 3 : 4}`;
     wrong.splice(0, count, ...pitches.map((p, i) => i < firstBar.length ? p : oldBassReading(p)));
     explanation = `The treble clef before Note ${target + 1} changes how this staff is read. That note is ${displayPitch(pitches[target])}.`;
     cause = 'The new clef was missed';
@@ -128,11 +152,12 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     visualPrompt = `What pitch is Note ${target + 1} after the clef change?`;
   } else if (topic === 'hand-position') {
     // A movable five-note shape gives physically plausible finger-to-note labels.
-    const root = Math.floor(random() * 3), octave = pick([4, 5], random);
-    const degrees = durations.map(() => root + Math.floor(random() * 5));
+    fifths = 0; keyName = 'C major';
+    const root = batch % 3, octave = batch < 3 ? 4 : 5;
+    const degrees = durations.map((_, i) => root + Math.min(shape[i], 4));
     for (let i = 0; i < count; i++) { const letter = LETTERS[degrees[i]]; pitches[i] = spelling(letter, octave, signatureAlter(letter, fifths)); }
     fingers = degrees.map(degree => degree - root + 1);
-    target = Math.floor(random() * count);
+    target = firstBar.length;
     wrong.splice(0, count, ...pitches); wrong[target] = `${pitches[target][0]}${pitches[target].length > 2 ? '' : '#'}${pitches[target].slice(-1)}`;
     // Ensure the distractor actually changes the sounding pitch, including flat notes.
     if (midi(wrong[target]) === midi(pitches[target])) wrong[target] = 'C5';
@@ -147,11 +172,12 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     // Assess continuity at a marked transition; audio cannot certify which finger was physically used.
     fingers = durations.map((_, i) => [1, 2, 3, 1, 2, 3, 4, 5][i % 8]);
     // G/D/A scales have the intended right-hand 3-to-thumb transition.
-    const crossingKey = [KEYS[0], KEYS[2], KEYS[4]][keyOffset % 3];
+    const crossingKey = [KEYS[0], KEYS[2], KEYS[4]][batch % 3];
     fifths = crossingKey.fifths; keyName = crossingKey.name;
     const start = LETTERS.indexOf(crossingKey.tonic);
     for (let i = 0; i < count; i++) {
-      const degree = i < 4 ? i : Math.floor(random() * 8);
+      const endings = [[4, 5, 6, 7, 6, 5, 4, 3, 2, 0], [4, 5, 4, 3, 2, 1, 0, 1, 2, 3], [4, 3, 2, 0, 1, 2, 3, 4, 3, 2]];
+      const degree = i < 4 ? i : endings[example % 3][i - 4];
       const letter = LETTERS[(start + degree) % 7];
       pitches[i] = spelling(letter, 4 + Math.floor((start + degree) / 7), signatureAlter(letter, fifths));
       fingers[i] = [1, 2, 3, 1, 2, 3, 4, 5][degree];
@@ -173,7 +199,7 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     cue: { timeSignature: '4/4', staves: [{ clef, hand: clef === 'bass' ? 'left' : 'right', notes: pitches.map((pitch, i) => ({ keys: [pitch.replace(/(\d)$/, '/$1').toLowerCase()], duration: durations[i], finger: fingers?.[i] })) }] },
     tempoWindowSec: null, positionLabel: 'Reading station', difficulty: subtlety, mode: 'normal', fingeringInferred: false,
     positionProof: { requireHeld: false, positionName: 'Reading station', hand: clef === 'bass' ? 'left' : 'right', acceptWindowMs: 12000, proofNotes: [0, 1, 2].map((i) => ({ pitch: pitches[i], finger: ([1, 3, 5] as const)[i] })) as NonNullable<Question['positionProof']>['proofNotes'] } };
-  const mismatched = forceWrong || random() < .55;
+  const mismatched = forceWrong;
   let prompt: string, options: string[], correct = 0;
   if (kind === 'audio') {
     prompt = topic === 'cross-over-under' ? `Does the piano keep the written beat through Note ${target + 1}?` : 'Does the piano match the score?';
@@ -192,7 +218,8 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     if (options.length < 3) options.push(displayPitch(`${pitches[target][0]}${Number(pitches[target].slice(-1)) - 1}`));
     correct = visualCorrect;
   }
-  const sorted = shuffle(options.map((text, i) => ({ text, right: i === correct })), random);
+  const offset = example % options.length;
+  const sorted = options.map((_, i) => { const index = (i + offset) % options.length; return { text: options[index], right: index === correct }; });
   const audioPitches = kind === 'cause' || mismatched ? wrong : pitches;
   const fingerprint = JSON.stringify([pitches.map(midi), durations]);
   return { id: question.id, topic, kind, fingerprint, keyName, question,
@@ -203,24 +230,13 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     ...((kind === 'audio' || kind === 'cause') ? { audio: { pitches: audioPitches, durations, ...(hesitation !== undefined && (kind === 'cause' || mismatched) ? { hesitationBefore: hesitation, hesitationSeconds: [.8, .4, .2][Math.min(subtlety, 2)] } : {}) } } : {}) };
 }
 
-/** Pool sampling is bounded and rejects recent sounding phrases before accepting a question. */
-export function assembleTriad(student: string, date: string, topic: StationTopic, archetype: Archetype, recent: Set<string>): DailyTriad {
-  const seed = `stations-v1/${student}/${date}/${topic}/${archetype}`, random = seeded(seed);
-  const templates: Record<Archetype, QuestionKind[]> = { ear: ['audio', 'audio', 'audio'], visual: ['visual', 'visual', 'cause'], classification: ['audio', 'audio', 'cause'], balanced: ['visual', 'rule', 'audio'] };
-  // Preserve increasing auditory subtlety in ear mode, vary all other question orders.
-  const kinds = archetype === 'ear' ? templates.ear : shuffle(templates[archetype], random);
-  const seen = new Set(recent), result: StationQuestion[] = [];
-  const keyStart = hash(`${student}/${date}/keys`) % KEYS.length;
-  let heardJudgment = false;
-  for (let slot = 0; slot < 3; slot++) {
-    let accepted: StationQuestion | undefined;
-    for (let candidate = 0; candidate < 256; candidate++) {
-      const question = generateQuestion(topic, kinds[slot], `${seed}/${slot}/${candidate}`, slot, kinds[slot] === 'audio' && !heardJudgment, keyStart + slot);
-      if (!seen.has(question.fingerprint)) { accepted = question; break; }
-    }
-    if (!accepted) throw new Error('No fresh musical example is available. Try exhaustive practice.');
-    result.push(accepted); seen.add(accepted.fingerprint);
-    if (accepted.kind === 'audio') heardJudgment = true;
-  }
-  return result as DailyTriad;
+/** A finite, shared teaching sequence. Identity, date and telemetry never select content. */
+export function fixedBatch(topic: StationTopic, batch: number): DailyTriad {
+  if (!Number.isInteger(batch) || batch < 1 || batch > BATCH_COUNT) throw new Error('Unknown batch');
+  let firstAudio = true;
+  return BATCH_KINDS[batch - 1].map((kind, slot) => {
+    const wrong = kind === 'audio' && firstAudio;
+    if (kind === 'audio') firstAudio = false;
+    return generateQuestion(topic, kind, `fixed-v2/${topic}/${batch}/${slot}`, Math.floor((batch - 1) / 2), wrong, (batch - 1) * 3 + slot);
+  }) as DailyTriad;
 }

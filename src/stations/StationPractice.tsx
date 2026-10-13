@@ -4,7 +4,7 @@ import AnswerFeedback from '../diagnostics/AnswerFeedback';
 import type { DiagnosticDefinition, DiagnosticKey } from '../diagnostics/registry';
 import { DiagnosticScore } from '../diagnostics/DiagnosticScore';
 import { playDiagnosticExample } from '../diagnostics/playback';
-import { calendarDate, dailyQueue } from './engine';
+import { BATCH_COUNT } from './generator';
 import type { SessionEvent } from './engine';
 import type { StationStore } from './store';
 import { stationExplanation } from './feedback';
@@ -19,10 +19,10 @@ export function StationControls({ mode, onMode }: {
     </select></label></div>;
 }
 
-export default function StationPractice({ store, topic, need, definition, selectedKey, onRotate, onExhaustive, onStandard }: {
+export default function StationPractice({ store, topic, need, definition, selectedKey, batch, onNextBatch, onStandard }: {
   store: StationStore; topic: StationTopic; need: StationNeed;
   definition: DiagnosticDefinition; selectedKey: DiagnosticKey;
-  onRotate: (topic: StationTopic) => void; onExhaustive: () => void; onStandard: () => void;
+  batch: number; onNextBatch: () => void; onStandard: () => void;
 }) {
   const [, redraw] = useState(0);
   const lesson = useMemo(() => definition.create(selectedKey), [definition, selectedKey]);
@@ -35,14 +35,14 @@ export default function StationPractice({ store, topic, need, definition, select
   const clock = useRef({ accumulated: 0, start: 0 });
   const phase = session?.run.phase, q = session?.questions[session.results.length];
   const emit = async (event: SessionEvent) => {
-    if (!session || !q) return;
+    if (!session || !q) return false;
     setBusy(true);
-    try { await store.dispatch(session.id, q.id, event); }
-    catch { setError('Progress could not be updated. Please try again.'); }
+    try { await store.dispatch(session.id, q.id, event); return true; }
+    catch { setError('Progress could not be updated. Please try again.'); return false; }
     finally { setBusy(false); }
   };
   useEffect(() => {
-    try { setSession(store.open(topic, need)); }
+    try { setSession(store.open(topic, need, Date.now(), batch)); }
     catch (e) { setError(e instanceof Error ? e.message : 'The daily station could not load.'); }
     const refresh = () => {
       setSession(current => current ? store.data.sessions[current.id] ?? current : null); redraw(v => v + 1);
@@ -51,7 +51,7 @@ export default function StationPractice({ store, topic, need, definition, select
     const storage = (event: StorageEvent) => { if (event.key === store.key) { store.refresh(); refresh(); } };
     window.addEventListener('storage', storage);
     return () => { unsubscribe(); window.removeEventListener('storage', storage); playback.current?.stop(); };
-  }, [store, topic, need]);
+  }, [store, topic, need, batch]);
 
   // A batch opens directly on its question. This initializes telemetry, not audio playback.
   useEffect(() => {
@@ -80,7 +80,7 @@ export default function StationPractice({ store, topic, need, definition, select
   useEffect(() => {
     setScoreReady(false);
     const host = scoreHost.current;
-    if (!host || phase === 'ready' || phase === 'clue' || phase === 'clue-feedback') return;
+    if (!host) return;
     const check = () => setScoreReady(Boolean(host.querySelector('svg')));
     const observer = new MutationObserver(check); observer.observe(host, { subtree: true, childList: true }); check();
     return () => observer.disconnect();
@@ -99,33 +99,31 @@ export default function StationPractice({ store, topic, need, definition, select
   };
   useEffect(() => () => { const token = playback.current; playback.current = null; token?.stop(); }, []);
 
-  const date = calendarDate(Date.now(), store.data.timeZone);
-  const queue = dailyQueue(store.data, date, store.student);
-  const nextTopic = queue.find(t => t !== topic && !store.data.sessions[`${date}/${t}`]?.completedAt);
-  const progress = store.data.progress[topic];
+  const guiding = phase === 'clue' || phase === 'clue-feedback';
+  const advance = async () => {
+    if (!await emit({ type: 'record', now: Date.now() })) return;
+    if (session?.results.length === 2) { if (batch < BATCH_COUNT) onNextBatch(); else onStandard(); }
+  };
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={Math.min((session?.results.length ?? 0) + 1, 3)} questionsInLoop={3}
-    lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel="Your practice prescription">
+    lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel={`Batch ${batch} of ${BATCH_COUNT}`}>
     <div className="diagnostic-flow diagnostic-flow--batch" data-diagnostic={topic}>
     <section className="diagnostic-card" aria-label={session?.completedAt ? 'Batch complete' : `Question ${(session?.results.length ?? 0) + 1} of 3`}>
       {store.warning && <p role="status" className="diagnostic-feedback">{store.warning}</p>}
       {error && <p role="alert">{error}</p>}
-      {!session ? <><p>{progress?.status === 'maintenance' ? `Mastered · next retention check ${progress.nextDue}.` : 'Preparing today’s station…'}</p><button onClick={onExhaustive}>Open full practice</button></> :
-        session.completedAt ? <div className="diagnostic-brief-feedback" aria-live="polite">
-          <p className="diagnostic-brief-text">Batch complete · {session.results.filter(r => r.firstAttemptCorrect).length}/3 correct on the first attempt.</p>
-          <button className="et-start" onClick={nextTopic ? () => onRotate(nextTopic) : onStandard}>{nextTopic ? 'Continue' : 'Return to standard curriculum'}</button>
-        </div> : q && <>
-          {phase === 'clue' || phase === 'clue-feedback' ? <div>
-              <h2 className="diagnostic-prompt">{q.clue.prompt}</h2>
-              <div className="diagnostic-choices">{q.clue.choices.map((text, i) => <button key={text} disabled={busy || phase !== 'clue'} onClick={() => void emit({ type: 'guided', choice: i })}>{text}</button>)}</div>
-              {phase === 'clue-feedback' && <AnswerFeedback correct={session.run.guidedChoice === q.clue.correct} explanation={q.clue.explanation}
-                answer={q.clue.choices[q.clue.correct]} disabled={busy} label="Retry" onContinue={() => void emit({ type: 'retry' })} />}
-            </div> : <>
+      {q && session && <>
               <div ref={scoreHost}><DiagnosticScore question={q.question} notation={q.notation} musicXML={q.musicXML} wrapSystems /></div>
               <h2 className="diagnostic-prompt">{q.prompt}</h2>
-              {q.audio && phase !== 'feedback' && <div className="diagnostic-action-area"><button className="et-start" disabled={playing || busy || !scoreReady} onClick={() => void play()}>{playing ? 'Playing…' : 'Play piano example'}</button></div>}
-              <div className="diagnostic-choices">{q.choices.map((text, i) => <button key={text} disabled={busy || playing || !scoreReady || phase === 'ready' || phase === 'feedback' || Boolean(q.audio && !session.run.heard)} onClick={() => void emit({ type: 'answer', choice: i, responseMs: responseMs() })}>{text}</button>)}</div>
+              {q.audio && <div className="diagnostic-action-area"><button className="et-start" disabled={playing || busy || !scoreReady} onClick={() => void play()}>{playing ? 'Playing…' : 'Play piano example'}</button></div>}
+              <div className="diagnostic-choices">{q.choices.map((text, i) => <button key={text} aria-pressed={session.run.finalChoice === i} disabled={busy || playing || !scoreReady || !['answering', 'retry'].includes(phase ?? '') || Boolean(q.audio && !session.run.heard)} onClick={() => void emit({ type: 'answer', choice: i, responseMs: responseMs() })}>{text}</button>)}</div>
+              {session.run.finalChoice !== null && session.run.finalChoice !== q.correct && phase !== 'retry' && <p className="diagnostic-brief-badge diagnostic-brief-badge--wrong" role="status">Incorrect: {q.choices[session.run.finalChoice]}.</p>}
+          {guiding ? <div>
+              <h2 className="diagnostic-prompt">{q.clue.prompt}</h2>
+              <div className="diagnostic-choices">{q.clue.choices.map((text, i) => <button key={text} disabled={busy || playing || phase !== 'clue'} onClick={() => void emit({ type: 'guided', choice: i })}>{text}</button>)}</div>
+              {phase === 'clue-feedback' && <AnswerFeedback correct={session.run.guidedChoice === q.clue.correct} explanation={q.clue.explanation}
+                answer={q.clue.choices[q.clue.correct]} disabled={busy || playing} label="Retry" onContinue={() => void emit({ type: 'retry' })} />}
+            </div> : <>
               {phase === 'feedback' && <AnswerFeedback correct={session.run.finalChoice === q.correct} explanation={stationExplanation(q)} answer={q.choices[q.correct]}
-                disabled={busy} onContinue={() => void emit({ type: 'record', now: Date.now() })} />}
+                disabled={busy || playing} label={session.results.length === 2 ? batch < BATCH_COUNT ? 'Next batch' : 'Finish' : 'Continue'} onContinue={() => void advance()} />}
             </>}
         </>}
     </section>

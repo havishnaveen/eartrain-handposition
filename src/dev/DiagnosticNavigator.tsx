@@ -3,6 +3,7 @@ import { DIAGNOSTIC_KEYS, DIAGNOSTIC_REGISTRY } from '../diagnostics/registry';
 import type { DiagnosticStage } from '../diagnostics/registry';
 import { StationControls } from '../stations/StationPractice';
 import { isStationTopic } from '../stations/types';
+import { BATCH_COUNT } from '../stations/generator';
 import type { PracticeMode, StationNeed } from '../stations/types';
 
 export interface DiagnosticSelection {
@@ -12,6 +13,7 @@ export interface DiagnosticSelection {
   revision: number;
   practiceMode?: PracticeMode;
   stationNeed?: StationNeed;
+  batch?: number;
 }
 
 export default function DiagnosticNavigator({
@@ -159,6 +161,11 @@ export default function DiagnosticNavigator({
             <div className="diagnostic-navigator__body">
               {selection && isStationTopic(selection.problem) && <StationControls mode={selection.practiceMode ?? 'station'}
                 onMode={practiceMode => onSelect({ ...selection, practiceMode, revision: selection.revision + 1 })} />}
+              {selection && isStationTopic(selection.problem) && selection.practiceMode !== 'exhaustive' && <label className="diagnostic-select-wrap">Batch
+                <select aria-label="Batch" value={selection.batch ?? 1} onChange={e => onSelect({ ...selection, batch: Number(e.target.value), revision: selection.revision + 1 })}>
+                  {Array.from({ length: BATCH_COUNT }, (_, i) => <option key={i} value={i + 1}>Batch {i + 1}</option>)}
+                </select>
+              </label>}
               <div className="diagnostic-section">
                 <span className="diagnostic-section-title">Problem ({DIAGNOSTIC_REGISTRY.length})</span>
                 <label className="diagnostic-select-wrap">

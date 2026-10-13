@@ -17,6 +17,7 @@ function ReadingCheck({ check, stage, index, onNext }: {
   const [clueIndex, setClueIndex] = useState(0);
   const [clueFailed, setClueFailed] = useState(false);
   const [passed, setPassed] = useState(false);
+  const [selected, setSelected] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [heard, setHeard] = useState(false);
   const [error, setError] = useState('');
@@ -44,6 +45,7 @@ function ReadingCheck({ check, stage, index, onNext }: {
 
   const answer = (choice: number) => {
     if (playing || (check.audio && !heard) || !['question', 'retry'].includes(phase)) return;
+    setSelected(choice);
     if (choice === check.correct) { setPassed(true); setPhase('result'); }
     else if (phase === 'question') { setPhase('clue'); }
     else {
@@ -66,7 +68,7 @@ function ReadingCheck({ check, stage, index, onNext }: {
     <DiagnosticScore question={check.question} notation={check.notation}
       highlightNoteIndex={guiding ? clue.highlightNoteIndex : check.target} />
     {error && <p className="diagnostic-feedback" role="alert">{error}</p>}
-    {(phase === 'question' || phase === 'retry') && <>
+    <>
       {phase === 'retry' && <p className="diagnostic-context-note">Try the original question again.</p>}
       <h2 className="diagnostic-prompt">{check.prompt}</h2>
       {check.audio && <div className="diagnostic-action-area">
@@ -75,15 +77,17 @@ function ReadingCheck({ check, stage, index, onNext }: {
         </button>
       </div>}
       <div className="diagnostic-choices">
-        {options.map(option => <button key={option.answer} type="button" disabled={playing || Boolean(check.audio && !heard)}
+        {options.map(option => <button key={option.answer} type="button" aria-pressed={selected === option.answer}
+          disabled={!['question', 'retry'].includes(phase) || playing || Boolean(check.audio && !heard)}
           onClick={() => answer(option.answer)}>{option.text}</button>)}
       </div>
-    </>}
+      {selected !== null && selected !== check.correct && phase !== 'retry' && <p className="diagnostic-brief-badge diagnostic-brief-badge--wrong" role="status">Incorrect: {check.choices[selected]}.</p>}
+    </>
     {guiding && <>
       <p className="diagnostic-context-note">Check the clue.</p>
       <h2 className="diagnostic-prompt">{clue.prompt}</h2>
       <div className="diagnostic-choices">
-        {clue.choices.map((choice, i) => <button key={choice} type="button" disabled={phase === 'clue-feedback'} onClick={() => {
+        {clue.choices.map((choice, i) => <button key={choice} type="button" disabled={playing || phase === 'clue-feedback'} onClick={() => {
           if (phase !== 'clue') return;
           if (i !== clue.correct) setClueFailed(true);
           setClueCorrect(i === clue.correct);
@@ -91,10 +95,10 @@ function ReadingCheck({ check, stage, index, onNext }: {
           setPhase('clue-feedback');
         }}>{choice}</button>)}
       </div>
-      {phase === 'clue-feedback' && <AnswerFeedback correct={clueCorrect} explanation={clueFeedback}
+      {phase === 'clue-feedback' && <AnswerFeedback correct={clueCorrect} explanation={clueFeedback} disabled={playing}
         onContinue={continueClue} label={clueIndex + 1 < check.clues.length ? 'Next clue' : 'Retry original question'} />}
     </>}
-    {phase === 'result' && <AnswerFeedback correct={passed} answer={check.choices[check.correct]} explanation={check.explanation} onContinue={() => onNext(!passed)} />}
+    {phase === 'result' && <AnswerFeedback correct={passed} answer={check.choices[check.correct]} explanation={check.explanation} disabled={playing} onContinue={() => onNext(!passed)} />}
   </section>;
 }
 

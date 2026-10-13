@@ -1,6 +1,6 @@
-import { addDays, applyProgress, calendarDate, chooseArchetype, createSession, emptyData, recentFingerprints, sessionId, transition } from './engine';
+import { addDays, calendarDate, createSession, emptyData, sessionId, transition } from './engine';
 import type { SessionEvent } from './engine';
-import { assembleTriad } from './generator';
+import { fixedBatch } from './generator';
 import { isStationTopic } from './types';
 import type { StationData, StationNeed, StationSession, StationTopic } from './types';
 
@@ -49,7 +49,7 @@ export class StationStore {
   warning = '';
   private listeners = new Set<() => void>();
   constructor(readonly student: string, private storage?: StationStorage, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone) {
-    this.key = `eartrain.stations.v1.${encodeURIComponent(student)}`;
+    this.key = `keystance.fixed-batches.v2.${encodeURIComponent(student)}`;
     this.data = emptyData(timeZone);
     this.refresh();
     if (!storage) this.warning = 'Progress is temporary: browser storage is unavailable.';
@@ -76,18 +76,15 @@ export class StationStore {
     next.assignments = assigned ? [...new Set([...next.assignments, topic])] : next.assignments.filter(t => t !== topic);
     this.save(next);
   }
-  open(topic: StationTopic, need: StationNeed, now = Date.now()): StationSession | null {
+  open(topic: StationTopic, need: StationNeed, now = Date.now(), batch = 1): StationSession {
     this.refresh();
     const date = calendarDate(now, this.data.timeZone), id = sessionId(date, topic);
-    const progress = this.data.progress[topic];
-    if (progress?.status === 'maintenance' && progress.nextDue && progress.nextDue > date && !this.data.sessions[id]) return null;
-    const existing = this.data.sessions[id];
-    if (existing && (existing.need === need || existing.startedAt || existing.completedAt)) return existing;
     const next = structuredClone(this.data);
-    delete next.sessions[id];
-    const archetype = chooseArchetype(next, topic, need, date);
-    const questions = assembleTriad(this.student, date, topic, archetype, recentFingerprints(next, date));
-    const session = createSession(date, topic, need, archetype, `${this.student}/${date}/${topic}`, questions);
+    const questions = fixedBatch(topic, batch);
+    // An opening is a new attempt. Unique IDs reject delayed events from an older attempt.
+    const attempt = crypto.randomUUID();
+    for (const q of questions) q.id = `${q.id}/${attempt}`;
+    const session = createSession(date, topic, need, 'balanced', `fixed-v2/${topic}/${batch}`, questions);
     next.sessions[id] = session; next.preferences[topic] = need;
     if (!next.assignments.includes(topic)) next.assignments.push(topic);
     this.save(next); return session;
@@ -98,7 +95,7 @@ export class StationStore {
       this.refresh(); const current = this.data.sessions[id];
       if (!current || current.completedAt || current.questions[current.results.length]?.id !== questionId) return;
       const next = transition(current, event);
-      if (next !== current) this.save(applyProgress(this.data, next, this.student));
+      if (next !== current) this.save({ ...this.data, sessions: { ...this.data.sessions, [id]: next } });
     };
     if (typeof navigator !== 'undefined' && navigator.locks) return navigator.locks.request(this.key, update);
     update(); return Promise.resolve();
