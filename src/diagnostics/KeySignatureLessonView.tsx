@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import ExerciseLayout from '../components/ExerciseLayout';
+import AnswerFeedback from './AnswerFeedback';
 import AcousticDrill from './AcousticDrill';
 import { DiagnosticScore } from './DiagnosticScore';
 import { playDiagnosticExample } from './playback';
@@ -20,6 +21,7 @@ function ReadingCheck({ check, stage, index, onNext }: {
   const [heard, setHeard] = useState(false);
   const [error, setError] = useState('');
   const [clueFeedback, setClueFeedback] = useState('');
+  const [clueCorrect, setClueCorrect] = useState(false);
   const playback = useRef<ReturnType<typeof playDiagnosticExample> | null>(null);
   const alive = useRef(true), locked = useRef(false);
   const clue = check.clues[clueIndex];
@@ -84,21 +86,15 @@ function ReadingCheck({ check, stage, index, onNext }: {
         {clue.choices.map((choice, i) => <button key={choice} type="button" disabled={phase === 'clue-feedback'} onClick={() => {
           if (phase !== 'clue') return;
           if (i !== clue.correct) setClueFailed(true);
-          setClueFeedback(`${i === clue.correct ? 'Correct.' : 'Check again.'} ${clue.explanation}`);
+          setClueCorrect(i === clue.correct);
+          setClueFeedback(clue.explanation);
           setPhase('clue-feedback');
         }}>{choice}</button>)}
       </div>
-      {phase === 'clue-feedback' && <div className="diagnostic-brief-feedback" role="status">
-        <p className="diagnostic-brief-text">{clueFeedback}</p>
-        <button type="button" className="et-start" onClick={continueClue}>
-          {clueIndex + 1 < check.clues.length ? 'Next clue' : 'Retry original question'}
-        </button>
-      </div>}
+      {phase === 'clue-feedback' && <AnswerFeedback correct={clueCorrect} explanation={clueFeedback}
+        onContinue={continueClue} label={clueIndex + 1 < check.clues.length ? 'Next clue' : 'Retry original question'} />}
     </>}
-    {phase === 'result' && <div className="diagnostic-brief-feedback" role="status">
-      <p className="diagnostic-brief-text">{passed ? 'Correct.' : `The right answer is ${check.choices[check.correct]}.`} {check.explanation}</p>
-      <button type="button" className="et-start" onClick={() => onNext(!passed)}>Continue</button>
-    </div>}
+    {phase === 'result' && <AnswerFeedback correct={passed} answer={check.choices[check.correct]} explanation={check.explanation} onContinue={() => onNext(!passed)} />}
   </section>;
 }
 

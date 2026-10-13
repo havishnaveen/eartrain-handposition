@@ -81,7 +81,7 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     pitches[1] = spelling(letter, 4, Math.sign(fifths));
     pitches[target] = spelling(letter, octave, Math.sign(fifths));
     wrong.splice(0, count, ...pitches); wrong[target] = `${letter}${octave}`;
-    explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}. The key signature applies after the barline and in every octave unless a written accidental overrides it.`;
+    explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}. The signature continues across barlines and octaves unless overridden.`;
     cause = 'The key signature was missed';
     cluePrompt = `Does the barline end the key signature for Note ${target + 1}?`;
     clueChoices = ['Yes', 'No']; clueCorrect = 1; clueExplanation = 'The key signature continues across the barline.';
@@ -138,7 +138,7 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     if (midi(wrong[target]) === midi(pitches[target])) wrong[target] = 'C5';
     visualPrompt = `Which finger number is printed on Note ${target + 1}?`;
     visualChoices = [String(fingers[target]), String(fingers[target] % 5 + 1), String((fingers[target] + 1) % 5 + 1)];
-    explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}, marked for finger ${fingers[target]}. Audio checks pitch, not physical finger placement.`;
+    explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}, marked for finger ${fingers[target]}. Staff position determines pitch.`;
     cause = 'The written pitch was misread';
     cluePrompt = `Is the number on Note ${target + 1} a finger number or an octave?`; clueChoices = ['Finger number', 'Octave']; clueCorrect = 0;
     clueExplanation = 'The small number names the finger; the staff position names the pitch.';
@@ -161,7 +161,7 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     wrong.splice(0, count, ...pitches);
     visualPrompt = `Which finger number follows finger 3 on Note ${target + 1}?`;
     visualChoices = ['1 (thumb)', '4', '5'];
-    explanation = `Note ${target + 1} is marked for the thumb after finger 3. Keep the written beat through the move; listening verifies continuity, not finger technique.`;
+    explanation = `Use the thumb on Note ${target + 1}, after finger 3. Keep the written beat steady through the move.`;
     cause = 'The beat hesitated at the marked move';
     cluePrompt = `Which finger is written on Note ${target + 1}?`; clueChoices = ['1 (thumb)', '3']; clueCorrect = 0;
     clueExplanation = 'Finger 1 is the thumb. Prepare the move before this note.';
