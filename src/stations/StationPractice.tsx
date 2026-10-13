@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ExerciseLayout from '../components/ExerciseLayout';
+import AnswerFeedback from '../diagnostics/AnswerFeedback';
 import type { DiagnosticDefinition, DiagnosticKey } from '../diagnostics/registry';
 import { DiagnosticScore } from '../diagnostics/DiagnosticScore';
 import { playDiagnosticExample } from '../diagnostics/playback';
 import { calendarDate, dailyQueue } from './engine';
 import type { SessionEvent } from './engine';
 import type { StationStore } from './store';
+import { stationExplanation } from './feedback';
 import type { StationNeed, StationSession, StationTopic } from './types';
 
 export function StationControls({ mode, onMode }: {
@@ -50,6 +52,11 @@ export default function StationPractice({ store, topic, need, definition, select
     window.addEventListener('storage', storage);
     return () => { unsubscribe(); window.removeEventListener('storage', storage); playback.current?.stop(); };
   }, [store, topic, need]);
+
+  // A batch opens directly on its question. This initializes telemetry, not audio playback.
+  useEffect(() => {
+    if (session && q && phase === 'ready') void store.dispatch(session.id, q.id, { type: 'start', now: Date.now() });
+  }, [store, session?.id, q?.id, phase]);
 
   // Only visible decision time counts. Persist checkpoints so reload never makes a slow attempt fast.
   useEffect(() => {
@@ -107,17 +114,18 @@ export default function StationPractice({ store, topic, need, definition, select
           <p className="diagnostic-brief-text">Batch complete · {session.results.filter(r => r.firstAttemptCorrect).length}/3 correct on the first attempt.</p>
           <button className="et-start" onClick={nextTopic ? () => onRotate(nextTopic) : onStandard}>{nextTopic ? 'Continue' : 'Return to standard curriculum'}</button>
         </div> : q && <>
-          {phase === 'ready' ? <div className="diagnostic-action-area"><button className="et-start" disabled={busy} onClick={() => void emit({ type: 'start', now: Date.now() })}>Start</button></div> :
-            phase === 'clue' || phase === 'clue-feedback' ? <div>
+          {phase === 'clue' || phase === 'clue-feedback' ? <div>
               <h2 className="diagnostic-prompt">{q.clue.prompt}</h2>
               <div className="diagnostic-choices">{q.clue.choices.map((text, i) => <button key={text} disabled={busy || phase !== 'clue'} onClick={() => void emit({ type: 'guided', choice: i })}>{text}</button>)}</div>
-              {phase === 'clue-feedback' && <div className="diagnostic-brief-feedback"><p className="diagnostic-brief-text" role="status">{session.run.guidedChoice === q.clue.correct ? 'Yes. ' : 'Not quite. '}{q.clue.explanation}</p><button className="et-start" disabled={busy} onClick={() => void emit({ type: 'retry' })}>Retry</button></div>}
+              {phase === 'clue-feedback' && <AnswerFeedback correct={session.run.guidedChoice === q.clue.correct} explanation={q.clue.explanation}
+                answer={q.clue.choices[q.clue.correct]} disabled={busy} label="Retry" onContinue={() => void emit({ type: 'retry' })} />}
             </div> : <>
               <div ref={scoreHost}><DiagnosticScore question={q.question} notation={q.notation} musicXML={q.musicXML} wrapSystems /></div>
               <h2 className="diagnostic-prompt">{q.prompt}</h2>
               {q.audio && phase !== 'feedback' && <div className="diagnostic-action-area"><button className="et-start" disabled={playing || busy || !scoreReady} onClick={() => void play()}>{playing ? 'Playing…' : 'Play piano example'}</button></div>}
-              <div className="diagnostic-choices">{q.choices.map((text, i) => <button key={text} disabled={busy || playing || !scoreReady || phase === 'feedback' || Boolean(q.audio && !session.run.heard)} onClick={() => void emit({ type: 'answer', choice: i, responseMs: responseMs() })}>{text}</button>)}</div>
-              {phase === 'feedback' && <div className="diagnostic-brief-feedback" role="status"><p className="diagnostic-brief-text">{session.run.finalChoice === q.correct ? 'Correct. ' : `The right answer is ${q.choices[q.correct]}. `}{q.explanation}</p><button className="et-start" disabled={busy} onClick={() => void emit({ type: 'record', now: Date.now() })}>Continue</button></div>}
+              <div className="diagnostic-choices">{q.choices.map((text, i) => <button key={text} disabled={busy || playing || !scoreReady || phase === 'ready' || phase === 'feedback' || Boolean(q.audio && !session.run.heard)} onClick={() => void emit({ type: 'answer', choice: i, responseMs: responseMs() })}>{text}</button>)}</div>
+              {phase === 'feedback' && <AnswerFeedback correct={session.run.finalChoice === q.correct} explanation={stationExplanation(q)} answer={q.choices[q.correct]}
+                disabled={busy} onContinue={() => void emit({ type: 'record', now: Date.now() })} />}
             </>}
         </>}
     </section>

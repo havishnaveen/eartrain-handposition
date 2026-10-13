@@ -531,6 +531,7 @@ function WrongClefListening({ lesson, onNext }: { lesson: DiagnosticLesson; onNe
             <span className="et-start__dot"><RecordDot /></span>
             Check clue
           </button>
+          {lesson.question.conceptId !== 'clef-transposition' && <p className="diagnostic-brief-text diagnostic-brief-text--wrong">{currentRound?.explanation ?? lesson.explanation}</p>}
         </div>
       )}
 
@@ -1108,6 +1109,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
             <span className="et-start__dot"><RecordDot /></span>
             Check clue
           </button>
+          {lesson.question.conceptId !== 'clef-transposition' && <p className="diagnostic-brief-text diagnostic-brief-text--wrong">{currentRound.explanation}</p>}
         </div>
       )}
 
@@ -1391,6 +1393,7 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
             <p className="diagnostic-concept-answer">
               The right answer is: <strong>{lesson.mcq.choices[lesson.mcq.correct]}</strong>
             </p>
+            {lesson.question.conceptId !== 'clef-transposition' && <p className="diagnostic-concept-explanation">{lesson.mcq.explanation}</p>}
             <button type="button" className="et-start diagnostic-concept-btn" onClick={onNext}>
               <span className="et-start__dot"><RecordDot /></span>
               Continue to piano

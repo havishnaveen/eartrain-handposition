@@ -27,7 +27,7 @@ An incorrect first answer or requested clue takes the alternate path:
 
 `answering → clue → clue-feedback → retry → feedback → record`
 
-The retry ends the attempt whether correct or incorrect. Exhausted answer buttons are disabled and the correct answer is revealed. Guided checks refer to the exact note or event, use plain options, and contain no media. Scores remain hidden before Start. Listening answers require a successful user-initiated playback. Sample-loading failures consume no attempt. No playback starts automatically.
+The retry ends the attempt whether correct or incorrect. Exhausted answer buttons are disabled and the correct answer is revealed. Guided checks refer to the exact note or event, use plain options, and contain no media. Batch questions open directly, without a separate Start screen; the internal ready state initializes telemetry automatically. Listening answers require a successful user-initiated playback. Sample-loading failures consume no attempt. No playback starts automatically. Correct responses use the established morphing checkmark, with concise musical feedback for both outcomes.
 
 Each write carries the session and expected question ID. Phase guards, completed-session guards, and browser Web Locks prevent duplicate grading and stale-tab actions from advancing another question. Snapshots are saved after every transition. A page reload preserves a used clue and a failed first attempt.
 
@@ -50,7 +50,7 @@ Response speed is measured as visible decision time, excluding loading and playb
 
 A versioned learner/date/topic/archetype seed drives a stable PRNG. Non-ear question order is shuffled; ear ordering preserves increasing subtlety. Keys cycle through distinct slots. Candidate phrases are rejected if their sounding pitch sequence and rhythmic sequence occurred during the preceding seven calendar days, across assigned topics. Changing finger labels or question wording cannot disguise a repeated phrase. Failure to find a fresh phrase is explicit rather than silently accepting a duplicate.
 
-The saved batch is authoritative after Start. Midnight does not replace an in-progress question. Reloading on a new date opens the new date's batch; an older session completed after its assigned date cannot count as a perfect day. A stored IANA timezone defines all calendar boundaries, including daylight-saving transitions.
+The saved batch is authoritative after the question opens. Midnight does not replace an in-progress question. Reloading on a new date opens the new date's batch; an older session completed after its assigned date cannot count as a perfect day. A stored IANA timezone defines all calendar boundaries, including daylight-saving transitions.
 
 ## Persistence schema
 
