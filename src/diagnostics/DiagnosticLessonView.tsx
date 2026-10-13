@@ -8,6 +8,7 @@ import { playDiagnosticExample } from './playback';
 import { prepareProfessorNotification } from './professorNotifications';
 import type { DiagnosticDefinition, DiagnosticKey, DiagnosticLesson, DiagnosticStage } from './registry';
 import { HandPositionProveItView } from './HandPositionProveItView';
+import KeySignatureLessonView from './KeySignatureLessonView';
 
 const RecordDot = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -1422,6 +1423,10 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
   const isClefSwap = definition.id === 'clef-transposition' && Boolean(lesson.wrongClefRounds?.length);
   const hasListenRounds = Boolean(lesson.listenRounds?.length || lesson.wrongClefRounds?.length);
   const hasInteractiveRounds = Boolean(lesson.interactiveRounds?.length);
+
+  if (definition.id === 'key-signature') {
+    return <KeySignatureLessonView lesson={lesson} initialStage={initialStage} onStandard={onStandard} />;
+  }
 
   if (definition.id === 'hand-position' && stage !== 2) {
     return (

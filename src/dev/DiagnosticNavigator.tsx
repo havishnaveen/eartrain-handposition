@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import { DIAGNOSTIC_KEYS, DIAGNOSTIC_REGISTRY } from '../diagnostics/registry';
 import type { DiagnosticStage } from '../diagnostics/registry';
+import { StationControls } from '../stations/StationPractice';
+import { isStationTopic } from '../stations/types';
+import type { PracticeMode, StationNeed } from '../stations/types';
 
 export interface DiagnosticSelection {
   problem: string;
   key: string;
   stage: DiagnosticStage;
   revision: number;
+  practiceMode?: PracticeMode;
+  stationNeed?: StationNeed;
 }
 
 export default function DiagnosticNavigator({
@@ -38,12 +43,14 @@ export default function DiagnosticNavigator({
   const key = DIAGNOSTIC_KEYS.find(k => k.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
   const currentStage = selection?.stage ?? 1;
 
-  const select = (problemId: string, keyId: string, stage: DiagnosticStage = 1) => {
+  const select = (problemId: string, keyId: string, stage?: DiagnosticStage) => {
     setActiveTab('diagnostics');
     onSelect({
       problem: problemId,
       key: keyId,
-      stage,
+      stage: stage ?? 1,
+      practiceMode: stage ? 'exhaustive' : selection?.practiceMode ?? 'station',
+      stationNeed: selection?.stationNeed ?? 'adaptive',
       revision: (selection?.revision ?? 0) + 1,
     });
   };
@@ -128,7 +135,7 @@ export default function DiagnosticNavigator({
                 className={`diagnostic-tab ${activeTab === 'diagnostics' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('diagnostics')}
               >
-                Diagnostic Remediation (6)
+                Diagnostic Remediation ({DIAGNOSTIC_REGISTRY.length})
               </button>
               <button
                 type="button"
@@ -150,12 +157,14 @@ export default function DiagnosticNavigator({
 
           {activeTab === 'diagnostics' ? (
             <div className="diagnostic-navigator__body">
+              {selection && isStationTopic(selection.problem) && <StationControls mode={selection.practiceMode ?? 'station'}
+                onMode={practiceMode => onSelect({ ...selection, practiceMode, revision: selection.revision + 1 })} />}
               <div className="diagnostic-section">
                 <span className="diagnostic-section-title">Problem ({DIAGNOSTIC_REGISTRY.length})</span>
                 <label className="diagnostic-select-wrap">
                   <select
                     value={problem.id}
-                    onChange={e => select(e.target.value, key.id, currentStage)}
+                    onChange={e => select(e.target.value, key.id)}
                   >
                     {DIAGNOSTIC_REGISTRY.map(p => (
                       <option key={p.id} value={p.id}>
@@ -170,7 +179,7 @@ export default function DiagnosticNavigator({
                       key={p.id}
                       type="button"
                       className={`diagnostic-chip ${problem.id === p.id && selection ? 'is-active' : ''}`}
-                      onClick={() => select(p.id, key.id, currentStage)}
+                      onClick={() => select(p.id, key.id)}
                     >
                       {p.label}
                     </button>

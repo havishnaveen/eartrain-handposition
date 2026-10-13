@@ -157,9 +157,10 @@ export function passesDiagnosticDrill(report: GradeResult, question: Question): 
     (!question.anchorShift || report.transition?.onTime === true);
 }
 
-export default function AcousticDrill({ question, notation, onPassed, transfer, skipProof, forcedErrorMessage, mistakePitches, diagnosticId }: {
+export default function AcousticDrill({ question, notation, onPassed, onNeedsReview, transfer, skipProof, forcedErrorMessage, mistakePitches, diagnosticId }: {
   question: Question; notation: DiagnosticNotation; onPassed: () => void; transfer: boolean;
   skipProof?: boolean; forcedErrorMessage?: string; mistakePitches?: readonly string[]; diagnosticId?: string;
+  onNeedsReview?: () => void;
 }) {
   const noProof = skipProof || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('noproof') === '1');
   const [status, setStatus] = useState<ExerciseStatus>(noProof ? 'prompt' : 'position-prompt');
@@ -199,7 +200,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
       if (!passedDrill) {
         const nextFailed = failedTakes + 1;
         setFailedTakes(nextFailed);
-        if (nextFailed >= 2) {
+        if (nextFailed >= 2 && !onNeedsReview) {
           prepareProfessorNotification({
             diagnosticId: diagnosticId || question.conceptId,
             lessonTitle: question.instruction,
@@ -231,12 +232,13 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
     } finally { busy.current = false; if (alive.current) setStarting(false); }
   };
   const passed = report ? passesDiagnosticDrill(report, question) : false;
+  const needsReview = Boolean(onNeedsReview && failedTakes >= 2);
   return <>
     {error && <p role="alert" className="diagnostic-feedback">{error}</p>}
-    {status === 'report' && !passed && profNotified && (
+    {status === 'report' && !passed && (profNotified || needsReview) && (
       <div className="diagnostic-brief-feedback" role="status">
         <p className="diagnostic-brief-text">
-          Ready for next question.
+          {needsReview ? 'This phrase still needs practice. You can retry below or continue for review.' : 'Ready for next question.'}
         </p>
         <button
           type="button"
@@ -244,7 +246,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
           onClick={() => {
             audio.abort();
             setReport(null);
-            onPassed();
+            if (onNeedsReview) onNeedsReview(); else onPassed();
           }}
         >
           <span className="et-start__dot"><RecordDot /></span>
@@ -263,6 +265,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
           <DiagnosticScore
             question={question}
             notation={notation}
+            wrapSystems={diagnosticId === 'key-signature'}
             enlarged={true}
             highlightClef={Boolean((notation.clefChange || diagnosticId === 'clef-transposition' || forcedErrorMessage.toLowerCase().includes('clef')) && !diagnosticId?.includes('octave'))}
             highlight8va={Boolean(notation.octaveUp || diagnosticId === 'octave-displacement' || forcedErrorMessage.toLowerCase().includes('octave'))}
@@ -298,7 +301,7 @@ export default function AcousticDrill({ question, notation, onPassed, transfer, 
       nextLabel={passed ? transfer ? 'Finish practice' : 'Try a fresh phrase' : 'Try this phrase again'}
       onNext={() => { if (passed) onPassed(); else { audio.abort(); setReport(null); setIsDiagnosticError(false); setStatus(noProof ? 'prompt' : 'position-prompt'); } }}>
       {question.anchorShift ? <AnchorShiftCue ref={scoreRef} cue={question.cue} shift={question.anchorShift} notationScale={2.5} accentColor="#ef6a47" inkColor="#242237" /> :
-        <DiagnosticScore ref={scoreRef} question={question} notation={notation} enlarged={status === 'report' && !passed && isDiagnosticError} highlightClef={status === 'report' && !passed && isDiagnosticError} />}
+        <DiagnosticScore ref={scoreRef} question={question} notation={notation} wrapSystems={diagnosticId === 'key-signature'} enlarged={status === 'report' && !passed && isDiagnosticError} highlightClef={status === 'report' && !passed && isDiagnosticError} />}
     </ExerciseView>
   </>;
 }

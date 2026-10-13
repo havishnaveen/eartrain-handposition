@@ -1,4 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { learningProfileStore } from '../profiles/learningProfileStore';
+import { calendarDate } from '../stations/engine';
+import StationPractice from '../stations/StationPractice';
+import { browserStationStore, stationIdentity } from '../stations/store';
+import { isStationTopic } from '../stations/types';
 import PathwayRouter from '../components/PathwayRouter';
 import DiagnosticNavigator from '../dev/DiagnosticNavigator';
 import type { DiagnosticSelection } from '../dev/DiagnosticNavigator';
@@ -29,7 +34,7 @@ function isDevTesterAllowed(session: OclefIntegrationSession | null): boolean {
     if (devParam === '0' || devParam === 'false' || devParam === 'hide') {
       return false;
     }
-  } catch {}
+  } catch { /* An unavailable query string does not enable an external tester. */ }
 
   return true;
 }
@@ -48,7 +53,14 @@ export default function DiagnosticRouter({
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const parsedStage = searchParams ? parseInt(searchParams.get('stage') || '', 10) : NaN;
   const initialStage = (!isNaN(parsedStage) && parsedStage >= 1 && parsedStage <= 4) ? (parsedStage as DiagnosticStage) : 1;
-  const [selection, setSelection] = useState<DiagnosticSelection | null>(() => referral ? { problem: referral.definition.id, key: referral.key.id, stage: initialStage, revision: 0 } : null);
+  const [selection, setSelection] = useState<DiagnosticSelection | null>(() => referral ? { problem: referral.definition.id, key: referral.key.id, stage: initialStage, revision: 0,
+    practiceMode: searchParams?.get('practice') === 'station' ? 'station' : searchParams?.get('practice') === 'exhaustive' || searchParams?.has('stage') ? 'exhaustive' : 'station',
+    stationNeed: searchParams?.get('need') === 'audio' ? 'audio' : searchParams?.get('need') === 'visual' ? 'visual' : 'adaptive' } : null);
+  const localStudent = useSyncExternalStore(learningProfileStore.subscribe, learningProfileStore.getSnapshot).activeStudentId;
+  const identity = launch?.studentId ? `${launch.provider}/${launch.studentId}` : `local/${localStudent}`;
+  const store = useMemo(() => browserStationStore(stationIdentity(identity)), [identity]);
+  const [, redrawStationControls] = useState(0);
+  useEffect(() => store.subscribe(() => redrawStationControls(v => v + 1)), [store]);
   const [keyError, setKeyError] = useState(referral?.invalidKey);
   const [standardRevision, setStandardRevision] = useState(0);
   const [standardState, setStandardState] = useState<{
@@ -75,6 +87,7 @@ export default function DiagnosticRouter({
       url.searchParams.delete('diagnosis');
       url.searchParams.delete('stage');
       url.searchParams.delete('key');
+      url.searchParams.delete('practice'); url.searchParams.delete('need');
       url.searchParams.set('lesson', String(lesson));
       url.searchParams.set('drill', String(drill));
       if (noProof) {
@@ -92,7 +105,10 @@ export default function DiagnosticRouter({
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('diagnosis', next.problem);
-      url.searchParams.set('stage', String(next.stage));
+      if (next.practiceMode === 'station' && isStationTopic(next.problem)) url.searchParams.delete('stage');
+      else url.searchParams.set('stage', String(next.stage));
+      url.searchParams.set('practice', next.practiceMode ?? 'station');
+      url.searchParams.set('need', next.stationNeed ?? 'adaptive');
       url.searchParams.set('key', next.key);
       window.history.replaceState({}, '', url.toString());
     }
@@ -107,6 +123,7 @@ export default function DiagnosticRouter({
       url.searchParams.delete('diagnosis');
       url.searchParams.delete('stage');
       url.searchParams.delete('key');
+      url.searchParams.delete('practice'); url.searchParams.delete('need');
       window.history.replaceState({}, '', url.toString());
     }
   };
@@ -114,10 +131,17 @@ export default function DiagnosticRouter({
   const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
   const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
   const [tester] = useState(() => isDevTesterAllowed(session));
+  const stationTopic = selection && isStationTopic(selection.problem) ? selection.problem : null;
+  const mode = selection?.practiceMode ?? 'station';
+  const need = selection?.stationNeed ?? 'adaptive';
+  const changeMode = (practiceMode: 'station' | 'exhaustive') => { if (selection) handleSelectDiagnostic({ ...selection, practiceMode, revision: selection.revision + 1 }); };
+  const todaySession = stationTopic ? store.data.sessions[`${calendarDate(Date.now(), store.data.timeZone)}/${stationTopic}`] : null;
 
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
-      selection && definition ? <DiagnosticLessonView key={`${selection.problem}/${selection.key}/${selection.revision}`} definition={definition} selectedKey={selectedKey} initialStage={selection.stage} onStandard={standard} /> :
+      selection && definition ? stationTopic && mode === 'station' ? <StationPractice key={`${stationTopic}/${need}`} store={store} topic={stationTopic} need={need} definition={definition} selectedKey={selectedKey}
+        onRotate={topic => handleSelectDiagnostic({ ...selection, problem: topic, practiceMode: 'station', stationNeed: store.data.preferences[topic] ?? 'adaptive', revision: selection.revision + 1 })}
+        onExhaustive={() => changeMode('exhaustive')} onStandard={standard} /> : <DiagnosticLessonView key={`${selection.problem}/${selection.key}/${selection.revision}`} definition={definition} selectedKey={selectedKey} initialStage={selection.stage} onStandard={standard} /> :
         <PathwayRouter
           key={standardRevision}
           initialLesson={standardState ? standardState.lesson : initialLesson}
@@ -129,7 +153,7 @@ export default function DiagnosticRouter({
         />}
     {tester && (
       <DiagnosticNavigator
-        selection={selection}
+        selection={selection && todaySession?.startedAt ? { ...selection, stationNeed: todaySession.need } : selection}
         onSelect={handleSelectDiagnostic}
         onStandard={standard}
         onJumpStandard={handleJumpStandard}

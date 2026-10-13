@@ -1,4 +1,5 @@
 .diagnostic-flow { width: 100%; max-width: 960px; margin: 0 auto; min-width: 0; padding-bottom: 70px; }
+.diagnostic-flow--batch { padding-top: 32px; }
 .diagnostic-stage-label { color: #ef6a47; font-size: .95rem; font-weight: 700; margin: 0 0 16px 4px; letter-spacing: 0.01em; }
 .diagnostic-card { position: relative; max-width: 100%; min-width: 0; padding: clamp(20px, 4vw, 38px); border-radius: 24px; background: var(--et-surface, #fff); color: var(--et-ink, #242237); box-shadow: 0 4px 24px rgba(239, 106, 71, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04); border: 2px solid #ef6a47; box-sizing: border-box; }
 .diagnostic-try-again-badge { position: absolute; top: 18px; right: 22px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #c2410c !important; background: #ffedd5 !important; border: 1.5px solid #f97316; padding: 4px 12px; border-radius: 999px; box-shadow: 0 2px 6px rgba(249, 115, 22, 0.12); z-index: 2; pointer-events: none; }
@@ -126,6 +127,10 @@
 .diagnostic-score { width: 100%; min-width: 0; min-height: 290px; background: #ffffff; border-radius: 20px; border: 1.5px solid #e2d7cf; box-shadow: 0 2px 14px rgba(36, 34, 55, 0.05); padding: 14px 20px; margin: 12px 0 28px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .diagnostic-score__host { width: 100%; min-width: 0; display: flex; justify-content: center; align-items: center; }
 .diagnostic-score svg { height: clamp(180px, 32vw, 305px); width: auto; max-width: 100%; display: block; margin: 0 auto; }
+.diagnostic-score--wrapped svg { width: 100%; height: auto; }
+.diagnostic-score--wrapped .diagnostic-score__host > div { width: 100%; }
+.diagnostic-flow[data-diagnostic="key-signature"] .et-cue { height: auto; min-height: 280px; }
+.diagnostic-flow[data-diagnostic="key-signature"] .et-cue__content { height: auto; overflow: visible; }
 
 .diagnostic-round-indicator {
   display: inline-flex;
@@ -1293,4 +1298,3 @@
   border-color: #881337;
   color: #fda4af;
 }
-

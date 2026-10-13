@@ -16,6 +16,8 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
   highlightNoteIndex?: number;
   highlight8va?: boolean;
   highlightClefChange?: boolean;
+  wrapSystems?: boolean;
+  musicXML?: string;
 }>(function DiagnosticScore({
   question,
   notation,
@@ -25,6 +27,8 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
   highlightNoteIndex,
   highlight8va = false,
   highlightClefChange = false,
+  wrapSystems = false,
+  musicXML,
 }, ref) {
   const host = useRef<HTMLDivElement>(null), renderer = useRef<Renderer | null>(null), active = useRef(-1);
   const [error, setError] = useState(false);
@@ -65,15 +69,15 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
       if (disposed || element.clientWidth < 1) return;
       const noteCount = question.expectedSequence.length;
       // Proportional zoom factor ensuring 1-2 measures fit on a single continuous horizontal staff line with great readability
-      const widthFactor = noteCount <= 4 ? 1 : Math.max(0.78, 6.6 / noteCount);
-      const baseZoom = (element.clientWidth < 420 ? 1.55 : 2.75) * widthFactor;
+      const widthFactor = wrapSystems || noteCount <= 4 ? 1 : Math.max(0.78, 6.6 / noteCount);
+      const baseZoom = (wrapSystems ? (element.clientWidth < 420 ? 0.9 : 1.65) : (element.clientWidth < 420 ? 1.55 : 2.75)) * widthFactor;
       let currentZoom = enlarged ? baseZoom * 1.12 : baseZoom;
       score.Zoom = currentZoom;
       score.render();
       // Ensure all measures fit on 1 single continuous horizontal staff line (never wrap onto line 2)
       const maxAllowedStafflines = question.cue.staves.length === 2 ? 2 : 1;
       let attempts = 0;
-      while (attempts < 6 && element.querySelectorAll('.staffline').length > maxAllowedStafflines) {
+      while (!wrapSystems && attempts < 6 && element.querySelectorAll('.staffline').length > maxAllowedStafflines) {
         currentZoom *= 0.85;
         score.Zoom = currentZoom;
         score.render();
@@ -235,13 +239,13 @@ export const DiagnosticScore = forwardRef<StaffCueHandle, {
       });
     };
     const observer = new ResizeObserver(() => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { if (renderer.current === score) render(); }); });
-    void score.load(diagnosticMusicXML(question, notation, highlight, highlightNoteIndex)).then(() => {
+    void score.load(musicXML ?? diagnosticMusicXML(question, notation, highlight, highlightNoteIndex)).then(() => {
       if (disposed) return;
       renderer.current = score; render(); observer.observe(element);
     }).catch(() => { if (!disposed) setError(true); });
     return () => { disposed = true; observer.disconnect(); cancelAnimationFrame(frame); renderer.current = null; element.replaceChildren(); };
-  }, [question, notation, highlight, enlarged, highlightClef, highlightNoteIndex, highlight8va, highlightClefChange]);
-  return <div className={`diagnostic-score${enlarged ? ' diagnostic-score--enlarged' : ''}${highlightClef ? ' diagnostic-score--clef-highlight' : ''}${highlightClefChange ? ' diagnostic-score--clef-change-highlight' : ''}`} aria-label={`${question.handScope} hand sheet music`}>
+  }, [question, notation, highlight, enlarged, highlightClef, highlightNoteIndex, highlight8va, highlightClefChange, wrapSystems, musicXML]);
+  return <div className={`diagnostic-score${wrapSystems ? ' diagnostic-score--wrapped' : ''}${enlarged ? ' diagnostic-score--enlarged' : ''}${highlightClef ? ' diagnostic-score--clef-highlight' : ''}${highlightClefChange ? ' diagnostic-score--clef-change-highlight' : ''}`} aria-label={`${question.handScope} hand sheet music`}>
     <div ref={host} className="diagnostic-score__host" />
     {error && <p role="alert">The sheet music could not load. Please refresh before playing.</p>}
   </div>;

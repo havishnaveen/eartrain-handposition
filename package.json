@@ -13,6 +13,7 @@
     "audit:score": "node scripts/audit-score-analyzer.mjs && node scripts/audit-pcm-capture.mjs && node scripts/audit-live-regressions.mjs",
     "audit:production": "node scripts/audit-production.mjs",
     "audit:diagnostics": "node scripts/audit-diagnostics.mjs",
+    "audit:stations": "node scripts/audit-stations.mjs",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

@@ -14,7 +14,7 @@ export function diagnosticPlaybackTiming(count: number, durations?: readonly str
 }
 
 /** Cancellable, sample-based piano demo. Never opens the microphone. */
-export function playDiagnosticExample(pitches: readonly string[], hesitationBefore?: number, durations?: readonly string[]): { done: Promise<void>; stop: () => void } {
+export function playDiagnosticExample(pitches: readonly string[], hesitationBefore?: number, durations?: readonly string[], hesitationSeconds = 2): { done: Promise<void>; stop: () => void } {
   let cancelled = false, timer = 0;
   let settle: (() => void) | undefined;
   const stop = () => { cancelled = true; window.clearTimeout(timer); stopAllAudio(); settle?.(); };
@@ -26,9 +26,9 @@ export function playDiagnosticExample(pitches: readonly string[], hesitationBefo
     if (buffers.some(buffer => !buffer)) throw new Error('Piano samples unavailable');
     const start = getAudioContext()!.currentTime + .12;
     const timing = diagnosticPlaybackTiming(notes.length, durations);
-    await Promise.all(notes.map((note, i) => scheduleNote(note.name, note.octave, timing.notes[i].duration, .65, start + timing.notes[i].start + (hesitationBefore !== undefined && i >= hesitationBefore ? 2 : 0))));
+    await Promise.all(notes.map((note, i) => scheduleNote(note.name, note.octave, timing.notes[i].duration, .65, start + timing.notes[i].start + (hesitationBefore !== undefined && i >= hesitationBefore ? hesitationSeconds : 0))));
     if (cancelled) return;
-    await new Promise<void>(resolve => { settle = resolve; timer = window.setTimeout(resolve, (timing.seconds + .15 + (hesitationBefore !== undefined ? 2 : 0)) * 1000); });
+    await new Promise<void>(resolve => { settle = resolve; timer = window.setTimeout(resolve, (timing.seconds + .15 + (hesitationBefore !== undefined ? hesitationSeconds : 0)) * 1000); });
   })();
   return { done, stop };
 }

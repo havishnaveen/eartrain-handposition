@@ -114,7 +114,20 @@ try {
   const keySigXml = diagnosticMusicXML(keySig.question, keySig.notation);
   assert.match(keySigXml, /<fifths>1<\/fifths>/);
   assert.equal((keySigXml.match(/<accidental>/g) ?? []).length, 0, 'Key signature notes must not reprint accidental signs');
-  assert.equal((keySigXml.match(/<alter>1<\/alter>/g) ?? []).length, 2, 'Both F notes in the two measures sound sharp');
+  assert.equal((keySigXml.match(/<alter>1<\/alter>/g) ?? []).length, 3, 'All three F notes across four measures sound sharp');
+  const { KEY_SIGNATURE_CHECKS, KEY_SIGNATURE_NATURAL_CHECK } = await server.ssrLoadModule('/src/diagnostics/keySignatureContent.ts');
+  assert.equal(KEY_SIGNATURE_CHECKS[0].choices[KEY_SIGNATURE_CHECKS[0].correct], 'Wrong');
+  assert.deepEqual(KEY_SIGNATURE_CHECKS[0].audio.flatMap((pitch, i) => pitch !== KEY_SIGNATURE_CHECKS[0].question.expectedSequence[i] ? [i] : []), [6], 'Only Note 7 slips; Note 3 remains sharp');
+  assert.ok(KEY_SIGNATURE_CHECKS.some(check => check.audio && check.choices[check.correct] === 'Right'), 'Include a matching audio example');
+  assert.equal(KEY_SIGNATURE_CHECKS.find(check => check.id === 'higher-octave').question.expectedSequence[6], 'F#5');
+  assert.equal(KEY_SIGNATURE_CHECKS.find(check => check.id === 'left-staff').question.handScope, 'left');
+  const naturalXml = diagnosticMusicXML(KEY_SIGNATURE_NATURAL_CHECK.question, KEY_SIGNATURE_NATURAL_CHECK.notation);
+  assert.equal((naturalXml.match(/<accidental>natural<\/accidental>/g) ?? []).length, 1, 'Print the natural once, carry it to Note 3, and reset at the barline');
+  assert.deepEqual([0, 2, 4].map(i => KEY_SIGNATURE_NATURAL_CHECK.question.expectedSequence[i]), ['F4', 'F4', 'F#4']);
+  assert.equal(keySig.transferNotation.fifths, -1, 'Transfer to a one-flat signature');
+  const flatXml = diagnosticMusicXML(keySig.transfer, keySig.transferNotation);
+  assert.equal((flatXml.match(/<accidental>/g) ?? []).length, 0, 'Unmarked Bs inherit the flat signature');
+  assert.equal((flatXml.match(/<alter>-1<\/alter>/g) ?? []).length, 3);
 
   // Clef transposition 40%+ threshold verification:
   const bassSeq = ['C3', 'E3', 'G3', 'A3'];
