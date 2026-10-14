@@ -1474,164 +1474,33 @@
   text-align: center;
 }
 
-/* Docked Bottom Tester Navigation Bar on Screen */
-.diagnostic-tester-bottom-bar {
-  position: fixed;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  width: calc(100% - 32px);
-  max-width: 860px;
-  background: rgba(24, 24, 27, 0.95);
-  backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(249, 115, 22, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 16px rgba(249, 115, 22, 0.15);
-  border-radius: 18px;
-  padding: 10px 16px;
-  box-sizing: border-box;
-}
-
-.diagnostic-tester-bottom-bar__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.diagnostic-tester-bottom-bar__left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 160px;
-}
-
-.diagnostic-tester-bottom-bar__tag {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #f97316;
-}
-
-.diagnostic-tester-bottom-bar__stage-readout {
-  font-size: 13px;
-  font-weight: 700;
-  color: #f4f4f5;
-}
-
-.diagnostic-tester-bottom-bar__current-name {
-  color: #fdba74;
-}
-
-.diagnostic-tester-bottom-bar__nodes {
+/* Teacher Lesson Hopper Styling */
+.hopper-title-wrap {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.diagnostic-bottom-node {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  padding: 5px 10px !important;
-  border-radius: 999px !important;
-  background: rgba(255, 255, 255, 0.07) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  color: #a1a1aa !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  min-height: auto !important;
-  max-width: none !important;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.diagnostic-bottom-node:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
-  color: #ffffff !important;
-  border-color: #f97316 !important;
-}
-
-.diagnostic-bottom-node.is-active {
-  background: #ea580c !important;
-  border-color: #f97316 !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.4) !important;
-}
-
-.diagnostic-bottom-node.is-passed {
-  border-color: rgba(52, 211, 153, 0.4) !important;
-  color: #d1d5db !important;
-}
-
-.diagnostic-bottom-node__dot {
-  position: relative;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.hopper-badge {
   font-size: 10px;
   font-weight: 800;
-}
-
-.diagnostic-bottom-node.is-active .diagnostic-bottom-node__dot {
-  background: #ffffff;
-  color: #ea580c;
-}
-
-.diagnostic-bottom-node.is-passed .diagnostic-bottom-node__dot {
-  background: #10b981;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #ea580c;
   color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 4px;
 }
 
-.diagnostic-tester-bottom-bar__controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.hopper-toggle-btn {
+  background: rgba(24, 24, 27, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #f4f4f5 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
 }
 
-.diagnostic-tester-nav-btn {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  color: #e4e4e7 !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  padding: 6px 12px !important;
-  border-radius: 8px !important;
-  min-height: auto !important;
-  max-width: none !important;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.diagnostic-tester-nav-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18) !important;
-  color: #ffffff !important;
+.hopper-toggle-btn:hover {
+  background: #27272a !important;
   border-color: #f97316 !important;
 }
 
-.diagnostic-tester-nav-btn:disabled {
-  opacity: 0.35 !important;
-  cursor: default !important;
-}
-
-.diagnostic-tester-nav-btn--next {
-  background: #ea580c !important;
-  border-color: #f97316 !important;
-  color: #ffffff !important;
-}
-.diagnostic-tester-nav-btn--next:hover:not(:disabled) {
-  background: #f97316 !important;
-}
-
-@media (max-width: 768px) {
-  .diagnostic-tester-bottom-bar__nodes {
-    display: none;
-  }
-}

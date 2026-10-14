@@ -11,7 +11,6 @@ import type { OclefIntegrationSession } from '../integration/oclefBridge';
 import { DIAGNOSTIC_KEYS, DIAGNOSTIC_REGISTRY } from './registry';
 import type { DiagnosticStage } from './registry';
 import DiagnosticLessonView from './DiagnosticLessonView';
-import { MiniLessonBottomBar } from './MiniLessonVisualProgress';
 import { diagnosticReferral } from './routing';
 import './diagnostics.css';
 
@@ -137,22 +136,43 @@ export default function DiagnosticRouter({
   const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
   const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
   const [tester] = useState(() => isDevTesterAllowed(session));
-  const stationTopic = selection && isStationTopic(selection.problem) ? selection.problem : null;
-  const mode = selection?.practiceMode ?? 'station';
+  const normalizedProblem = selection?.problem === 'clef-transposition' || selection?.problem === 'clef-change'
+    ? 'mid-line-clef-change'
+    : selection?.problem;
+  const stationTopic = normalizedProblem && isStationTopic(normalizedProblem) ? normalizedProblem : null;
   const need = selection?.stationNeed ?? 'adaptive';
+  const currentBatch = Math.min(BATCH_COUNT, Math.max(1, selection?.batch ?? 1));
 
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
-      selection && definition ? stationTopic && mode === 'station' ? <StationPractice key={`${stationTopic}/${selection.batch ?? 1}/${selection.revision}`} store={store} topic={stationTopic} need={need} definition={definition} selectedKey={selectedKey}
-        batch={selection.batch ?? 1} onNextBatch={() => handleSelectDiagnostic({ ...selection, batch: (selection.batch ?? 1) + 1, revision: selection.revision + 1 })}
-        onStandard={standard} /> : <DiagnosticLessonView key={`${selection.problem}/${selection.key}/${selection.revision}`} definition={definition} selectedKey={selectedKey} initialStage={selection.stage} onStandard={standard} onStageChange={(stg) => {
-          setSelection(prev => (prev && prev.stage !== stg ? { ...prev, stage: stg } : prev));
-          if (typeof window !== 'undefined') {
-            const url = new URL(window.location.href);
-            url.searchParams.set('stage', String(stg));
-            window.history.replaceState({}, '', url.toString());
-          }
-        }} /> :
+      selection ? (
+        stationTopic ? (
+          <StationPractice
+            key={`${stationTopic}/${currentBatch}/${selection.revision}`}
+            store={store}
+            topic={stationTopic}
+            need={need}
+            definition={definition ?? DIAGNOSTIC_REGISTRY.find(d => d.id === 'mid-line-clef-change')!}
+            selectedKey={selectedKey}
+            batch={currentBatch}
+            onNextBatch={() => handleSelectDiagnostic({
+              ...selection,
+              problem: stationTopic,
+              batch: Math.min(BATCH_COUNT, currentBatch + 1),
+              revision: selection.revision + 1,
+            })}
+            onStandard={standard}
+          />
+        ) : definition ? (
+          <DiagnosticLessonView
+            key={`${selection.problem}/${selection.key}/${selection.revision}`}
+            definition={definition}
+            selectedKey={selectedKey}
+            initialStage={selection.stage}
+            onStandard={standard}
+          />
+        ) : null
+      ) : (
         <PathwayRouter
           key={standardRevision}
           initialLesson={standardState ? standardState.lesson : initialLesson}
@@ -161,14 +181,8 @@ export default function DiagnosticRouter({
           sessionQuestionCap={launch?.assignment?.questionCap}
           returnUrl={launch?.assignment?.returnUrl}
           externalLaunch={launch}
-        />}
-    {tester && selection && (!stationTopic || mode === 'exhaustive') && (
-      <MiniLessonBottomBar
-        problemId={selection.problem}
-        currentStage={selection.stage}
-        onSelectStage={(stg) => handleSelectDiagnostic({ ...selection, stage: stg, revision: selection.revision + 1 })}
-      />
-    )}
+        />
+      )}
     {tester && (
       <DiagnosticNavigator
         selection={selection}

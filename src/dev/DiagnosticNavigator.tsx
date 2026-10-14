@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { DIAGNOSTIC_KEYS, DIAGNOSTIC_REGISTRY } from '../diagnostics/registry';
+import { DIAGNOSTIC_KEYS } from '../diagnostics/registry';
 import type { DiagnosticStage } from '../diagnostics/registry';
-import { isStationTopic } from '../stations/types';
 import { BATCH_COUNT } from '../stations/generator';
 import type { PracticeMode, StationNeed } from '../stations/types';
-import { MiniLessonVisualProgress, getMiniLessonSteps } from '../diagnostics/MiniLessonVisualProgress';
+import { MiniLessonVisualProgress } from '../diagnostics/MiniLessonVisualProgress';
 
 export interface DiagnosticSelection {
   problem: string;
@@ -15,6 +14,15 @@ export interface DiagnosticSelection {
   stationNeed?: StationNeed;
   batch?: number;
 }
+
+export const MINI_LESSONS = [
+  { id: 'key-signature', label: 'Key Signatures' },
+  { id: 'mid-line-clef-change', label: 'Clef Changes' },
+  { id: 'accidental-carryover', label: 'Accidental Carryover' },
+  { id: 'octave-displacement', label: 'Register Reading' },
+  { id: 'hand-position', label: 'Finger-to-Note Reading' },
+  { id: 'cross-over-under', label: 'Crossing Continuity' },
+] as const;
 
 export default function DiagnosticNavigator({
   selection,
@@ -41,17 +49,24 @@ export default function DiagnosticNavigator({
     if (selection) setActiveTab('diagnostics');
   }, [selection]);
 
-  const problem = DIAGNOSTIC_REGISTRY.find(p => p.id === selection?.problem) ?? DIAGNOSTIC_REGISTRY[0];
-  const key = DIAGNOSTIC_KEYS.find(k => k.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
-  const currentStage = selection?.stage ?? 1;
+  // Normalize any clef alias directly to the clef changes mini-lesson
+  const currentProblemId = selection?.problem === 'clef-transposition' || selection?.problem === 'clef-change'
+    ? 'mid-line-clef-change'
+    : (selection?.problem ?? MINI_LESSONS[0].id);
 
-  const select = (problemId: string, keyId: string, stage?: DiagnosticStage) => {
+  const selectedProblem = MINI_LESSONS.find(p => p.id === currentProblemId) ?? MINI_LESSONS[0];
+  const selectedKey = DIAGNOSTIC_KEYS.find(k => k.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
+  const currentBatch = Math.min(BATCH_COUNT, Math.max(1, selection?.batch ?? 1));
+
+  const select = (problemId: string, keyId: string, batchNum?: number, practiceMode?: PracticeMode) => {
     setActiveTab('diagnostics');
+    const normalized = problemId === 'clef-transposition' || problemId === 'clef-change' ? 'mid-line-clef-change' : problemId;
     onSelect({
-      problem: problemId,
+      problem: normalized,
       key: keyId,
-      stage: stage ?? 1,
-      practiceMode: stage ? 'exhaustive' : selection?.practiceMode ?? 'station',
+      stage: 1,
+      batch: batchNum ?? selection?.batch ?? 1,
+      practiceMode: practiceMode ?? selection?.practiceMode ?? 'station',
       stationNeed: selection?.stationNeed ?? 'adaptive',
       revision: (selection?.revision ?? 0) + 1,
     });
@@ -72,27 +87,15 @@ export default function DiagnosticNavigator({
 
       if (event.key === 'Escape') {
         setOpen(false);
-      } else if (selection && ['1', '2', '3', '4'].includes(event.key)) {
+      } else if (selection && ['1', '2', '3', '4', '5', '6'].includes(event.key)) {
         event.preventDefault();
-        select(problem.id, key.id, Number(event.key) as DiagnosticStage);
+        select(selectedProblem.id, selectedKey.id, Number(event.key));
       } else if (selection && (event.key === '[' || event.key === ']')) {
         event.preventDefault();
         const delta = event.key === '[' ? -1 : 1;
-        if (problem.usesKey && !event.shiftKey) {
-          const index = DIAGNOSTIC_KEYS.indexOf(key);
-          select(
-            problem.id,
-            DIAGNOSTIC_KEYS[(index + delta + DIAGNOSTIC_KEYS.length) % DIAGNOSTIC_KEYS.length].id,
-            currentStage
-          );
-        } else {
-          const index = DIAGNOSTIC_REGISTRY.indexOf(problem);
-          select(
-            DIAGNOSTIC_REGISTRY[(index + delta + DIAGNOSTIC_REGISTRY.length) % DIAGNOSTIC_REGISTRY.length].id,
-            key.id,
-            currentStage
-          );
-        }
+        const index = MINI_LESSONS.findIndex(m => m.id === selectedProblem.id);
+        const nextProblem = MINI_LESSONS[(index + delta + MINI_LESSONS.length) % MINI_LESSONS.length];
+        select(nextProblem.id, selectedKey.id, 1);
       } else if (!selection && (event.key === '[' || event.key === ']')) {
         event.preventDefault();
         const delta = event.key === '[' ? -1 : 1;
@@ -110,48 +113,51 @@ export default function DiagnosticNavigator({
   const minorKeys = DIAGNOSTIC_KEYS.filter(k => k.minor);
 
   return (
-    <aside className="diagnostic-navigator" aria-label="Diagnostic testing navigator">
+    <aside className="diagnostic-navigator" aria-label="Teacher Lesson Hopper">
       <button
         type="button"
-        className="diagnostic-navigator-toggle"
+        className="diagnostic-navigator-toggle hopper-toggle-btn"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        aria-controls="diagnostic-controls"
+        aria-controls="hopper-controls"
       >
-        <span className="diagnostic-navigator-toggle__badge">{open ? '✕' : '⚡'}</span>
-        <span className="diagnostic-navigator-toggle__label">Diagnostic tester</span>
+        <span className="diagnostic-navigator-toggle__badge">{open ? '✕' : '🧭'}</span>
+        <span className="diagnostic-navigator-toggle__label">Lesson Hopper</span>
         {!open && (
           <span className="diagnostic-navigator-toggle__info">
-            {selection ? `${problem.label.split(' ')[0]} · S${currentStage}` : `L${currentLesson}`}
+            {selection ? `${selectedProblem.label.split(' ')[0]} · B${currentBatch}` : `L${currentLesson}`}
           </span>
         )}
       </button>
 
       {open && (
-        <div id="diagnostic-controls" className="diagnostic-navigator__panel">
+        <div id="hopper-controls" className="diagnostic-navigator__panel">
           <div className="diagnostic-navigator__header">
-            <strong>KeyStance Dev Studio</strong>
+            <div className="hopper-title-wrap">
+              <strong>Lesson Hopper</strong>
+              <span className="hopper-badge">Teacher Access</span>
+            </div>
             <div className="diagnostic-navigator__mode-tabs">
               <button
                 type="button"
                 className={`diagnostic-tab ${activeTab === 'diagnostics' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('diagnostics')}
               >
-                Diagnostic Remediation ({DIAGNOSTIC_REGISTRY.length})
+                Mini Lessons ({MINI_LESSONS.length})
               </button>
               <button
                 type="button"
                 className={`diagnostic-tab ${activeTab === 'standard' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('standard')}
               >
-                Standard Curriculum (24)
+                Standard Curriculum (1–24)
               </button>
             </div>
             <button
               type="button"
               className="diagnostic-close"
               onClick={() => setOpen(false)}
-              aria-label="Close tester"
+              aria-label="Close hopper"
             >
               ✕
             </button>
@@ -159,53 +165,15 @@ export default function DiagnosticNavigator({
 
           {activeTab === 'diagnostics' ? (
             <div className="diagnostic-navigator__body">
-              {selection && isStationTopic(selection.problem) && (
-                <div className="diagnostic-section">
-                  <span className="diagnostic-section-title">Practice Mode</span>
-                  <div className="diagnostic-practice-mode-tabs" role="tablist" aria-label="Practice mode">
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={selection.practiceMode !== 'exhaustive'}
-                      className={`diagnostic-tab ${selection.practiceMode !== 'exhaustive' ? 'is-active' : ''}`}
-                      onClick={() => onSelect({ ...selection, practiceMode: 'station', revision: selection.revision + 1 })}
-                    >
-                      3-Question Batches
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={selection.practiceMode === 'exhaustive'}
-                      className={`diagnostic-tab ${selection.practiceMode === 'exhaustive' ? 'is-active' : ''}`}
-                      onClick={() => onSelect({ ...selection, practiceMode: 'exhaustive', revision: selection.revision + 1 })}
-                    >
-                      All Questions
-                    </button>
-                  </div>
-                </div>
-              )}
-              {selection && isStationTopic(selection.problem) && selection.practiceMode !== 'exhaustive' && (
-                <label className="diagnostic-select-wrap">
-                  Batch ({BATCH_COUNT} total)
-                  <select
-                    aria-label="Batch"
-                    value={selection.batch ?? 1}
-                    onChange={e => onSelect({ ...selection, batch: Number(e.target.value), revision: selection.revision + 1 })}
-                  >
-                    {Array.from({ length: BATCH_COUNT }, (_, i) => (
-                      <option key={i} value={i + 1}>Batch {i + 1} of {BATCH_COUNT}</option>
-                    ))}
-                  </select>
-                </label>
-              )}
+              {/* Mini Lesson Topic Selector */}
               <div className="diagnostic-section">
-                <span className="diagnostic-section-title">Problem ({DIAGNOSTIC_REGISTRY.length})</span>
+                <span className="diagnostic-section-title">Mini Lesson ({MINI_LESSONS.length})</span>
                 <label className="diagnostic-select-wrap">
                   <select
-                    value={problem.id}
-                    onChange={e => select(e.target.value, key.id)}
+                    value={selectedProblem.id}
+                    onChange={e => select(e.target.value, selectedKey.id, 1)}
                   >
-                    {DIAGNOSTIC_REGISTRY.map(p => (
+                    {MINI_LESSONS.map(p => (
                       <option key={p.id} value={p.id}>
                         {p.label}
                       </option>
@@ -213,12 +181,12 @@ export default function DiagnosticNavigator({
                   </select>
                 </label>
                 <div className="diagnostic-pill-chips">
-                  {DIAGNOSTIC_REGISTRY.map(p => (
+                  {MINI_LESSONS.map(p => (
                     <button
                       key={p.id}
                       type="button"
-                      className={`diagnostic-chip ${problem.id === p.id && selection ? 'is-active' : ''}`}
-                      onClick={() => select(p.id, key.id)}
+                      className={`diagnostic-chip ${selectedProblem.id === p.id && selection ? 'is-active' : ''}`}
+                      onClick={() => select(p.id, selectedKey.id, 1)}
                     >
                       {p.label}
                     </button>
@@ -226,14 +194,72 @@ export default function DiagnosticNavigator({
                 </div>
               </div>
 
+              {/* Practice Mode Switcher */}
               <div className="diagnostic-section">
-                <span className="diagnostic-section-title">
-                  Musical Key (24 keys) {problem.usesKey ? '· Active' : '· Hand Position only'}
-                </span>
+                <span className="diagnostic-section-title">Practice Mode</span>
+                <div className="diagnostic-practice-mode-tabs" role="tablist" aria-label="Practice mode">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={selection?.practiceMode !== 'exhaustive'}
+                    className={`diagnostic-tab ${selection?.practiceMode !== 'exhaustive' ? 'is-active' : ''}`}
+                    onClick={() => select(selectedProblem.id, selectedKey.id, currentBatch, 'station')}
+                  >
+                    3-Question Batches
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={selection?.practiceMode === 'exhaustive'}
+                    className={`diagnostic-tab ${selection?.practiceMode === 'exhaustive' ? 'is-active' : ''}`}
+                    onClick={() => select(selectedProblem.id, selectedKey.id, currentBatch, 'exhaustive')}
+                  >
+                    All Lessons
+                  </button>
+                </div>
+              </div>
+
+              {/* When 3-Question Batches mode: fast batch selector */}
+              {selection?.practiceMode !== 'exhaustive' && (
+                <div className="diagnostic-section">
+                  <span className="diagnostic-section-title">Choose Batch ({BATCH_COUNT} Batches)</span>
+                  <label className="diagnostic-select-wrap">
+                    <select
+                      aria-label="Batch"
+                      value={currentBatch}
+                      onChange={e => select(selectedProblem.id, selectedKey.id, Number(e.target.value), 'station')}
+                    >
+                      {Array.from({ length: BATCH_COUNT }, (_, i) => (
+                        <option key={i} value={i + 1}>Batch {i + 1} of {BATCH_COUNT}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="diagnostic-jumps">
+                    {Array.from({ length: BATCH_COUNT }, (_, i) => {
+                      const bNum = i + 1;
+                      const isActive = selection !== null && currentBatch === bNum;
+                      return (
+                        <button
+                          key={bNum}
+                          type="button"
+                          className={`diagnostic-jump-btn ${isActive ? 'is-active' : ''}`}
+                          onClick={() => select(selectedProblem.id, selectedKey.id, bNum, 'station')}
+                        >
+                          Batch {bNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Musical Key Selection */}
+              <div className="diagnostic-section">
+                <span className="diagnostic-section-title">Musical Key (24 keys)</span>
                 <label className="diagnostic-select-wrap">
                   <select
-                    value={key.id}
-                    onChange={e => select(problem.id, e.target.value, currentStage)}
+                    value={selectedKey.id}
+                    onChange={e => select(selectedProblem.id, e.target.value, currentBatch)}
                   >
                     <optgroup label="Major Keys (12)">
                       {majorKeys.map(k => (
@@ -253,38 +279,19 @@ export default function DiagnosticNavigator({
                 </label>
               </div>
 
-              {/* For All Questions tab (or non-station topics): show Jump to Lesson and the Visual Progress roadmap */}
-              {(!isStationTopic(problem.id) || selection?.practiceMode === 'exhaustive') && (
-                <>
-                  <div className="diagnostic-section">
-                    <span className="diagnostic-section-title">
-                      All Questions · Jump to Lesson ({getMiniLessonSteps(problem.id).length} Lessons in this Mini-Lesson)
-                    </span>
-                    <div className="diagnostic-jumps">
-                      {getMiniLessonSteps(problem.id).map((step, i) => {
-                        const isActive = selection !== null && currentStage === step.stage;
-                        return (
-                          <button
-                            key={step.stage}
-                            type="button"
-                            className={`diagnostic-jump-btn ${isActive ? 'is-active' : ''}`}
-                            onClick={() => select(problem.id, key.id, step.stage)}
-                          >
-                            {i + 1}: {step.shortLabel}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Visual diagram showing all X lessons for this mini-lesson and which one the user is on */}
+              {/* For All Lessons mode: visual roadmap image at the bottom showing the 6 batches */}
+              {selection?.practiceMode === 'exhaustive' && (
+                <div className="diagnostic-section">
+                  <span className="diagnostic-section-title">
+                    All Lessons Sequence ({BATCH_COUNT} Batches · 18 Questions)
+                  </span>
                   <MiniLessonVisualProgress
-                    problemId={problem.id}
-                    problemLabel={problem.label}
-                    currentStage={currentStage}
-                    onSelectStage={stg => select(problem.id, key.id, stg)}
+                    topicId={selectedProblem.id}
+                    topicLabel={selectedProblem.label}
+                    currentBatch={currentBatch}
+                    onSelectBatch={b => select(selectedProblem.id, selectedKey.id, b, 'exhaustive')}
                   />
-                </>
+                </div>
               )}
 
               <div className="diagnostic-actions-row">
@@ -357,7 +364,7 @@ export default function DiagnosticNavigator({
           )}
 
           <div className="diagnostic-navigator__footer">
-            <small>[ / ] cycle keys/problems · 1–4 jump stages · Esc close</small>
+            <small>[ / ] cycle mini lessons · 1–6 switch batches · Esc close</small>
           </div>
         </div>
       )}
