@@ -1,4 +1,4 @@
-# Project Context: EarTrain (Auxiliary Tool for reading.oclef.com)
+# Project Context: KeyStance (Auxiliary Tool for reading.oclef.com)
 
 ## Core Purpose
 This application serves as a strictly guided, auxiliary drill tool for users of `reading.oclef.com`. When the main sightreading application detects that a student is struggling with keyboard geography and hand positioning, they are redirected here. The goal is to rapidly and effectively correct their hand positioning through targeted lessons, and then send them back. 

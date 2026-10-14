@@ -2,11 +2,11 @@ import type { AttemptRecord } from '../curriculum/telemetry';
 
 /** Versioned separately from the curriculum and database schema. */
 export const LEARNING_DATA_SCHEMA_VERSION = 1 as const;
-export const CURRICULUM_ID = 'eartrain-position-pathway';
+export const CURRICULUM_ID = 'keystance-position-pathway';
 export const CURRICULUM_VERSION = '2026-09-v22-memory-and-musical-complexity';
 
 export type LearnerStatus = 'active' | 'paused' | 'archived';
-export type IdentityProvider = 'eartrain' | 'reading.oclef.com';
+export type IdentityProvider = 'keystance' | 'eartrain' | 'reading.oclef.com';
 
 /**
  * A student is intentionally not an auth user. Instructors authenticate;
@@ -33,7 +33,7 @@ export interface ExternalIdentityLink {
 export interface PracticeSessionRecord {
   id: string;
   studentId: string;
-  sourceApp: 'eartrain-web' | 'reading.oclef.com';
+  sourceApp: 'keystance-web' | 'eartrain-web' | 'reading.oclef.com';
   startedAt: number;
   lastActivityAt: number;
   endedAt: number | null;

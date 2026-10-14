@@ -1,4 +1,4 @@
-# EarTrain maintainer rules
+# KeyStance maintainer rules
 
 ## Responsive notation fixes are regression-protected
 

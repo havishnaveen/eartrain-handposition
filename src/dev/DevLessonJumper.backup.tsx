@@ -11,7 +11,7 @@ import { TOTAL_CONCEPTS, getConcept } from '../curriculum/curriculum';
  *
  * Why this exists / how it stays out of the way of real students:
  *  - Enabled only when `import.meta.env.DEV` (i.e. `npm run dev`, never a
- *    production `vite build`) OR a `eartrain.dev-lesson-jump.v1` localStorage
+ *    production `vite build`) OR a `keystance.dev-lesson-jump.v1` localStorage
  *    flag is set to '1'. A deployed build never shows this by accident —
  *    someone would have to open devtools and flip the flag on purpose.
  *  - The control renders through a React portal straight into `document.body`,

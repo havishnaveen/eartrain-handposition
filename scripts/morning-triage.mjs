@@ -36,7 +36,7 @@ async function fetchOpenProblemReports() {
   
   const headers = {
     'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'EarTrain-Morning-Triage/1.0',
+    'User-Agent': 'KeyStance-Morning-Triage/1.0',
   };
 
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
@@ -75,7 +75,7 @@ function classifyIssue(issue) {
 
   // 4. Extract lesson / drill details if present
   let lessonInfo = 'Unknown lesson';
-  const lessonMatch = issue.body?.match(/EarTrain issue — (Lesson \d+[^,\n]*)/i) || issue.body?.match(/(Lesson \d+[^,\n]*)/i);
+  const lessonMatch = issue.body?.match(/(?:KeyStance|EarTrain) issue — (Lesson \d+[^,\n]*)/i) || issue.body?.match(/(Lesson \d+[^,\n]*)/i);
   if (lessonMatch) {
     lessonInfo = lessonMatch[1].trim();
   }
@@ -116,7 +116,7 @@ function saveAlertsHistory(history) {
 
 async function main() {
   log('========================================================');
-  log(`EarTrain Morning Triage Started ${isDryRun ? '(DRY RUN)' : ''}`);
+  log(`KeyStance Morning Triage Started ${isDryRun ? '(DRY RUN)' : ''}`);
   log('========================================================');
 
   let issues = [];
@@ -131,7 +131,7 @@ async function main() {
 
   if (issues.length === 0) {
     log('No open problem reports found. Everything is clean.');
-    log('EarTrain Morning Triage Finished Successfully.');
+    log('KeyStance Morning Triage Finished Successfully.');
     return;
   }
 
@@ -168,7 +168,7 @@ async function main() {
         log(`    [POLICY: ESCALATE] ${count} timing slips reported on ${exKey}! DO NOT auto-fix.`);
         const alertMsg = `Repeated timing complaints (${count}) on ${exKey}. Needs Havish review.`;
         pendingActions.push({ type: 'timing-escalation', issue: classified, message: alertMsg });
-        notifyMacOS('EarTrain Alert: Repeated Timing Issues', alertMsg);
+        notifyMacOS('KeyStance Alert: Repeated Timing Issues', alertMsg);
       }
       continue;
     }
@@ -179,7 +179,7 @@ async function main() {
       log(`    Review student playthrough diagnostics carefully to determine if student erred or grading erred.`);
       const alertMsg = `Grading complaint on ${classified.lessonInfo} (#${classified.number}). Playthrough review required before changes.`;
       pendingActions.push({ type: 'grading-review', issue: classified, message: alertMsg });
-      notifyMacOS('EarTrain Alert: Grading Review', alertMsg);
+      notifyMacOS('KeyStance Alert: Grading Review', alertMsg);
       continue;
     }
 
@@ -196,7 +196,7 @@ async function main() {
     log(`  * [${item.type.toUpperCase()}] ${item.message} (${item.issue.htmlUrl})`);
   }
   log('========================================================');
-  log('EarTrain Morning Triage Finished.');
+  log('KeyStance Morning Triage Finished.');
 }
 
 main().catch(err => {

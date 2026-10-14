@@ -6,7 +6,7 @@ import type { DetectedNote, GradeResult } from '../audio/timing';
  *
  * reading.oclef.com can replace this provider without changing the recorder,
  * curriculum, report UI, or telemetry payload. The browser must never receive
- * the partner API key; a remote provider should call an EarTrain server route.
+ * the partner API key; a remote provider should call a KeyStance server route.
  */
 export interface GradingRequest {
   expectedSequence: readonly string[];
@@ -20,7 +20,7 @@ export interface GradingProvider {
 }
 
 export const localGradingProvider: GradingProvider = {
-  id: 'eartrain-local-v1',
+  id: 'keystance-local-v1',
   grade: ({ expectedSequence, detectedNotes, options }) =>
     gradeSequence([...expectedSequence], [...detectedNotes], options),
 };

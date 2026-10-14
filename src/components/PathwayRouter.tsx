@@ -53,7 +53,7 @@ const MAX_ATTEMPTS = 1;
 const REPS_ADDED_PER_MISS = 0;
 /** Briefly acknowledge analysis without delaying an already-complete grade. */
 const MIN_ANALYSIS_VISIBLE_MS = 320;
-const ORIENTATION_STORAGE_KEY = 'eartrain.orientation-cues.v1';
+const ORIENTATION_STORAGE_KEY = 'keystance.orientation-cues.v1';
 /**
  * A standalone run must be able to reach every lesson. Integrations may pass a
  * smaller cap, but the app default covers even the maximum expanded loop in
@@ -76,7 +76,8 @@ const EMPTY_ORIENTATION_SEEN: OrientationSeen = {
 function readOrientationSeen(): OrientationSeen {
   if (typeof window === 'undefined') return { ...EMPTY_ORIENTATION_SEEN };
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(ORIENTATION_STORAGE_KEY) ?? '{}');
+    const raw = window.localStorage.getItem(ORIENTATION_STORAGE_KEY) ?? window.localStorage.getItem('eartrain.orientation-cues.v1') ?? '{}';
+    const parsed = JSON.parse(raw);
     return {
       register: parsed?.register === true,
       'left-hand': parsed?.['left-hand'] === true,
@@ -1043,7 +1044,7 @@ export function PathwayRouter({
           passed: state.pendingRecord.passed,
           remediationProblem: state.pendingRecord.primaryProblem ?? '',
         },
-        externalLaunchRef.current ? 'reading.oclef.com' : 'eartrain-web',
+        externalLaunchRef.current ? 'reading.oclef.com' : 'keystance-web',
       );
     }
   }, [state.recordSeq, state.pendingRecord]);
@@ -1059,7 +1060,7 @@ export function PathwayRouter({
         assignmentId: externalLaunchRef.current?.assignment?.id ?? '',
         remediationProblem: externalLaunchRef.current?.assignment?.problem ?? '',
       },
-      externalLaunchRef.current ? 'reading.oclef.com' : 'eartrain-web',
+      externalLaunchRef.current ? 'reading.oclef.com' : 'keystance-web',
     );
   }, [state.lesson]);
 
@@ -1076,7 +1077,7 @@ export function PathwayRouter({
         exerciseMode: question.exerciseMode,
         remediationProblem: concept.primaryProblem ?? '',
       },
-      externalLaunchRef.current ? 'reading.oclef.com' : 'eartrain-web',
+      externalLaunchRef.current ? 'reading.oclef.com' : 'keystance-web',
     );
   }, [concept.primaryProblem, question.conceptId, question.exerciseMode, question.id, state.lesson, state.question]);
 
@@ -1095,7 +1096,7 @@ export function PathwayRouter({
         attemptNumber: state.attempt,
         exerciseMode: question.exerciseMode,
       },
-      externalLaunchRef.current ? 'reading.oclef.com' : 'eartrain-web',
+      externalLaunchRef.current ? 'reading.oclef.com' : 'keystance-web',
     );
   }, [question.conceptId, question.exerciseMode, question.id, state.attempt, state.lesson, state.question, state.status]);
 
@@ -1165,7 +1166,7 @@ export function PathwayRouter({
         lessonsReached: state.lessonsReached,
         endedOnCap: state.endedOnCap,
       },
-      externalLaunchRef.current ? 'reading.oclef.com' : 'eartrain-web',
+      externalLaunchRef.current ? 'reading.oclef.com' : 'keystance-web',
     );
     learningProfileStore.endActiveSession();
   }, [state.endedOnCap, state.finished, state.lessonsReached, state.questionsServed]);

@@ -1,4 +1,4 @@
-# EarTrain full-curriculum regression audit
+# KeyStance full-curriculum regression audit
 
 Audit date: 2026-08-13
 

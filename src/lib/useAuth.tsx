@@ -78,13 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         const { data: { user: currentUser } } = await supabase.auth.getUser()
         if (currentUser) {
-          const currentMeta = currentUser.user_metadata?.eartrain_sync || {}
+          const currentMeta = currentUser.user_metadata?.keystance_sync || currentUser.user_metadata?.eartrain_sync || {}
           const newMeta = { ...currentMeta }
           for (const [k, v] of Object.entries(currentUpdates)) {
             if (v === null) delete newMeta[k]
             else newMeta[k] = typeof v === 'string' ? v : JSON.stringify(v)
           }
-          await supabase.auth.updateUser({ data: { eartrain_sync: newMeta } })
+          await supabase.auth.updateUser({ data: { keystance_sync: newMeta, eartrain_sync: newMeta } })
         }
       }, 5000); // 5-second debounce to safely avoid Supabase rate limits
     }
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       p.avatar_url = decoded.avatar_url;
       p.active_title = p.active_title || decoded.active_title;
       
-      const localTitle = localStorage.getItem(`eartrain_active_title_${userId}`);
+      const localTitle = localStorage.getItem(`keystance_active_title_${userId}`) || localStorage.getItem(`eartrain_active_title_${userId}`);
       
       const localBadgesStr = localStorage.getItem(`claimedBadges_${userId}`);
       const localBadges = localBadgesStr ? JSON.parse(localBadgesStr) : [];
@@ -144,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         needsSync = true;
       } else if (p.active_title && p.active_title !== localTitle) {
         // Hydrate local cache if backend has an active title but local doesn't match
+        localStorage.setItem(`keystance_active_title_${userId}`, p.active_title);
         localStorage.setItem(`eartrain_active_title_${userId}`, p.active_title);
         window.dispatchEvent(new CustomEvent('titleUpdate'));
       }
@@ -217,10 +218,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (diff > 0 && user) {
         const d = new Date();
         const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const historyKey = `eartrain_xp_history_${user.id}`;
-        const history = JSON.parse(localStorage.getItem(historyKey) || '{}');
+        const historyKey = `keystance_xp_history_${user.id}`;
+        const history = JSON.parse(localStorage.getItem(historyKey) || localStorage.getItem(`eartrain_xp_history_${user.id}`) || '{}');
         history[today] = (history[today] || 0) + diff;
-        syncUserSettings({ [historyKey]: history });
+        syncUserSettings({ [historyKey]: history, [`eartrain_xp_history_${user.id}`]: history });
       }
     }
     if (!profile) return;
@@ -278,8 +279,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) { 
-        if (session.user.user_metadata?.eartrain_sync) {
-          hydrateLocalCache(session.user.user_metadata.eartrain_sync)
+        const syncPayload = session.user.user_metadata?.keystance_sync || session.user.user_metadata?.eartrain_sync;
+        if (syncPayload) {
+          hydrateLocalCache(syncPayload)
         }
         fetchProfile(session.user.id); 
       } else {
@@ -291,8 +293,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        if (session.user.user_metadata?.eartrain_sync) {
-          hydrateLocalCache(session.user.user_metadata.eartrain_sync)
+        const syncPayload = session.user.user_metadata?.keystance_sync || session.user.user_metadata?.eartrain_sync;
+        if (syncPayload) {
+          hydrateLocalCache(syncPayload)
         }
         fetchProfile(session.user.id)
       } else {

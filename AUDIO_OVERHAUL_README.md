@@ -1,4 +1,4 @@
-# EarTrain score-aware audio overhaul
+# KeyStance score-aware audio overhaul
 
 Replace the files in this bundle at their matching project paths. The two new
 runtime files are required:

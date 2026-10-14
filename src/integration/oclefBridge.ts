@@ -8,7 +8,7 @@ import type {
   ResolvedStudentLaunch,
 } from '../profiles/types';
 
-const SESSION_KEY = 'eartrain.oclef-launch.v1';
+const SESSION_KEY = 'keystance.oclef-launch.v1';
 const HANDOFF_PARAM = 'handoff';
 const DEFAULT_EXCHANGE_PATH = '/api/integration/oclef/exchange';
 const DEFAULT_INGEST_PATH = '/api/integration/oclef/events';
@@ -167,7 +167,7 @@ function readCachedSession(): OclefIntegrationSession | null {
   const storage = sessionStorageSafe();
   if (!storage) return null;
   try {
-    return parseSession(JSON.parse(storage.getItem(SESSION_KEY) ?? 'null'));
+    return parseSession(JSON.parse(storage.getItem(SESSION_KEY) ?? storage.getItem('eartrain.oclef-launch.v1') ?? 'null'));
   } catch {
     return null;
   }
@@ -233,8 +233,8 @@ async function initializeOclefIntegrationOnce(): Promise<IntegrationBootstrap> {
       cache: 'no-store',
       body: JSON.stringify({
         handoff,
-        audience: 'eartrain-web',
-        curriculumId: 'eartrain-position-pathway',
+        audience: 'keystance-web',
+        curriculumId: 'keystance-position-pathway',
       }),
     });
     if (!response.ok) throw new Error(`exchange-${response.status}`);

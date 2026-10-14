@@ -68,7 +68,7 @@ export type ExerciseMode =
 export type HandScope = 'right' | 'left' | 'both';
 
 /**
- * Stable, machine-readable reasons an instructor may assign EarTrain work.
+ * Stable, machine-readable reasons an instructor may assign KeyStance work.
  * These are deliberately skill problems rather than lesson titles so an
  * external system can request remediation without knowing curriculum order.
  */

@@ -19,7 +19,7 @@ import type {
   SyncOutboxEvent,
 } from './types';
 
-const STORAGE_KEY = 'eartrain.learning-data.v1';
+const STORAGE_KEY = 'keystance.learning-data.v1';
 const SESSION_IDLE_LIMIT_MS = 30 * 60 * 1000;
 type Listener = () => void;
 
@@ -115,7 +115,7 @@ function loadState(): LearningDataState {
   const localStorage = storage();
   if (!localStorage) return freshState();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('eartrain.learning-data.v1');
     if (!raw) return freshState();
     const parsed: unknown = JSON.parse(raw);
     return isState(parsed)
@@ -370,7 +370,7 @@ class LearningProfileStore {
 
   recordAttempt(
     record: AttemptRecord,
-    sourceApp: PracticeSessionRecord['sourceApp'] = 'eartrain-web',
+    sourceApp: PracticeSessionRecord['sourceApp'] = 'keystance-web',
   ): StudentAttemptRecord {
     const id = attemptIdFor(record);
     const existing = this.state.attempts.find((attempt) => attempt.id === id);
@@ -424,7 +424,7 @@ class LearningProfileStore {
   recordActivity(
     type: LearningActivityType,
     properties: LearningActivityRecord['properties'] = {},
-    sourceApp: PracticeSessionRecord['sourceApp'] = 'eartrain-web',
+    sourceApp: PracticeSessionRecord['sourceApp'] = 'keystance-web',
   ): LearningActivityRecord {
     const student = this.ensureActiveStudent();
     const session = this.ensureSession(sourceApp);

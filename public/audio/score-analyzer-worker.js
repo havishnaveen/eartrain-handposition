@@ -1,5 +1,5 @@
 /**
- * EarTrain score-aware take analysis.
+ * KeyStance score-aware take analysis.
  *
  * The live worklet answers "did something piano-like just happen?" quickly.
  * This worker answers the slower and more important grading question:

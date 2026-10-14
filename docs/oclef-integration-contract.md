@@ -1,10 +1,10 @@
-# Oclef → EarTrain integration contract
+# Oclef → KeyStance integration contract
 
 This repository now contains the client boundary and durable data model. The
 private Oclef API is not publicly documented, so the two server endpoints below
 are the only adapters that must be connected once Oclef supplies its contract.
 The public Oclef page advertises teacher score review, recording review,
-feedback, and skill guidance; EarTrain records the score and diagnostic inputs
+feedback, and skill guidance; KeyStance records the score and diagnostic inputs
 needed for those teacher workflows without storing raw microphone audio.
 
 ## Passwordless student launch
@@ -12,7 +12,7 @@ needed for those teacher workflows without storing raw microphone audio.
 Oclef redirects to:
 
 ```text
-https://eartrain-clone.vercel.app/?handoff=OPAQUE_SINGLE_USE_CODE
+https://keystance.vercel.app/?handoff=OPAQUE_SINGLE_USE_CODE
 ```
 
 The browser POSTs that opaque value to
@@ -23,7 +23,7 @@ URL. The exchange service must:
 1. redeem the code once;
 2. verify issuer, audience (`eartrain-web`), expiry, redirect URI, and the Oclef
    client binding;
-3. map Oclef's opaque student and teacher subjects to EarTrain UUIDs;
+3. map Oclef's opaque student and teacher subjects to KeyStance UUIDs;
 4. return the resolved launch below plus a short-lived, student-scoped sync
    token; and
 5. reject replayed, expired, wrong-audience, or revoked codes.
@@ -34,8 +34,8 @@ Successful response:
 {
   "launch": {
     "launchId": "launch_opaque",
-    "studentId": "eartrain-student-uuid",
-    "instructorId": "eartrain-instructor-uuid",
+    "studentId": "keystance-student-uuid",
+    "instructorId": "keystance-instructor-uuid",
     "displayName": "Student display name",
     "provider": "reading.oclef.com",
     "externalSubject": "opaque-oclef-subject",
@@ -51,13 +51,13 @@ Successful response:
   },
   "syncToken": "short-lived-student-scoped-token",
   "expiresAt": 1787426400000,
-  "ingestUrl": "https://reading.oclef.com/api/eartrain/events"
+  "ingestUrl": "https://reading.oclef.com/api/keystance/events"
 }
 ```
 
 Only a server-verified `assignment.problem` enters curriculum routing. Raw
 `studentId`, `lesson`, or `problem` query parameters are not authentication and
-are intentionally ignored. Return URLs are allow-listed to EarTrain/Oclef
+are intentionally ignored. Return URLs are allow-listed to KeyStance/Oclef
 origins to prevent an open redirect.
 
 ## Event ingestion
@@ -128,7 +128,7 @@ its own retention policy rather than being hidden inside score sync.
 3. Apply both Supabase migrations in `supabase/migrations/`.
 4. Set `VITE_OCLEF_HANDOFF_EXCHANGE_URL` and
    `VITE_OCLEF_ATTEMPT_INGEST_URL` if the endpoints are not same-origin.
-5. Allow-list the exact EarTrain redirect URI at Oclef.
+5. Allow-list the exact KeyStance redirect URI at Oclef.
 6. Test replay, expiry, wrong audience, revoked assignment, offline retry, and
    duplicate event delivery before enabling production redirects.
 

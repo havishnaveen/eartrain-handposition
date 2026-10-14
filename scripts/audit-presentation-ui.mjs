@@ -5,7 +5,7 @@ import { createServer } from 'vite';
 
 // Run against the local visual-audit entry point, never a production backdoor.
 const base = process.env.AUDIT_URL ?? 'http://127.0.0.1:5185';
-const output = '/tmp/eartrain-presentation-audit';
+const output = '/tmp/keystance-presentation-audit';
 await mkdir(output, { recursive: true });
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'silent' });
 const { PROGRESSIVE_CONCEPTS } = await server.ssrLoadModule('/src/curriculum/progressiveCurriculum.ts');

@@ -37,8 +37,8 @@ export function decodeSnapshot(raw: string | null, timeZone: string): StationDat
 export function stationIdentity(verifiedStudent?: string): string {
   if (verifiedStudent) return `verified:${verifiedStudent}`;
   try {
-    let identity = window.localStorage.getItem('eartrain.station.identity');
-    if (!identity) { identity = crypto.randomUUID(); window.localStorage.setItem('eartrain.station.identity', identity); }
+    let identity = window.localStorage.getItem('keystance.station.identity') || window.localStorage.getItem('eartrain.station.identity');
+    if (!identity) { identity = crypto.randomUUID(); window.localStorage.setItem('keystance.station.identity', identity); }
     return `device:${identity}`;
   } catch { return `temporary:${crypto.randomUUID()}`; }
 }

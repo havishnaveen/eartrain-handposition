@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'vite';
 
-const auditCacheDir = await mkdtemp(join(tmpdir(), 'eartrain-late-chords-'));
+const auditCacheDir = await mkdtemp(join(tmpdir(), 'keystance-late-chords-'));
 const server = await createServer({
   cacheDir: auditCacheDir,
   optimizeDeps: { noDiscovery: true },

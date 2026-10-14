@@ -9,7 +9,7 @@
 // (AudioWorkletNode pitch-processor.js, lossless PCM capture, the offline
 // score-analyzer-worker.js, Basic Pitch ML transcription, gradeSequence) is
 // the app's real, unmodified pipeline -- it cannot tell the difference.
-(function installEarTrainAudioInjection() {
+(function installKeyStanceAudioInjection() {
   const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
 
   const injection = {

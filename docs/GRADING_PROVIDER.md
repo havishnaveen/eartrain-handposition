@@ -1,7 +1,7 @@
 # Grading provider boundary
 
 Exercise capture ends at `gradeTake()` in `src/grading/gradingProvider.ts`.
-The current `localGradingProvider` preserves EarTrain's existing grader.
+The current `localGradingProvider` preserves KeyStance's existing grader.
 
 Live polyphony is isolated from playback: `chord-capture-processor.js` copies
 512-sample blocks through a bounded MessagePort queue to
@@ -33,7 +33,7 @@ Repeated chords can renew their arrival timestamps through independent rises
 in fundamental and harmonic energy, without requiring the strings to go silent.
 
 To integrate reading.oclef.com, install a provider during trusted application
-bootstrap. A remote provider should POST the `GradingRequest` to an EarTrain
+bootstrap. A remote provider should POST the `GradingRequest` to a KeyStance
 server route, where the partner API key is stored as a server-only environment
 variable. It must return the existing `GradeResult` contract so reports,
 telemetry, adaptive progression, and retries do not need partner-specific code.

@@ -1,4 +1,4 @@
-# EarTrain spatial-chord curriculum bundle
+# KeyStance spatial-chord curriculum bundle
 
 Copy the included `src/` directory over the project's `src/` directory,
 preserving the folder structure, then run `npm run build`.

@@ -605,7 +605,7 @@ function isProofAudioDebugEnabled(): boolean {
     /* ignore */
   }
   try {
-    return window.localStorage.getItem('eartrain.debug-audio') === '1';
+    return window.localStorage.getItem('keystance.debug-audio') === '1' || window.localStorage.getItem('eartrain.debug-audio') === '1';
   } catch {
     return false;
   }

@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'vite';
 
-const cacheDir = await mkdtemp(join(tmpdir(), 'eartrain-vite-anchor-'));
+const cacheDir = await mkdtemp(join(tmpdir(), 'keystance-vite-anchor-'));
 const server = await createServer({
   cacheDir,
   optimizeDeps: { noDiscovery: true },

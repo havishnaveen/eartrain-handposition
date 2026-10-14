@@ -1,4 +1,4 @@
-# EarTrain core recognition + piano-only v12
+# KeyStance core recognition + piano-only v12
 
 Copy this folder over the project root while preserving paths.
 

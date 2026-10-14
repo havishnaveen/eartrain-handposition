@@ -18,7 +18,7 @@ export interface ProfessorNotification {
   details?: string;
 }
 
-export const PROFESSOR_NOTIFICATIONS_STORAGE_KEY = 'eartrain_professor_notifications';
+export const PROFESSOR_NOTIFICATIONS_STORAGE_KEY = 'keystance_professor_notifications';
 
 function safeStorage(): Storage | null {
   if (typeof window === 'undefined') return null;
@@ -63,7 +63,7 @@ export function prepareProfessorNotification(params: {
   const storage = safeStorage();
   if (storage) {
     try {
-      const existingRaw = storage.getItem(PROFESSOR_NOTIFICATIONS_STORAGE_KEY);
+      const existingRaw = storage.getItem(PROFESSOR_NOTIFICATIONS_STORAGE_KEY) || storage.getItem('eartrain_professor_notifications');
       const existing: ProfessorNotification[] = existingRaw ? JSON.parse(existingRaw) : [];
       existing.unshift(notification);
       storage.setItem(PROFESSOR_NOTIFICATIONS_STORAGE_KEY, JSON.stringify(existing.slice(0, 50)));
@@ -75,7 +75,7 @@ export function prepareProfessorNotification(params: {
   if (typeof window !== 'undefined') {
     try {
       window.dispatchEvent(
-        new CustomEvent('eartrain:professor-notification', { detail: notification })
+        new CustomEvent('keystance:professor-notification', { detail: notification })
       );
     } catch {
       // Ignore in non-DOM test environments

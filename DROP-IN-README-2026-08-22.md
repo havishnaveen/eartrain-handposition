@@ -1,4 +1,4 @@
-# EarTrain audio reconciliation + Oclef integration foundation
+# KeyStance audio reconciliation + Oclef integration foundation
 
 Use the full-source archive when replacing the complete project. If applying
 selectively, copy every file in the drop-in archive while preserving its path.

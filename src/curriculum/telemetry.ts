@@ -122,7 +122,7 @@ export interface AttemptRecord {
 
 type Listener = () => void;
 
-const STORAGE_KEY = 'eartrain.telemetry.v1';
+const STORAGE_KEY = 'keystance.telemetry.v1';
 
 function storage(): Storage | null {
   if (typeof window === 'undefined') return null;
@@ -188,7 +188,7 @@ function loadRecords(): readonly AttemptRecord[] {
   if (!localStorage) return [];
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('eartrain.telemetry.v1');
     if (raw === null) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter(isAttemptRecord) : [];

@@ -1,6 +1,6 @@
-# EarTrain Prove It personalized hold errors
+# KeyStance Prove It personalized hold errors
 
-Copy these four files over the matching paths in the current EarTrain source:
+Copy these four files over the matching paths in the current KeyStance source:
 
 - `src/audio/useDrillAudio.ts`
 - `src/components/ExerciseView.tsx`

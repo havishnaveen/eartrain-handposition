@@ -22,7 +22,7 @@ placed in the profile database; reports retain scores and grading evidence only.
 Each of the 24 lessons also carries a stable primary remediation problem plus
 searchable problem tags. A verified external assignment can therefore request
 `bass-clef-recognition`, `register-placement`, `hand-shift`, or another skill
-without coupling Oclef to EarTrain lesson titles.
+without coupling Oclef to KeyStance lesson titles.
 
 ## Identity model
 
@@ -35,7 +35,7 @@ not auth users. This avoids forcing a five-year-old to manage credentials.
 
 1. An instructor launches a student from reading.oclef.com.
 2. reading.oclef.com creates a short-lived, single-use signed launch token.
-3. EarTrain sends that token to a Supabase Edge Function.
+3. KeyStance sends that token to a Supabase Edge Function.
 4. The function verifies signature, audience, expiry, and the hashed access
    grant, then returns a resolved student launch context and scoped session.
 5. `activateResolvedLaunch()` selects the student and continues from the saved

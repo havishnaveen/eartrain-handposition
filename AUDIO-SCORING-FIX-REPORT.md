@@ -1,4 +1,4 @@
-# EarTrain soft-note, volume, and scoring fix
+# KeyStance soft-note, volume, and scoring fix
 
 Drop-in production files:
 

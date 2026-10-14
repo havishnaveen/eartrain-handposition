@@ -40,7 +40,7 @@ export default async function handler(req: any, res: any) {
         'Authorization': `Bearer ${GITHUB_TOKEN}`,
         'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
-        'User-Agent': 'EarTrain-Problem-Reporter',
+        'User-Agent': 'KeyStance-Problem-Reporter',
       },
       body: JSON.stringify({
         title: issueTitle,
