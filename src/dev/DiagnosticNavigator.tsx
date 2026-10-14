@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { DIAGNOSTIC_KEYS, DIAGNOSTIC_REGISTRY } from '../diagnostics/registry';
 import type { DiagnosticStage } from '../diagnostics/registry';
-import { StationControls } from '../stations/StationPractice';
 import { isStationTopic } from '../stations/types';
 import { BATCH_COUNT } from '../stations/generator';
 import type { PracticeMode, StationNeed } from '../stations/types';
+import { MiniLessonVisualProgress, getMiniLessonSteps } from '../diagnostics/MiniLessonVisualProgress';
 
 export interface DiagnosticSelection {
   problem: string;
@@ -159,13 +159,45 @@ export default function DiagnosticNavigator({
 
           {activeTab === 'diagnostics' ? (
             <div className="diagnostic-navigator__body">
-              {selection && isStationTopic(selection.problem) && <StationControls mode={selection.practiceMode ?? 'station'}
-                onMode={practiceMode => onSelect({ ...selection, practiceMode, revision: selection.revision + 1 })} />}
-              {selection && isStationTopic(selection.problem) && selection.practiceMode !== 'exhaustive' && <label className="diagnostic-select-wrap">Batch
-                <select aria-label="Batch" value={selection.batch ?? 1} onChange={e => onSelect({ ...selection, batch: Number(e.target.value), revision: selection.revision + 1 })}>
-                  {Array.from({ length: BATCH_COUNT }, (_, i) => <option key={i} value={i + 1}>Batch {i + 1}</option>)}
-                </select>
-              </label>}
+              {selection && isStationTopic(selection.problem) && (
+                <div className="diagnostic-section">
+                  <span className="diagnostic-section-title">Practice Mode</span>
+                  <div className="diagnostic-practice-mode-tabs" role="tablist" aria-label="Practice mode">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={selection.practiceMode !== 'exhaustive'}
+                      className={`diagnostic-tab ${selection.practiceMode !== 'exhaustive' ? 'is-active' : ''}`}
+                      onClick={() => onSelect({ ...selection, practiceMode: 'station', revision: selection.revision + 1 })}
+                    >
+                      3-Question Batches
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={selection.practiceMode === 'exhaustive'}
+                      className={`diagnostic-tab ${selection.practiceMode === 'exhaustive' ? 'is-active' : ''}`}
+                      onClick={() => onSelect({ ...selection, practiceMode: 'exhaustive', revision: selection.revision + 1 })}
+                    >
+                      All Questions
+                    </button>
+                  </div>
+                </div>
+              )}
+              {selection && isStationTopic(selection.problem) && selection.practiceMode !== 'exhaustive' && (
+                <label className="diagnostic-select-wrap">
+                  Batch ({BATCH_COUNT} total)
+                  <select
+                    aria-label="Batch"
+                    value={selection.batch ?? 1}
+                    onChange={e => onSelect({ ...selection, batch: Number(e.target.value), revision: selection.revision + 1 })}
+                  >
+                    {Array.from({ length: BATCH_COUNT }, (_, i) => (
+                      <option key={i} value={i + 1}>Batch {i + 1} of {BATCH_COUNT}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="diagnostic-section">
                 <span className="diagnostic-section-title">Problem ({DIAGNOSTIC_REGISTRY.length})</span>
                 <label className="diagnostic-select-wrap">
@@ -221,32 +253,39 @@ export default function DiagnosticNavigator({
                 </label>
               </div>
 
-              <div className="diagnostic-section">
-                <span className="diagnostic-section-title">Jump to Stage (1–4)</span>
-                <div className="diagnostic-jumps">
-                  {(
-                    [
-                      '1: Listen & Judge',
-                      '2: Child MCQ',
-                      '3: Acoustic Playthrough',
-                      '4: Transfer Drill',
-                    ] as const
-                  ).map((label, i) => {
-                    const stg = (i + 1) as DiagnosticStage;
-                    const isActive = selection !== null && currentStage === stg;
-                    return (
-                      <button
-                        key={label}
-                        type="button"
-                        className={`diagnostic-jump-btn ${isActive ? 'is-active' : ''}`}
-                        onClick={() => select(problem.id, key.id, stg)}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* For All Questions tab (or non-station topics): show Jump to Lesson and the Visual Progress roadmap */}
+              {(!isStationTopic(problem.id) || selection?.practiceMode === 'exhaustive') && (
+                <>
+                  <div className="diagnostic-section">
+                    <span className="diagnostic-section-title">
+                      All Questions · Jump to Lesson ({getMiniLessonSteps(problem.id).length} Lessons in this Mini-Lesson)
+                    </span>
+                    <div className="diagnostic-jumps">
+                      {getMiniLessonSteps(problem.id).map((step, i) => {
+                        const isActive = selection !== null && currentStage === step.stage;
+                        return (
+                          <button
+                            key={step.stage}
+                            type="button"
+                            className={`diagnostic-jump-btn ${isActive ? 'is-active' : ''}`}
+                            onClick={() => select(problem.id, key.id, step.stage)}
+                          >
+                            {i + 1}: {step.shortLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Visual diagram showing all X lessons for this mini-lesson and which one the user is on */}
+                  <MiniLessonVisualProgress
+                    problemId={problem.id}
+                    problemLabel={problem.label}
+                    currentStage={currentStage}
+                    onSelectStage={stg => select(problem.id, key.id, stg)}
+                  />
+                </>
+              )}
 
               <div className="diagnostic-actions-row">
                 <button

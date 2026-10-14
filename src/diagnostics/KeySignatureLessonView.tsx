@@ -102,13 +102,19 @@ function ReadingCheck({ check, stage, index, onNext }: {
   </section>;
 }
 
-export default function KeySignatureLessonView({ lesson, initialStage, onStandard }: {
+export default function KeySignatureLessonView({ lesson, initialStage, onStandard, onStageChange }: {
   lesson: DiagnosticLesson; initialStage: DiagnosticStage; onStandard: () => void;
+  onStageChange?: (stage: DiagnosticStage) => void;
 }) {
   const [stage, setStage] = useState(initialStage);
   const [index, setIndex] = useState(0);
   const [needsReview, setNeedsReview] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    onStageChange?.(stage);
+  }, [stage, onStageChange]);
+
   const advance = (review: boolean) => {
     if (review) setNeedsReview(true);
     if (stage === 1 && index + 1 < KEY_SIGNATURE_CHECKS.length) setIndex(i => i + 1);

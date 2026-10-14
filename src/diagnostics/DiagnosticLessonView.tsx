@@ -23,27 +23,9 @@ const MorphingCheckmark = () => (
   </svg>
 );
 
-function sendFailureReport(params: { lessonTitle: string; stageName: string; detail: string; conceptId: string }) {
-  if (typeof window === 'undefined') return;
-  try {
-    const diagnostic = [
-      `KeyStance issue — ${params.lessonTitle}`,
-      `Stage: ${params.stageName}`,
-      `Concept: ${params.conceptId}`,
-      `Detail: ${params.detail}`,
-      `Page: ${window.location.href}`,
-      `Viewport: ${window.innerWidth}×${window.innerHeight}`,
-      `Browser: ${window.navigator.userAgent}`,
-    ].join('\n');
-    fetch('/api/report-problem', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        description: `Struggle report: student failed question after reviewing clue on ${params.lessonTitle} (${params.detail})`,
-        diagnostic,
-      }),
-    }).catch(() => {});
-  } catch {}
+function sendFailureReport(_params: { lessonTitle: string; stageName: string; detail: string; conceptId: string }) {
+  // Automated struggle reports disabled to prevent spamming GitHub issues.
+  // Real bug reports are submitted manually by users through the Quick Report button.
 }
 
 
@@ -1418,8 +1400,9 @@ function ConceptQuestion({ lesson, onNext }: { lesson: DiagnosticLesson; onNext:
   );
 }
 
-export default function DiagnosticLessonView({ definition, selectedKey, initialStage, onStandard }: {
+export default function DiagnosticLessonView({ definition, selectedKey, initialStage, onStandard, onStageChange }: {
   definition: DiagnosticDefinition; selectedKey: DiagnosticKey; initialStage: DiagnosticStage; onStandard: () => void;
+  onStageChange?: (stage: DiagnosticStage) => void;
 }) {
   const lesson = useMemo(() => definition.create(selectedKey), [definition, selectedKey]);
   const [stage, setStage] = useState<DiagnosticStage>(initialStage), [done, setDone] = useState(false);
@@ -1427,8 +1410,12 @@ export default function DiagnosticLessonView({ definition, selectedKey, initialS
   const hasListenRounds = Boolean(lesson.listenRounds?.length || lesson.wrongClefRounds?.length);
   const hasInteractiveRounds = Boolean(lesson.interactiveRounds?.length);
 
+  useEffect(() => {
+    onStageChange?.(stage);
+  }, [stage, onStageChange]);
+
   if (definition.id === 'key-signature') {
-    return <KeySignatureLessonView lesson={lesson} initialStage={initialStage} onStandard={onStandard} />;
+    return <KeySignatureLessonView lesson={lesson} initialStage={initialStage} onStandard={onStandard} onStageChange={onStageChange} />;
   }
 
   if (definition.id === 'hand-position' && stage !== 2) {
