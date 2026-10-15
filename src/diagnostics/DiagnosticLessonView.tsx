@@ -54,7 +54,7 @@ function ListenAndJudge({ lesson, onNext }: { lesson: DiagnosticLesson; onNext: 
   const play = async () => {
     if (locked.current) return;
     locked.current = true; setPlaying(true); setError('');
-    const run = playDiagnosticExample(lesson.mistakePitches, lesson.hesitationBefore); playback.current = run;
+    const run = playDiagnosticExample(lesson.mistakePitches, lesson.hesitationBefore, undefined, 2, lesson.question.conceptId === 'mid-line-clef-change' ? lesson.question : undefined); playback.current = run;
     try { await run.done; if (alive.current) setHeard(true); }
     catch { if (alive.current) setError('The piano recording could not load. Check your connection and press Play again.'); }
     finally { locked.current = false; if (alive.current) setPlaying(false); }
@@ -800,7 +800,7 @@ function DiagnosticInteractiveFlow({ lesson, onNext }: { lesson: DiagnosticLesso
     if (!clip) { locked.current = false; return; }
     if (which === 'A') setPlayingA(true); else setPlayingB(true);
     setError('');
-    const run = playDiagnosticExample(clip.pitches, clip.hesitationBefore);
+    const run = playDiagnosticExample(clip.pitches, clip.hesitationBefore, undefined, 2, lesson.question.conceptId === 'mid-line-clef-change' ? currentRound.question ?? lesson.question : undefined);
     playback.current = run;
     try {
       await run.done;

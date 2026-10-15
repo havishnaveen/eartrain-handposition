@@ -117,7 +117,10 @@ try {
   assert.equal((keySigXml.match(/<alter>1<\/alter>/g) ?? []).length, 3, 'All three F notes across four measures sound sharp');
   const { KEY_SIGNATURE_CHECKS, KEY_SIGNATURE_NATURAL_CHECK } = await server.ssrLoadModule('/src/diagnostics/keySignatureContent.ts');
   assert.equal(KEY_SIGNATURE_CHECKS[0].choices[KEY_SIGNATURE_CHECKS[0].correct], 'Wrong');
-  assert.deepEqual(KEY_SIGNATURE_CHECKS[0].audio.flatMap((pitch, i) => pitch !== KEY_SIGNATURE_CHECKS[0].question.expectedSequence[i] ? [i] : []), [6], 'Only Note 7 slips; Note 3 remains sharp');
+  assert.deepEqual(KEY_SIGNATURE_CHECKS[0].audio.flatMap((pitch, i) => pitch !== KEY_SIGNATURE_CHECKS[0].question.expectedSequence[i] ? [i] : []), [2, 6], 'Missing the signature affects Fs from the first measure onward');
+  assert.equal(clef.question.handScope, 'both');
+  assert.equal(clef.transfer.handScope, 'both');
+  assert.equal(clef.question.expectedSequence.length, 16, 'Both staves must be scored');
   assert.ok(KEY_SIGNATURE_CHECKS.some(check => check.audio && check.choices[check.correct] === 'Right'), 'Include a matching audio example');
   assert.equal(KEY_SIGNATURE_CHECKS.find(check => check.id === 'higher-octave').question.expectedSequence[6], 'F#5');
   assert.equal(KEY_SIGNATURE_CHECKS.find(check => check.id === 'left-staff').question.handScope, 'left');

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import ExerciseView from '../components/ExerciseView';
 import type { ExerciseStatus, ExerciseViewHandle } from '../components/ExerciseView';
 import AnchorShiftCue from '../components/AnchorShiftCue';
@@ -157,10 +158,16 @@ export function passesDiagnosticDrill(report: GradeResult, question: Question): 
     (!question.anchorShift || report.transition?.onTime === true);
 }
 
-export default function AcousticDrill({ question, notation, onPassed, onNeedsReview, transfer, skipProof, forcedErrorMessage, mistakePitches, diagnosticId }: {
+export interface AcousticResult {
+  report: GradeResult; detected: DetectedNote[]; passed: boolean; failedTakes: number; retry: () => void;
+}
+
+export default function AcousticDrill({ question, notation, onPassed, onNeedsReview, transfer, skipProof, forcedErrorMessage, mistakePitches, diagnosticId, musicXML, renderResult }: {
   question: Question; notation: DiagnosticNotation; onPassed: () => void; transfer: boolean;
   skipProof?: boolean; forcedErrorMessage?: string; mistakePitches?: readonly string[]; diagnosticId?: string;
   onNeedsReview?: () => void;
+  musicXML?: string;
+  renderResult?: (result: AcousticResult) => ReactNode;
 }) {
   const noProof = skipProof || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('noproof') === '1');
   const [status, setStatus] = useState<ExerciseStatus>(noProof ? 'prompt' : 'position-prompt');
@@ -200,7 +207,7 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
       if (!passedDrill) {
         const nextFailed = failedTakes + 1;
         setFailedTakes(nextFailed);
-        if (nextFailed >= 2 && !onNeedsReview) {
+        if (nextFailed >= 2 && !onNeedsReview && !renderResult) {
           prepareProfessorNotification({
             diagnosticId: diagnosticId || question.conceptId,
             lessonTitle: question.instruction,
@@ -233,6 +240,8 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
   };
   const passed = report ? passesDiagnosticDrill(report, question) : false;
   const needsReview = Boolean(onNeedsReview && failedTakes >= 2);
+  if (status === 'report' && report && renderResult) return <>{renderResult({ report, detected, passed, failedTakes,
+    retry: () => { audio.abort(); setReport(null); setIsDiagnosticError(false); setStatus(noProof ? 'prompt' : 'position-prompt'); } })}</>;
   return <>
     {error && <p role="alert" className="diagnostic-feedback">{error}</p>}
     {status === 'report' && !passed && (profNotified || needsReview) && (
@@ -301,7 +310,7 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
       nextLabel={passed ? transfer ? 'Finish practice' : 'Try a fresh phrase' : 'Try this phrase again'}
       onNext={() => { if (passed) onPassed(); else { audio.abort(); setReport(null); setIsDiagnosticError(false); setStatus(noProof ? 'prompt' : 'position-prompt'); } }}>
       {question.anchorShift ? <AnchorShiftCue ref={scoreRef} cue={question.cue} shift={question.anchorShift} notationScale={2.5} accentColor="#ef6a47" inkColor="#242237" /> :
-        <DiagnosticScore ref={scoreRef} question={question} notation={notation} wrapSystems={diagnosticId === 'key-signature'} enlarged={status === 'report' && !passed && isDiagnosticError} highlightClef={status === 'report' && !passed && isDiagnosticError} />}
+        <DiagnosticScore ref={scoreRef} question={question} notation={notation} musicXML={musicXML} wrapSystems={Boolean(musicXML) || diagnosticId === 'key-signature'} enlarged={status === 'report' && !passed && isDiagnosticError} highlightClef={status === 'report' && !passed && isDiagnosticError} />}
     </ExerciseView>
   </>;
 }

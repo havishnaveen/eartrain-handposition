@@ -56,19 +56,20 @@ export default function DiagnosticNavigator({
 
   const selectedProblem = MINI_LESSONS.find(p => p.id === currentProblemId) ?? MINI_LESSONS[0];
   const selectedKey = DIAGNOSTIC_KEYS.find(k => k.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
-  const isClefConfusion = selectedProblem.id === 'clef-transposition';
+  const isClefConfusion = selectedProblem.id === 'clef-transposition' && selection?.practiceMode === 'exhaustive';
   const currentBatch = Math.min(BATCH_COUNT, Math.max(1, selection?.batch ?? 1));
   const currentStage = (selection?.stage && selection.stage >= 1 && selection.stage <= 4) ? selection.stage : 1;
 
   const select = (problemId: string, keyId: string, unitNum?: number, practiceMode?: PracticeMode) => {
     setActiveTab('diagnostics');
-    const isClef = problemId === 'clef-transposition';
+    const mode = practiceMode ?? (problemId !== selection?.problem ? 'station' : selection?.practiceMode ?? 'station');
+    const isClef = problemId === 'clef-transposition' && mode === 'exhaustive';
     onSelect({
       problem: problemId,
       key: keyId,
       stage: isClef ? ((unitNum as DiagnosticStage) ?? 1) : 1,
       batch: !isClef ? (unitNum ?? selection?.batch ?? 1) : 1,
-      practiceMode: practiceMode ?? selection?.practiceMode ?? 'station',
+      practiceMode: mode,
       stationNeed: selection?.stationNeed ?? 'adaptive',
       revision: (selection?.revision ?? 0) + 1,
     });
@@ -199,6 +200,7 @@ export default function DiagnosticNavigator({
               {/* Clef Confusion specific view: 3 stages */}
               {isClefConfusion ? (
                 <>
+                  <button className="diagnostic-jump-btn" onClick={() => select(selectedProblem.id, selectedKey.id, 1, 'station')}>3-Question Batches</button>
                   <div className="diagnostic-section">
                     <span className="diagnostic-section-title">Clef Confusion Exercise Stages (3 Stages)</span>
                     <div className="diagnostic-jumps">
@@ -323,6 +325,7 @@ export default function DiagnosticNavigator({
                       </span>
                       <MiniLessonVisualProgress
                         topicId={selectedProblem.id}
+                        fixedBatches
                         topicLabel={selectedProblem.label}
                         currentBatch={currentBatch}
                         onSelectBatch={b => select(selectedProblem.id, selectedKey.id, b, 'exhaustive')}

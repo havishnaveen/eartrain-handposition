@@ -615,6 +615,13 @@ function clefChange(): DiagnosticLesson {
 
   lesson.question.cue.staves = buildTwoHandStaves(rhPractice, rhFingers, practicePitches, lhPracticeFingers);
   lesson.transfer.cue.staves = buildTwoHandStaves(rhTransfer, rhTransferFingers, transferPitches, lhTransferFingers);
+  lesson.question.handScope = 'both';
+  lesson.transfer.handScope = 'both';
+  lesson.question.expectedSequence = practicePitches.flatMap((p, i) => [rhPractice[i], p]);
+  lesson.transfer.expectedSequence = transferPitches.flatMap((p, i) => [rhTransfer[i], p]);
+  lesson.mistakePitches = mistakePitches.flatMap((p, i) => [rhPractice[i], p]);
+  lesson.question.instruction = 'Play both hands. Read the new clef on the lower staff.';
+  lesson.transfer.instruction = lesson.question.instruction;
 
   lesson.interactiveRounds = [
     {
@@ -657,8 +664,8 @@ function clefChange(): DiagnosticLesson {
       correct: 0,
       explanation: 'Clip A climbs into treble register at Note 3.',
       highlightClefChange: true,
-      audioClipA: { label: 'Clip A', pitches: ['C3', 'E3', 'C4', 'E4', 'G4', 'E4', 'D4', 'C4'] },
-      audioClipB: { label: 'Clip B', pitches: ['C3', 'E3', 'C3', 'E3', 'G3', 'E3', 'D3', 'C3'] },
+      audioClipA: { label: 'Clip A', pitches: lesson.question.expectedSequence },
+      audioClipB: { label: 'Clip B', pitches: lesson.mistakePitches },
       featureCheck: {
         prompt: 'Does Clip A climb higher at Note 3?',
         choices: ['Yes', 'No'],

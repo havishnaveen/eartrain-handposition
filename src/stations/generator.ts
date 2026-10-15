@@ -22,9 +22,9 @@ const CONTOURS = [
 ];
 export const BATCH_COUNT = 6;
 export const BATCH_KINDS: readonly (readonly QuestionKind[])[] = [
-  ['visual', 'rule', 'audio'], ['visual', 'audio', 'cause'],
-  ['audio', 'visual', 'cause'], ['visual', 'cause', 'audio'],
-  ['audio', 'audio', 'cause'], ['cause', 'audio', 'visual'],
+  ['play', 'visual', 'audio'], ['play', 'audio', 'cause'],
+  ['play', 'visual', 'audio'], ['play', 'cause', 'audio'],
+  ['play', 'audio', 'cause'], ['play', 'audio', 'visual'],
 ];
 const signatureAlter = (letter: string, fifths: number) => (fifths > 0 ? 'FCGDAEB' : 'BEADGCF').slice(0, Math.abs(fifths)).includes(letter) ? Math.sign(fifths) : 0;
 const spelling = (letter: string, octave: number, alter: number) => `${letter}${alter === 1 ? '#' : alter === -1 ? 'b' : ''}${octave}`;
@@ -37,6 +37,14 @@ const oldBassReading = (pitch: string) => {
 
 /** Engraves sounding pitches and durations from the same semantic model used by the answer/audio. */
 export function stationMusicXML(question: Question, fifths: number, clefChange?: { index: number; clef: 'treble' | 'bass' }): string {
+  if (question.cue.staves.length === 2) {
+    const parts = question.cue.staves.map((staff, i) => {
+      const single = { ...question, expectedSequence: staff.notes.map(n => n.keys[0].replace('/', '').replace(/^./, c => c.toUpperCase())), cue: { ...question.cue, staves: [staff] } };
+      const xml = stationMusicXML(single, fifths, i === 1 ? clefChange : undefined);
+      return xml.slice(xml.indexOf('<part id="P1">'), xml.indexOf('</score-partwise>')).replace('<part id="P1">', `<part id="P${i + 1}">`);
+    });
+    return `<?xml version="1.0" encoding="UTF-8"?><score-partwise version="3.1"><part-list><part-group type="start" number="1"><group-symbol>brace</group-symbol><group-barline>yes</group-barline></part-group><score-part id="P1"><part-name>Right hand</part-name></score-part><score-part id="P2"><part-name>Left hand</part-name></score-part><part-group type="stop" number="1"/></part-list>${parts.join('')}</score-partwise>`;
+  }
   const notes = question.cue.staves[0].notes;
   let content = '', measure = 1, beat = 0;
   let accidentals = new Map<string, number>();
@@ -96,12 +104,12 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     }
     target = count - 1;
     pitches[0] = spelling(letter, 4 + Math.floor(base / 7), Math.sign(fifths));
-    const octave = Number(pitches[target].slice(-1));
-    wrong.splice(0, count, ...pitches); wrong[target] = `${letter}${octave}`;
-    explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}. The signature continues across barlines and octaves unless overridden.`;
+    wrong.splice(0, count, ...pitches.map(p => p.replace(/[#b]/, '')));
+    explanation = `Note ${target + 1} is ${displayPitch(pitches[target])}. Read the sharp or flat at the start of the staff, even when no sign is beside the note.`;
     cause = 'The key signature was missed';
-    cluePrompt = `Does the barline end the key signature for Note ${target + 1}?`;
-    clueChoices = ['Yes', 'No']; clueCorrect = 1; clueExplanation = 'The key signature continues across the barline.';
+    cluePrompt = `The key signature marks ${letter}. Which note should you play for Note ${target + 1}?`;
+    clueChoices = [displayPitch(pitches[target]), `${letter} natural`]; clueCorrect = 0;
+    clueExplanation = `The key signature makes this ${letter} ${fifths > 0 ? 'sharp' : 'flat'}; it does not need another sign beside the note.`;
     rulePrompt = `Which notes does this key signature change?`;
     const changed = [...(fifths > 0 ? 'FCGDAEB' : 'BEADGCF').slice(0, Math.abs(fifths))].join(', ');
     ruleChoices = [`${changed} in every measure and octave, unless overridden`, `${changed} in Measure 1 only`, `${changed} only at the signature’s printed octave`];
@@ -139,17 +147,32 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     clueExplanation = `Note ${target + 1} is inside the treble staff, in the fifth octave.`;
     rulePrompt = `Which octave contains the written Note ${target + 1}?`; ruleChoices = ['Fifth octave', 'Fourth octave', 'Third octave'];
     visualPrompt = `What pitch is Note ${target + 1}?`;
+  } else if (topic === 'clef-transposition') {
+    clef = batch % 2 === 0 ? 'bass' : 'treble'; fifths = 0; keyName = 'C major';
+    for (let i = 0; i < count; i++) pitches[i] = `${LETTERS[shape[i]]}${clef === 'bass' ? 3 : 4}`;
+    target = 0;
+    wrong.splice(0, count, ...pitches.map(p => {
+      const degree = Number(p.slice(-1)) * 7 + LETTERS.indexOf(p[0]) + (clef === 'bass' ? 12 : -12);
+      return `${LETTERS[degree % 7]}${Math.floor(degree / 7)}`;
+    }));
+    explanation = `Read Note 1 as ${displayPitch(pitches[0])} in ${clef} clef.`;
+    cause = 'The staff was read in the wrong clef';
+    cluePrompt = 'Which clef is printed at the start of this staff?';
+    clueChoices = ['Bass clef', 'Treble clef']; clueCorrect = clef === 'bass' ? 0 : 1;
+    clueExplanation = `This staff uses ${clef} clef.`;
+    rulePrompt = 'Which clef should you use to read these notes?'; ruleChoices = [clef === 'bass' ? 'Bass clef' : 'Treble clef', clef === 'bass' ? 'Treble clef' : 'Bass clef'];
+    visualPrompt = 'What pitch is Note 1?';
   } else if (topic === 'mid-line-clef-change') {
     clef = 'bass'; fifths = 0; keyName = 'No key signature';
     change = { index: firstBar.length, clef: 'treble' }; target = firstBar.length;
     for (let i = 0; i < count; i++) pitches[i] = `${LETTERS[shape[i]]}${i < firstBar.length ? 3 : 4}`;
     wrong.splice(0, count, ...pitches.map((p, i) => i < firstBar.length ? p : oldBassReading(p)));
-    explanation = `The treble clef before Note ${target + 1} changes how this staff is read. That note is ${displayPitch(pitches[target])}.`;
+    explanation = `The lower staff changes to treble clef before Note ${target + 1}. That note is ${displayPitch(pitches[target])}.`;
     cause = 'The new clef was missed';
-    cluePrompt = `Which clef appears just before Note ${target + 1}?`; clueChoices = ['Bass clef', 'Treble clef']; clueCorrect = 1;
-    clueExplanation = `Treble clef starts at Note ${target + 1}.`;
-    rulePrompt = `Which clef governs Note ${target + 1} and the following notes?`; ruleChoices = ['Treble clef', 'The opening bass clef', 'Whichever hand plays them'];
-    visualPrompt = `What pitch is Note ${target + 1} after the clef change?`;
+    cluePrompt = `Which clef appears before Note ${target + 1} on the lower staff?`; clueChoices = ['Bass clef', 'Treble clef']; clueCorrect = 1;
+    clueExplanation = `The lower staff uses treble clef from Note ${target + 1}.`;
+    rulePrompt = `Which clef governs Note ${target + 1} on the lower staff?`; ruleChoices = ['Treble clef', 'The opening bass clef', 'Whichever hand plays them'];
+    visualPrompt = `What pitch is Note ${target + 1} on the lower staff after the clef change?`;
   } else if (topic === 'hand-position') {
     // A movable five-note shape gives physically plausible finger-to-note labels.
     fifths = 0; keyName = 'C major';
@@ -199,9 +222,19 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
     cue: { timeSignature: '4/4', staves: [{ clef, hand: clef === 'bass' ? 'left' : 'right', notes: pitches.map((pitch, i) => ({ keys: [pitch.replace(/(\d)$/, '/$1').toLowerCase()], duration: durations[i], finger: fingers?.[i] })) }] },
     tempoWindowSec: null, positionLabel: 'Reading station', difficulty: subtlety, mode: 'normal', fingeringInferred: false,
     positionProof: { requireHeld: false, positionName: 'Reading station', hand: clef === 'bass' ? 'left' : 'right', acceptWindowMs: 12000, proofNotes: [0, 1, 2].map((i) => ({ pitch: pitches[i], finger: ([1, 3, 5] as const)[i] })) as NonNullable<Question['positionProof']>['proofNotes'] } };
+  const rightPitches = topic === 'mid-line-clef-change' ? shape.map(degree => `${LETTERS[Math.min(degree + 2, 6)]}5`) : null;
+  if (rightPitches) {
+    const leftStaff = question.cue.staves[0];
+    question.cue.staves = [{ clef: 'treble', hand: 'right', notes: rightPitches.map((pitch, i) => ({ keys: [pitch.replace(/(\d)$/, '/$1').toLowerCase()], duration: durations[i] })) }, leftStaff];
+    question.handScope = 'both';
+    question.expectedSequence = pitches.flatMap((p, i) => [rightPitches[i], p]);
+    question.instruction = 'Play both hands. Read the new clef on the lower staff.';
+  } else question.instruction = topic === 'key-signature' ? 'Read the music, then play the phrase.' : 'Play the written phrase with a steady beat.';
   const mismatched = forceWrong;
   let prompt: string, options: string[], correct = 0;
-  if (kind === 'audio') {
+  if (kind === 'play') {
+    prompt = question.instruction; options = ['Played accurately', 'Needs another try'];
+  } else if (kind === 'audio') {
     prompt = topic === 'cross-over-under' ? `Does the piano keep the written beat through Note ${target + 1}?` : 'Does the piano match the score?';
     options = ['Right', 'Wrong']; correct = mismatched ? 1 : 0;
   } else if (kind === 'cause') {
@@ -220,14 +253,15 @@ export function generateQuestion(topic: StationTopic, kind: QuestionKind, seed: 
   }
   const offset = example % options.length;
   const sorted = options.map((_, i) => { const index = (i + offset) % options.length; return { text: options[index], right: index === correct }; });
-  const audioPitches = kind === 'cause' || mismatched ? wrong : pitches;
-  const fingerprint = JSON.stringify([pitches.map(midi), durations]);
+  const heard = kind === 'cause' || mismatched ? wrong : pitches;
+  const audioPitches = rightPitches ? heard.flatMap((p, i) => [rightPitches[i], p]) : heard;
+  const fingerprint = JSON.stringify([question.expectedSequence.map(midi), durations]);
   return { id: question.id, topic, kind, fingerprint, keyName, question,
     notation: { clef, fifths, clefChange: change, mistakeIndices: [target] }, musicXML: stationMusicXML(question, fifths, change),
     prompt, choices: sorted.map(o => o.text), correct: sorted.findIndex(o => o.right), targetIndex: target,
     explanation: kind === 'audio' && !mismatched ? `The piano matches. ${explanation}` : explanation,
     clue: { prompt: cluePrompt, choices: clueChoices, correct: clueCorrect, explanation: clueExplanation },
-    ...((kind === 'audio' || kind === 'cause') ? { audio: { pitches: audioPitches, durations, ...(hesitation !== undefined && (kind === 'cause' || mismatched) ? { hesitationBefore: hesitation, hesitationSeconds: [.8, .4, .2][Math.min(subtlety, 2)] } : {}) } } : {}) };
+    ...((kind === 'audio' || kind === 'cause') ? { audio: { pitches: audioPitches, durations: rightPitches ? durations.flatMap(d => [d, d]) : durations, ...(hesitation !== undefined && (kind === 'cause' || mismatched) ? { hesitationBefore: hesitation, hesitationSeconds: [.8, .4, .2][Math.min(subtlety, 2)] } : {}) } } : {}) };
 }
 
 /** A finite, shared teaching sequence. Identity, date and telemetry never select content. */

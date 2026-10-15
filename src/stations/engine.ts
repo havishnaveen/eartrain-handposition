@@ -53,6 +53,7 @@ export function createSession(date: string, topic: StationTopic, need: StationNe
 }
 
 export type SessionEvent =
+  | { type: 'performance'; correct: boolean; firstAttemptCorrect: boolean; attempts: number; guidedCorrect: boolean | null; now: number }
   | { type: 'start'; now: number }
   | { type: 'time'; responseMs: number }
   | { type: 'heard'; replayCount: number }
@@ -67,6 +68,17 @@ export function transition(session: StationSession, event: SessionEvent): Statio
   if (session.completedAt || session.results.length >= 3) return session;
   const next = structuredClone(session), run = next.run, q = next.questions[next.results.length];
   switch (event.type) {
+    case 'performance': {
+      if (q.kind !== 'play' || run.phase !== 'answering' || ![1, 2].includes(event.attempts)
+        || event.firstAttemptCorrect && (!event.correct || event.attempts !== 1)) return session;
+      next.results.push({ questionId: q.id, kind: 'play', firstChoice: event.firstAttemptCorrect ? q.correct : -1,
+        finalChoice: event.correct ? q.correct : -1, firstAttemptCorrect: event.firstAttemptCorrect, correct: event.correct,
+        hintsUsed: event.guidedCorrect === null ? 0 : 1, guidedCorrect: event.guidedCorrect, attempts: event.attempts,
+        responseMs: run.responseMs, replayCount: 0, completedAt: event.now });
+      next.run = freshRun();
+      if (next.results.length === 3) next.completedAt = event.now;
+      break;
+    }
     case 'time':
       if (run.phase !== 'answering') return session;
       run.responseMs = Math.max(run.responseMs, event.responseMs); break;
@@ -80,6 +92,7 @@ export function transition(session: StationSession, event: SessionEvent): Statio
       if (run.phase !== 'answering' || (q.audio && !run.heard)) return session;
       run.hintsUsed++; run.responseMs = event.responseMs; run.phase = 'clue'; break;
     case 'answer': {
+      if (q.kind === 'play') return session;
       if (!['answering', 'retry'].includes(run.phase) || (q.audio && !run.heard) || !Number.isInteger(event.choice) || event.choice < 0 || event.choice >= q.choices.length) return session;
       const first = run.phase === 'answering';
       if (first) { run.firstChoice = event.choice; run.responseMs = event.responseMs; }

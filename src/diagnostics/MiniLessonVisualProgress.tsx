@@ -6,12 +6,12 @@ export interface MiniLessonBatchStep {
 }
 
 export const MINI_LESSON_BATCHES: readonly MiniLessonBatchStep[] = [
-  { batch: 1, title: 'Batch 1 · Visual & Rule Fundamentals', shortLabel: 'Visual & Rule', kind: 'visual' },
-  { batch: 2, title: 'Batch 2 · Visual Reading & Audio Check', shortLabel: 'Visual & Audio', kind: 'audio' },
-  { batch: 3, title: 'Batch 3 · Ear-Led Listening & Error Cause', shortLabel: 'Ear & Cause', kind: 'cause' },
-  { batch: 4, title: 'Batch 4 · Context Clues & Rule Execution', shortLabel: 'Context Clues', kind: 'rule' },
-  { batch: 5, title: 'Batch 5 · Advanced Aural Discrimination', shortLabel: 'Audio Drill', kind: 'audio' },
-  { batch: 6, title: 'Batch 6 · Cause Analysis & Mastery', shortLabel: 'Mastery Check', kind: 'cause' },
+  { batch: 1, title: 'Batch 1 · Play, Read, Listen', shortLabel: 'Play & Read', kind: 'visual' },
+  { batch: 2, title: 'Batch 2 · Play, Listen, Explain', shortLabel: 'Play & Listen', kind: 'audio' },
+  { batch: 3, title: 'Batch 3 · Play, Read, Listen', shortLabel: 'Eighth Notes', kind: 'visual' },
+  { batch: 4, title: 'Batch 4 · Play, Explain, Listen', shortLabel: 'Play & Explain', kind: 'rule' },
+  { batch: 5, title: 'Batch 5 · Play, Listen, Explain', shortLabel: 'Sixteenth Notes', kind: 'audio' },
+  { batch: 6, title: 'Batch 6 · Play, Listen, Read', shortLabel: 'Final Practice', kind: 'cause' },
 ];
 
 export const CLEF_CONFUSION_STEPS: readonly MiniLessonBatchStep[] = [
@@ -63,13 +63,15 @@ export function MiniLessonVisualProgress({
   topicLabel,
   currentBatch,
   onSelectBatch,
+  fixedBatches = false,
 }: {
   topicId?: string;
   topicLabel?: string;
   currentBatch: number;
   onSelectBatch?: (batch: number) => void;
+  fixedBatches?: boolean;
 }) {
-  const isClefConfusion = topicId === 'clef-transposition';
+  const isClefConfusion = topicId === 'clef-transposition' && !fixedBatches;
   const steps = isClefConfusion ? CLEF_CONFUSION_STEPS : MINI_LESSON_BATCHES;
   const total = steps.length;
   const safeBatch = Math.min(total, Math.max(1, currentBatch));

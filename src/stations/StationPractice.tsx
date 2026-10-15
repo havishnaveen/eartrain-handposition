@@ -5,6 +5,7 @@ import type { DiagnosticDefinition, DiagnosticKey } from '../diagnostics/registr
 import { DiagnosticScore } from '../diagnostics/DiagnosticScore';
 import { playDiagnosticExample } from '../diagnostics/playback';
 import { BATCH_COUNT } from './generator';
+import PlayingQuestion from './PlayingQuestion';
 import type { SessionEvent } from './engine';
 import type { StationStore } from './store';
 import { stationExplanation } from './feedback';
@@ -89,7 +90,7 @@ export default function StationPractice({ store, topic, need, definition, select
   const play = async () => {
     if (!q?.audio || !session || playing || busy) return;
     setPlaying(true); setError('');
-    const token = playDiagnosticExample(q.audio.pitches, q.audio.hesitationBefore, q.audio.durations, q.audio.hesitationSeconds);
+    const token = playDiagnosticExample(q.audio.pitches, q.audio.hesitationBefore, q.audio.durations, q.audio.hesitationSeconds, q.question.handScope === 'both' ? q.question : undefined);
     playback.current = token;
     try {
       await token.done;
@@ -110,7 +111,8 @@ export default function StationPractice({ store, topic, need, definition, select
     <section className="diagnostic-card" aria-label={session?.completedAt ? 'Batch complete' : `Question ${(session?.results.length ?? 0) + 1} of 3`}>
       {store.warning && <p role="status" className="diagnostic-feedback">{store.warning}</p>}
       {error && <p role="alert">{error}</p>}
-      {q && session && <>
+      {q && session && (q.kind === 'play' ? <PlayingQuestion key={q.id} q={q} disabled={busy || phase === 'ready'} label="Continue"
+        onComplete={async result => { await emit({ type: 'performance', ...result, now: Date.now() }); }} /> : <>
               <div ref={scoreHost}><DiagnosticScore question={q.question} notation={q.notation} musicXML={q.musicXML} wrapSystems /></div>
               <h2 className="diagnostic-prompt">{q.prompt}</h2>
               {q.audio && <div className="diagnostic-action-area"><button className="et-start" disabled={playing || busy || !scoreReady} onClick={() => void play()}>{playing ? 'Playing…' : 'Play piano example'}</button></div>}
@@ -125,7 +127,7 @@ export default function StationPractice({ store, topic, need, definition, select
               {phase === 'feedback' && <AnswerFeedback correct={session.run.finalChoice === q.correct} explanation={stationExplanation(q)} answer={q.choices[q.correct]}
                 disabled={busy || playing} label={session.results.length === 2 ? batch < BATCH_COUNT ? 'Next batch' : 'Finish' : 'Continue'} onContinue={() => void advance()} />}
             </>}
-        </>}
+        </>)}
     </section>
     </div>
   </ExerciseLayout>;

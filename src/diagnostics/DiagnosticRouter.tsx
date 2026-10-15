@@ -107,10 +107,11 @@ export default function DiagnosticRouter({
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('diagnosis', next.problem);
-      if (next.practiceMode === 'station' && isStationTopic(next.problem)) url.searchParams.delete('stage');
+      const fixedBatchMode = isStationTopic(next.problem) && !(next.problem === 'clef-transposition' && next.practiceMode === 'exhaustive');
+      if (fixedBatchMode) url.searchParams.delete('stage');
       else url.searchParams.set('stage', String(next.stage));
       url.searchParams.set('practice', next.practiceMode ?? 'station');
-      if (next.practiceMode !== 'exhaustive' && isStationTopic(next.problem)) url.searchParams.set('batch', String(next.batch ?? 1));
+      if (fixedBatchMode) url.searchParams.set('batch', String(next.batch ?? 1));
       else url.searchParams.delete('batch');
       url.searchParams.set('need', next.stationNeed ?? 'adaptive');
       url.searchParams.set('key', next.key);
@@ -146,7 +147,7 @@ export default function DiagnosticRouter({
   return <>
     {keyError ? <main className="diagnostic-card"><h1>Choose your practice key</h1><p>That link’s musical key was not recognized. Choose the key your teacher assigned.</p><select aria-label="Practice key" defaultValue="" onChange={e => { setSelection(current => current ? { ...current, key: e.target.value, revision: current.revision + 1 } : null); setKeyError(undefined); }}><option value="" disabled>Choose a key</option>{DIAGNOSTIC_KEYS.map(key => <option key={key.id} value={key.id}>{key.name}</option>)}</select></main> :
       selection ? (
-        stationTopic ? (
+        stationTopic && !(stationTopic === 'clef-transposition' && selection.practiceMode === 'exhaustive') ? (
           <StationPractice
             key={`${stationTopic}/${currentBatch}/${selection.revision}`}
             store={store}

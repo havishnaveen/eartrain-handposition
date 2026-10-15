@@ -2,6 +2,7 @@ import type { Question } from '../curriculum/types';
 import type { DiagnosticNotation } from '../diagnostics/registry';
 
 export const STATION_TOPICS = [
+  { id: 'clef-transposition', label: 'Clef Confusion' },
   { id: 'key-signature', label: 'Key Signatures' },
   { id: 'mid-line-clef-change', label: 'Clef Changes' },
   { id: 'octave-displacement', label: 'Register Reading' },
@@ -13,7 +14,7 @@ export type StationTopic = typeof STATION_TOPICS[number]['id'];
 export type PracticeMode = 'station' | 'exhaustive';
 export type StationNeed = 'adaptive' | 'audio' | 'visual';
 export type Archetype = 'ear' | 'visual' | 'classification' | 'balanced';
-export type QuestionKind = 'audio' | 'visual' | 'rule' | 'cause';
+export type QuestionKind = 'audio' | 'visual' | 'rule' | 'cause' | 'play';
 export type DailyTriad = [StationQuestion, StationQuestion, StationQuestion];
 
 export interface StationQuestion {

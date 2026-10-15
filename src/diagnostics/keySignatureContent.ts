@@ -29,26 +29,26 @@ function phrase(id: string, pitches: string[], clef: 'treble' | 'bass' = 'treble
 
 const gNotation: DiagnosticNotation = { clef: 'treble', fifths: 1, mistakeIndices: [6] };
 const gPhrase = ['D4', 'E4', 'F#4', 'G4', 'A4', 'G4', 'F#4', 'G4'];
-const gMistake = gPhrase.map((pitch, i) => i === 6 ? 'F4' : pitch);
+const gMistake = gPhrase.map(pitch => pitch === 'F#4' ? 'F4' : pitch);
 const letterClue: DiagnosticFeatureCheck = { prompt: 'What letter is Note 7?', choices: ['F', 'G'], correct: 0,
   explanation: 'Note 7 is F, in the first space.', highlightNoteIndex: 6 };
 const signatureClue: DiagnosticFeatureCheck = { prompt: 'Which letter does the key-signature sharp change?', choices: ['C', 'F'], correct: 1,
   explanation: 'The sharp in this signature changes F in every octave.' };
-const barlineClue: DiagnosticFeatureCheck = { prompt: 'Does this barline end the key signature?', choices: ['Yes', 'No'], correct: 1,
-  explanation: 'A barline does not end the key signature.' };
+const unmarkedClue: DiagnosticFeatureCheck = { prompt: 'No sign is beside this F. What does the key signature tell you to play?', choices: ['F sharp', 'F natural'], correct: 0,
+  explanation: 'The sharp at the start of the staff makes this F sharp.' };
 
 export const KEY_SIGNATURE_CHECKS: readonly KeySignatureCheck[] = [
   { id: 'listen-error', question: phrase('listen-error', gPhrase), notation: gNotation,
     prompt: 'Does the piano match the score?', choices: ['Right', 'Wrong'], correct: 1, audio: gMistake,
-    explanation: 'Note 7 should be F♯. The piano played F natural.', clues: [letterClue, signatureClue, barlineClue] },
+    explanation: 'The Fs should be F♯. The piano played F natural.', clues: [letterClue, signatureClue, unmarkedClue] },
   { id: 'later-note', question: phrase('later-note', gPhrase), notation: gNotation,
     prompt: 'What pitch is Note 7?', choices: ['F♯4', 'F4', 'G4'], correct: 0, target: 6,
-    explanation: 'The key signature makes F sharp in Measure 2 too.', clues: [letterClue, signatureClue, barlineClue] },
+    explanation: 'The key signature makes this F sharp, even without a sign beside it.', clues: [letterClue, signatureClue, unmarkedClue] },
   { id: 'scope', question: phrase('scope', gPhrase), notation: gNotation,
     prompt: 'What does the sharp in this key signature change?',
     choices: ['Every F in the first measure', 'Only F on the line where the sharp is printed', 'Every F, in every octave, while this signature remains'], correct: 2,
     explanation: 'Every F is sharp in every octave unless a written accidental overrides it.',
-    clues: [signatureClue, barlineClue] },
+    clues: [signatureClue, unmarkedClue] },
   { id: 'higher-octave', question: phrase('higher-octave', ['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F#5', 'G5']), notation: gNotation,
     prompt: 'What pitch is Note 7 in this new phrase?', choices: ['F5', 'F♯4', 'F♯5'], correct: 2, target: 6,
     explanation: 'A higher F is still sharp. The key signature applies in every octave.',
@@ -82,13 +82,13 @@ export function createKeySignatureLesson(): DiagnosticLesson {
   const practice = ['D4', 'E4', 'F#4', 'G4', 'A4', 'G4', 'F#4', 'G4', 'B4', 'A4', 'G4', 'E4', 'D4', 'F#4', 'A4', 'G4'];
   const transfer = ['F4', 'A4', 'Bb4', 'C5', 'D5', 'C5', 'Bb4', 'A4', 'G4', 'F4', 'A4', 'C5', 'D5', 'Bb4', 'G4', 'F4'];
   return {
-    title: 'Key Signature Reading', focus: 'Read the signature across measures, octaves, and staves.',
+    title: 'Key Signature Reading', focus: 'Recognize the sharps and flats at the start of the staff, then apply them as you play.',
     question: phrase('practice', practice), transfer: phrase('transfer', transfer),
     notation: { ...gNotation, mistakeIndices: [6, 13] }, transferNotation: { clef: 'treble', fifths: -1, mistakeIndices: [6, 13] },
-    mistakePitches: practice.map((p, i) => i === 6 ? 'F4' : p),
+    mistakePitches: practice.map(p => p === 'F#4' ? 'F4' : p),
     explanation: 'The key signature sets the default in every octave until the signature changes. A written accidental temporarily overrides it.',
     mcq: { prompt: KEY_SIGNATURE_NATURAL_CHECK.prompt, choices: KEY_SIGNATURE_NATURAL_CHECK.choices, correct: KEY_SIGNATURE_NATURAL_CHECK.correct, explanation: KEY_SIGNATURE_NATURAL_CHECK.explanation },
-    tip: { kind: 'key-signature', text: 'Barlines reset temporary accidentals to the key signature.' },
+    tip: { kind: 'key-signature', text: 'Look for sharps or flats beside the clef before reading the notes.' },
     forcedErrorMessage: 'Check each F against the key signature. An unmarked F is F♯ here unless a written accidental is still active.',
   };
 }
