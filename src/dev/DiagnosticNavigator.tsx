@@ -67,7 +67,7 @@ export default function DiagnosticNavigator({
     onSelect({
       problem: problemId,
       key: keyId,
-      stage: isClef ? ((unitNum as DiagnosticStage) ?? 1) : 1,
+      stage: isClef ? Math.min(3, Math.max(1, unitNum ?? 1)) as DiagnosticStage : 1,
       batch: !isClef ? (unitNum ?? selection?.batch ?? 1) : 1,
       practiceMode: mode,
       stationNeed: selection?.stationNeed ?? 'adaptive',
