@@ -6,12 +6,12 @@ export interface MiniLessonBatchStep {
 }
 
 export const MINI_LESSON_BATCHES: readonly MiniLessonBatchStep[] = [
-  { batch: 1, title: 'Batch 1 · Play, Read, Listen', shortLabel: 'Play & Read', kind: 'visual' },
-  { batch: 2, title: 'Batch 2 · Play, Listen, Explain', shortLabel: 'Play & Listen', kind: 'audio' },
-  { batch: 3, title: 'Batch 3 · Play, Read, Listen', shortLabel: 'Eighth Notes', kind: 'visual' },
-  { batch: 4, title: 'Batch 4 · Play, Explain, Listen', shortLabel: 'Play & Explain', kind: 'rule' },
-  { batch: 5, title: 'Batch 5 · Play, Listen, Explain', shortLabel: 'Sixteenth Notes', kind: 'audio' },
-  { batch: 6, title: 'Batch 6 · Play, Listen, Read', shortLabel: 'Final Practice', kind: 'cause' },
+  { batch: 1, title: 'Batch 1 · Listen, Read, Play', shortLabel: 'Listen & Read', kind: 'visual' },
+  { batch: 2, title: 'Batch 2 · Listen, Explain, Play', shortLabel: 'Listen & Explain', kind: 'audio' },
+  { batch: 3, title: 'Batch 3 · Listen, Read, Play', shortLabel: 'Eighth Notes', kind: 'visual' },
+  { batch: 4, title: 'Batch 4 · Listen, Explain, Play', shortLabel: 'Listen & Explain', kind: 'rule' },
+  { batch: 5, title: 'Batch 5 · Listen, Listen, Play', shortLabel: 'Sixteenth Notes', kind: 'audio' },
+  { batch: 6, title: 'Batch 6 · Listen, Read, Play', shortLabel: 'Final Practice', kind: 'cause' },
 ];
 
 export const CLEF_CONFUSION_STEPS: readonly MiniLessonBatchStep[] = [

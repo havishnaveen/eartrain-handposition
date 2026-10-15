@@ -111,8 +111,11 @@ export default function StationPractice({ store, topic, need, definition, select
     <section className="diagnostic-card" aria-label={session?.completedAt ? 'Batch complete' : `Question ${(session?.results.length ?? 0) + 1} of 3`}>
       {store.warning && <p role="status" className="diagnostic-feedback">{store.warning}</p>}
       {error && <p role="alert">{error}</p>}
-      {q && session && (q.kind === 'play' ? <PlayingQuestion key={q.id} q={q} disabled={busy || phase === 'ready'} label="Continue"
-        onComplete={async result => { await emit({ type: 'performance', ...result, now: Date.now() }); }} /> : <>
+      {q && session && (q.kind === 'play' ? <PlayingQuestion key={q.id} q={q} disabled={busy || phase === 'ready'} label={batch < BATCH_COUNT ? 'Next batch' : 'Finish'}
+        onComplete={async result => {
+          if (!await emit({ type: 'performance', ...result, now: Date.now() })) return;
+          if (batch < BATCH_COUNT) onNextBatch(); else onStandard();
+        }} /> : <>
               <div ref={scoreHost}><DiagnosticScore question={q.question} notation={q.notation} musicXML={q.musicXML} wrapSystems /></div>
               <h2 className="diagnostic-prompt">{q.prompt}</h2>
               {q.audio && <div className="diagnostic-action-area"><button className="et-start" disabled={playing || busy || !scoreReady} onClick={() => void play()}>{playing ? 'Playing…' : 'Play piano example'}</button></div>}

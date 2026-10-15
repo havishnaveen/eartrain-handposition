@@ -18,7 +18,8 @@ try {
       assert.deepEqual(triad, fixedBatch(topic, batch));
       assert.equal(triad.length, 3);
       assert.equal(triad.filter(q => q.kind === 'play').length, 1);
-      assert.equal(triad[0].kind, 'play');
+      assert.equal(triad[0].kind, 'audio');
+      assert.equal(triad[2].kind, 'play');
       assert.deepEqual(triad.map(q => q.kind), BATCH_KINDS[batch - 1]);
       const firstAudio = triad.find(q => q.kind === 'audio');
       assert.equal(firstAudio.choices[firstAudio.correct], 'Wrong');
@@ -88,7 +89,7 @@ try {
     if (q.kind === 'play') {
       assert.equal(E.transition(s, { type: 'answer', choice: q.correct, responseMs: 10 }), s);
       s = E.transition(s, { type: 'performance', correct: false, firstAttemptCorrect: false, attempts: 2, guidedCorrect: false, now });
-      assert.equal(s.results.length, 1); assert.equal(s.results[0].firstAttemptCorrect, false);
+      assert.equal(s.results.length, 3); assert.equal(s.results[2].firstAttemptCorrect, false);
       continue;
     }
     if (q.audio) {
@@ -110,7 +111,9 @@ try {
   assert(s.completedAt); assert.equal(s.results.length, 3);
   assert.equal(E.transition(s, { type: 'record', now }), s);
   await store.dispatch(opened.id, opened.questions[0].id, { type: 'start', now });
-  await store.dispatch(opened.id, opened.questions[0].id, { type: 'performance', correct: true, firstAttemptCorrect: true, attempts: 1, guidedCorrect: null, now });
+  await store.dispatch(opened.id, opened.questions[0].id, { type: 'heard', replayCount: 1 });
+  await store.dispatch(opened.id, opened.questions[0].id, { type: 'answer', choice: opened.questions[0].correct, responseMs: 100 });
+  await store.dispatch(opened.id, opened.questions[0].id, { type: 'record', now });
   assert.equal(store.data.sessions[opened.id].results.length, 1);
   const reset = store.open('key-signature', 'adaptive', now, 1);
   assert.equal(reset.results.length, 0); assert.equal(reset.run.phase, 'ready');

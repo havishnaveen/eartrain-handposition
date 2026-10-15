@@ -22,9 +22,9 @@ const CONTOURS = [
 ];
 export const BATCH_COUNT = 6;
 export const BATCH_KINDS: readonly (readonly QuestionKind[])[] = [
-  ['play', 'visual', 'audio'], ['play', 'audio', 'cause'],
-  ['play', 'visual', 'audio'], ['play', 'cause', 'audio'],
-  ['play', 'audio', 'cause'], ['play', 'audio', 'visual'],
+  ['audio', 'visual', 'play'], ['audio', 'cause', 'play'],
+  ['audio', 'visual', 'play'], ['audio', 'cause', 'play'],
+  ['audio', 'audio', 'play'], ['audio', 'visual', 'play'],
 ];
 const signatureAlter = (letter: string, fifths: number) => (fifths > 0 ? 'FCGDAEB' : 'BEADGCF').slice(0, Math.abs(fifths)).includes(letter) ? Math.sign(fifths) : 0;
 const spelling = (letter: string, octave: number, alter: number) => `${letter}${alter === 1 ? '#' : alter === -1 ? 'b' : ''}${octave}`;

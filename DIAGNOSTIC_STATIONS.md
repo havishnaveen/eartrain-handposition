@@ -1,17 +1,17 @@
 # Fixed diagnostic batches
 
-All seven side lessons, including Clef Confusion, have six numbered batches of exactly three exercises. Each batch starts with one microphone-scored playing exercise. All students see the same notes, rhythms, prompts, options, and order. Dates, identities, performance, and legacy need settings do not select or shuffle content. Clef Confusion's original full-lesson stages remain available through All Lessons.
+All seven side lessons, including Clef Confusion, have six numbered batches of exactly three exercises. Each batch starts with an audio Right/Wrong check and ends with one microphone-scored playing exercise. All students complete the two recognition exercises before playing. Mistakes trigger follow-ups within the same exercise. All students see the same notes, rhythms, prompts, options, and order. Dates, identities, performance, and legacy need settings do not select or shuffle content. Clef Confusion's original full-lesson stages remain available through All Lessons.
 
 ## Reviewed pathway
 
 | Batch | Exercise 1 | Exercise 2 | Exercise 3 | Rhythm |
 | --- | --- | --- | --- | --- |
-| 1 | Play | Read the target note/finger | Spot the mismatch | Quarter notes |
-| 2 | Play | Spot the mismatch | Identify the cause | Quarter notes |
-| 3 | Play | Read the target note/finger | Spot the mismatch | Eighth-note pairs |
-| 4 | Play | Identify the cause | Spot the mismatch | Eighth-note pairs |
-| 5 | Play | Spot the mismatch | Identify the cause | Sixteenth-note groups |
-| 6 | Play | Spot the mismatch | Read the target note/finger | Sixteenth-note groups |
+| 1 | Spot the mismatch | Read the target note/finger | Play | Quarter notes |
+| 2 | Spot the mismatch | Identify the cause | Play | Quarter notes |
+| 3 | Spot the mismatch | Read the target note/finger | Play | Eighth-note pairs |
+| 4 | Spot the mismatch | Identify the cause | Play | Eighth-note pairs |
+| 5 | Spot the mismatch | Recognize a correct performance | Play | Sixteenth-note groups |
+| 6 | Spot the mismatch | Read the target note/finger | Play | Sixteenth-note groups |
 
 Every first Right/Wrong judgment is Wrong. Every batch contains error recognition. Guided questions and retries belong to the same exercise and do not add to the count of three.
 
