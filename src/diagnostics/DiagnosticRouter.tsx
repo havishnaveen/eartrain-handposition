@@ -136,7 +136,7 @@ export default function DiagnosticRouter({
   const definition = DIAGNOSTIC_REGISTRY.find(item => item.id === selection?.problem);
   const selectedKey = DIAGNOSTIC_KEYS.find(key => key.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
   const [tester] = useState(() => isDevTesterAllowed(session));
-  const normalizedProblem = selection?.problem === 'clef-transposition' || selection?.problem === 'clef-change'
+  const normalizedProblem = selection?.problem === 'clef-change'
     ? 'mid-line-clef-change'
     : selection?.problem;
   const stationTopic = normalizedProblem && isStationTopic(normalizedProblem) ? normalizedProblem : null;

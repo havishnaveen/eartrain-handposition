@@ -17,6 +17,7 @@ export interface DiagnosticSelection {
 
 export const MINI_LESSONS = [
   { id: 'key-signature', label: 'Key Signatures' },
+  { id: 'clef-transposition', label: 'Clef Confusion' },
   { id: 'mid-line-clef-change', label: 'Clef Changes' },
   { id: 'accidental-carryover', label: 'Accidental Carryover' },
   { id: 'octave-displacement', label: 'Register Reading' },
@@ -49,23 +50,24 @@ export default function DiagnosticNavigator({
     if (selection) setActiveTab('diagnostics');
   }, [selection]);
 
-  // Normalize any clef alias directly to the clef changes mini-lesson
-  const currentProblemId = selection?.problem === 'clef-transposition' || selection?.problem === 'clef-change'
+  const currentProblemId = selection?.problem === 'clef-change'
     ? 'mid-line-clef-change'
     : (selection?.problem ?? MINI_LESSONS[0].id);
 
   const selectedProblem = MINI_LESSONS.find(p => p.id === currentProblemId) ?? MINI_LESSONS[0];
   const selectedKey = DIAGNOSTIC_KEYS.find(k => k.id === selection?.key) ?? DIAGNOSTIC_KEYS[0];
+  const isClefConfusion = selectedProblem.id === 'clef-transposition';
   const currentBatch = Math.min(BATCH_COUNT, Math.max(1, selection?.batch ?? 1));
+  const currentStage = (selection?.stage && selection.stage >= 1 && selection.stage <= 4) ? selection.stage : 1;
 
-  const select = (problemId: string, keyId: string, batchNum?: number, practiceMode?: PracticeMode) => {
+  const select = (problemId: string, keyId: string, unitNum?: number, practiceMode?: PracticeMode) => {
     setActiveTab('diagnostics');
-    const normalized = problemId === 'clef-transposition' || problemId === 'clef-change' ? 'mid-line-clef-change' : problemId;
+    const isClef = problemId === 'clef-transposition';
     onSelect({
-      problem: normalized,
+      problem: problemId,
       key: keyId,
-      stage: 1,
-      batch: batchNum ?? selection?.batch ?? 1,
+      stage: isClef ? ((unitNum as DiagnosticStage) ?? 1) : 1,
+      batch: !isClef ? (unitNum ?? selection?.batch ?? 1) : 1,
       practiceMode: practiceMode ?? selection?.practiceMode ?? 'station',
       stationNeed: selection?.stationNeed ?? 'adaptive',
       revision: (selection?.revision ?? 0) + 1,
@@ -125,7 +127,7 @@ export default function DiagnosticNavigator({
         <span className="diagnostic-navigator-toggle__label">Lesson Hopper</span>
         {!open && (
           <span className="diagnostic-navigator-toggle__info">
-            {selection ? `${selectedProblem.label.split(' ')[0]} · B${currentBatch}` : `L${currentLesson}`}
+            {selection ? `${selectedProblem.label.split(' ')[0]} · ${isClefConfusion ? `S${currentStage}` : `B${currentBatch}`}` : `L${currentLesson}`}
           </span>
         )}
       </button>
@@ -194,104 +196,140 @@ export default function DiagnosticNavigator({
                 </div>
               </div>
 
-              {/* Practice Mode Switcher */}
-              <div className="diagnostic-section">
-                <span className="diagnostic-section-title">Practice Mode</span>
-                <div className="diagnostic-practice-mode-tabs" role="tablist" aria-label="Practice mode">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={selection?.practiceMode !== 'exhaustive'}
-                    className={`diagnostic-tab ${selection?.practiceMode !== 'exhaustive' ? 'is-active' : ''}`}
-                    onClick={() => select(selectedProblem.id, selectedKey.id, currentBatch, 'station')}
-                  >
-                    3-Question Batches
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={selection?.practiceMode === 'exhaustive'}
-                    className={`diagnostic-tab ${selection?.practiceMode === 'exhaustive' ? 'is-active' : ''}`}
-                    onClick={() => select(selectedProblem.id, selectedKey.id, currentBatch, 'exhaustive')}
-                  >
-                    All Lessons
-                  </button>
-                </div>
-              </div>
-
-              {/* When 3-Question Batches mode: fast batch selector */}
-              {selection?.practiceMode !== 'exhaustive' && (
-                <div className="diagnostic-section">
-                  <span className="diagnostic-section-title">Choose Batch ({BATCH_COUNT} Batches)</span>
-                  <label className="diagnostic-select-wrap">
-                    <select
-                      aria-label="Batch"
-                      value={currentBatch}
-                      onChange={e => select(selectedProblem.id, selectedKey.id, Number(e.target.value), 'station')}
-                    >
-                      {Array.from({ length: BATCH_COUNT }, (_, i) => (
-                        <option key={i} value={i + 1}>Batch {i + 1} of {BATCH_COUNT}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="diagnostic-jumps">
-                    {Array.from({ length: BATCH_COUNT }, (_, i) => {
-                      const bNum = i + 1;
-                      const isActive = selection !== null && currentBatch === bNum;
-                      return (
+              {/* Clef Confusion specific view: 3 stages */}
+              {isClefConfusion ? (
+                <>
+                  <div className="diagnostic-section">
+                    <span className="diagnostic-section-title">Clef Confusion Exercise Stages (3 Stages)</span>
+                    <div className="diagnostic-jumps">
+                      {[
+                        { stage: 1, label: 'Stage 1: Clef Sound Check' },
+                        { stage: 2, label: 'Stage 2: Clef Rule Check' },
+                        { stage: 3, label: 'Stage 3: Clef Swap Playthrough' },
+                      ].map(s => (
                         <button
-                          key={bNum}
+                          key={s.stage}
                           type="button"
-                          className={`diagnostic-jump-btn ${isActive ? 'is-active' : ''}`}
-                          onClick={() => select(selectedProblem.id, selectedKey.id, bNum, 'station')}
+                          className={`diagnostic-jump-btn ${currentStage === s.stage ? 'is-active' : ''}`}
+                          onClick={() => select('clef-transposition', selectedKey.id, s.stage)}
                         >
-                          Batch {bNum}
+                          {s.label}
                         </button>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* Musical Key Selection */}
-              <div className="diagnostic-section">
-                <span className="diagnostic-section-title">Musical Key (24 keys)</span>
-                <label className="diagnostic-select-wrap">
-                  <select
-                    value={selectedKey.id}
-                    onChange={e => select(selectedProblem.id, e.target.value, currentBatch)}
-                  >
-                    <optgroup label="Major Keys (12)">
-                      {majorKeys.map(k => (
-                        <option key={k.id} value={k.id}>
-                          {k.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Minor Keys (12)">
-                      {minorKeys.map(k => (
-                        <option key={k.id} value={k.id}>
-                          {k.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                </label>
-              </div>
+                  <div className="diagnostic-section">
+                    <MiniLessonVisualProgress
+                      topicId="clef-transposition"
+                      topicLabel="Clef Confusion"
+                      currentBatch={currentStage}
+                      onSelectBatch={s => select('clef-transposition', selectedKey.id, s)}
+                    />
+                  </div>
+                </>
+              ) : (
+                /* Station mini lessons: 3-question batches vs All Lessons */
+                <>
+                  <div className="diagnostic-section">
+                    <span className="diagnostic-section-title">Practice Mode</span>
+                    <div className="diagnostic-practice-mode-tabs" role="tablist" aria-label="Practice mode">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={selection?.practiceMode !== 'exhaustive'}
+                        className={`diagnostic-tab ${selection?.practiceMode !== 'exhaustive' ? 'is-active' : ''}`}
+                        onClick={() => select(selectedProblem.id, selectedKey.id, currentBatch, 'station')}
+                      >
+                        3-Question Batches
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={selection?.practiceMode === 'exhaustive'}
+                        className={`diagnostic-tab ${selection?.practiceMode === 'exhaustive' ? 'is-active' : ''}`}
+                        onClick={() => select(selectedProblem.id, selectedKey.id, currentBatch, 'exhaustive')}
+                      >
+                        All Lessons
+                      </button>
+                    </div>
+                  </div>
 
-              {/* For All Lessons mode: visual roadmap image at the bottom showing the 6 batches */}
-              {selection?.practiceMode === 'exhaustive' && (
-                <div className="diagnostic-section">
-                  <span className="diagnostic-section-title">
-                    All Lessons Sequence ({BATCH_COUNT} Batches · 18 Questions)
-                  </span>
-                  <MiniLessonVisualProgress
-                    topicId={selectedProblem.id}
-                    topicLabel={selectedProblem.label}
-                    currentBatch={currentBatch}
-                    onSelectBatch={b => select(selectedProblem.id, selectedKey.id, b, 'exhaustive')}
-                  />
-                </div>
+                  {/* When 3-Question Batches mode: fast batch selector */}
+                  {selection?.practiceMode !== 'exhaustive' && (
+                    <div className="diagnostic-section">
+                      <span className="diagnostic-section-title">Choose Batch ({BATCH_COUNT} Batches)</span>
+                      <label className="diagnostic-select-wrap">
+                        <select
+                          aria-label="Batch"
+                          value={currentBatch}
+                          onChange={e => select(selectedProblem.id, selectedKey.id, Number(e.target.value), 'station')}
+                        >
+                          {Array.from({ length: BATCH_COUNT }, (_, i) => (
+                            <option key={i} value={i + 1}>Batch {i + 1} of {BATCH_COUNT}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="diagnostic-jumps">
+                        {Array.from({ length: BATCH_COUNT }, (_, i) => {
+                          const bNum = i + 1;
+                          const isActive = selection !== null && currentBatch === bNum;
+                          return (
+                            <button
+                              key={bNum}
+                              type="button"
+                              className={`diagnostic-jump-btn ${isActive ? 'is-active' : ''}`}
+                              onClick={() => select(selectedProblem.id, selectedKey.id, bNum, 'station')}
+                            >
+                              Batch {bNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Musical Key Selection */}
+                  <div className="diagnostic-section">
+                    <span className="diagnostic-section-title">Musical Key (24 keys)</span>
+                    <label className="diagnostic-select-wrap">
+                      <select
+                        value={selectedKey.id}
+                        onChange={e => select(selectedProblem.id, e.target.value, currentBatch)}
+                      >
+                        <optgroup label="Major Keys (12)">
+                          {majorKeys.map(k => (
+                            <option key={k.id} value={k.id}>
+                              {k.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Minor Keys (12)">
+                          {minorKeys.map(k => (
+                            <option key={k.id} value={k.id}>
+                              {k.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </label>
+                  </div>
+
+                  {/* For All Lessons mode: visual roadmap image at the bottom showing the 6 batches */}
+                  {selection?.practiceMode === 'exhaustive' && (
+                    <div className="diagnostic-section">
+                      <span className="diagnostic-section-title">
+                        All Lessons Sequence ({BATCH_COUNT} Batches · 18 Questions)
+                      </span>
+                      <MiniLessonVisualProgress
+                        topicId={selectedProblem.id}
+                        topicLabel={selectedProblem.label}
+                        currentBatch={currentBatch}
+                        onSelectBatch={b => select(selectedProblem.id, selectedKey.id, b, 'exhaustive')}
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="diagnostic-actions-row">
@@ -364,7 +402,7 @@ export default function DiagnosticNavigator({
           )}
 
           <div className="diagnostic-navigator__footer">
-            <small>[ / ] cycle mini lessons · 1–6 switch batches · Esc close</small>
+            <small>[ / ] cycle mini lessons · 1–6 switch batches/stages · Esc close</small>
           </div>
         </div>
       )}

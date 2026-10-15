@@ -14,6 +14,12 @@ export const MINI_LESSON_BATCHES: readonly MiniLessonBatchStep[] = [
   { batch: 6, title: 'Batch 6 · Cause Analysis & Mastery', shortLabel: 'Mastery Check', kind: 'cause' },
 ];
 
+export const CLEF_CONFUSION_STEPS: readonly MiniLessonBatchStep[] = [
+  { batch: 1, title: 'Starter Clef Check · 3 Listening Rounds', shortLabel: 'Clef Sound', kind: 'audio' },
+  { batch: 2, title: 'Visual Clef Identification · Concept Check', shortLabel: 'Clef Rule', kind: 'rule' },
+  { batch: 3, title: 'Clef Swap Playthrough · Acoustic Drill', shortLabel: 'Playthrough', kind: 'visual' },
+];
+
 const StepIcon = ({ kind }: { kind: MiniLessonBatchStep['kind'] }) => {
   if (kind === 'audio') {
     return (
@@ -49,11 +55,11 @@ const StepIcon = ({ kind }: { kind: MiniLessonBatchStep['kind'] }) => {
 };
 
 /**
- * Graphic image component rendered in the Lesson Hopper showing all 6 batches
- * for the current mini-lesson and prominently displaying which batch the teacher is on.
+ * Graphic image component rendered in the Lesson Hopper showing all batches/stages
+ * for the current mini-lesson and prominently displaying which one the teacher is on.
  */
 export function MiniLessonVisualProgress({
-  topicId: _topicId,
+  topicId,
   topicLabel,
   currentBatch,
   onSelectBatch,
@@ -63,29 +69,31 @@ export function MiniLessonVisualProgress({
   currentBatch: number;
   onSelectBatch?: (batch: number) => void;
 }) {
-  const steps = MINI_LESSON_BATCHES;
+  const isClefConfusion = topicId === 'clef-transposition';
+  const steps = isClefConfusion ? CLEF_CONFUSION_STEPS : MINI_LESSON_BATCHES;
   const total = steps.length;
   const safeBatch = Math.min(total, Math.max(1, currentBatch));
   const activeIdx = safeBatch - 1;
   const currentStep = steps[activeIdx];
+  const unitName = isClefConfusion ? 'Stage' : 'Batch';
 
   return (
-    <div className="diagnostic-mini-lesson-card" role="region" aria-label="Mini-lesson batch roadmap">
+    <div className="diagnostic-mini-lesson-card" role="region" aria-label="Mini-lesson roadmap">
       <div className="diagnostic-mini-lesson-card__header">
         <div className="diagnostic-mini-lesson-card__title-row">
           <span className="diagnostic-mini-lesson-card__badge">
-            Batch {safeBatch} of {total}
+            {unitName} {safeBatch} of {total}
           </span>
           <span className="diagnostic-mini-lesson-card__label">
-            {topicLabel ? `${topicLabel} · ` : ''}All Batches Sequence
+            {topicLabel ? `${topicLabel} · ` : ''}{isClefConfusion ? 'All Stages' : 'All Batches Sequence'}
           </span>
         </div>
         <span className="diagnostic-mini-lesson-card__status">
-          <span className="diagnostic-pulse-dot" /> On Batch {safeBatch}: {currentStep.shortLabel}
+          <span className="diagnostic-pulse-dot" /> On {unitName} {safeBatch}: {currentStep.shortLabel}
         </span>
       </div>
 
-      {/* SVG Image Graphic Visualizing the 6 Batches */}
+      {/* SVG Image Graphic Visualizing the Batches / Stages */}
       <div className="diagnostic-mini-lesson-graphic-wrap">
         <svg
           viewBox="0 0 460 96"
@@ -106,7 +114,7 @@ export function MiniLessonVisualProgress({
           <line
             x1="45"
             y1="40"
-            x2="415"
+            x2={total > 1 ? 45 + (total - 1) * (370 / (total - 1)) : 45}
             y2="40"
             stroke="rgba(255, 255, 255, 0.15)"
             strokeWidth="4"
@@ -114,7 +122,7 @@ export function MiniLessonVisualProgress({
           />
 
           {/* Active Progress Line */}
-          {activeIdx > 0 && (
+          {activeIdx > 0 && total > 1 && (
             <line
               x1="45"
               y1="40"
@@ -126,9 +134,9 @@ export function MiniLessonVisualProgress({
             />
           )}
 
-          {/* Nodes for each of the 6 batches */}
+          {/* Nodes */}
           {steps.map((step, idx) => {
-            const x = 45 + idx * (370 / (total - 1));
+            const x = total > 1 ? 45 + idx * (370 / (total - 1)) : 230;
             const y = 40;
             const isCurrent = step.batch === safeBatch;
             const isPassed = idx < activeIdx;
@@ -199,7 +207,7 @@ export function MiniLessonVisualProgress({
         </svg>
       </div>
 
-      {/* Interactive Quick-Jump Batch Cards */}
+      {/* Interactive Quick-Jump Batch / Stage Cards */}
       <div className="diagnostic-mini-lesson-steps-row">
         {steps.map((step, idx) => {
           const isCurrent = step.batch === safeBatch;
@@ -209,13 +217,13 @@ export function MiniLessonVisualProgress({
               type="button"
               className={`diagnostic-mini-step-btn ${isCurrent ? 'is-active' : ''}`}
               onClick={() => onSelectBatch?.(step.batch)}
-              title={`Jump to Batch ${step.batch}: ${step.title}`}
+              title={`Jump to ${unitName} ${step.batch}: ${step.title}`}
             >
               <span className="diagnostic-mini-step-btn__icon">
                 <StepIcon kind={step.kind} />
               </span>
               <span className="diagnostic-mini-step-btn__text">
-                <span className="diagnostic-mini-step-btn__num">Batch {idx + 1}</span>
+                <span className="diagnostic-mini-step-btn__num">{unitName} {idx + 1}</span>
                 <span className="diagnostic-mini-step-btn__label">{step.shortLabel}</span>
               </span>
               {isCurrent && <span className="diagnostic-mini-step-btn__you-tag">YOU ARE HERE</span>}
