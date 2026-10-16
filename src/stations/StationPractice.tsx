@@ -4,6 +4,7 @@ import AnswerFeedback from '../diagnostics/AnswerFeedback';
 import type { DiagnosticDefinition, DiagnosticKey } from '../diagnostics/registry';
 import { DiagnosticScore } from '../diagnostics/DiagnosticScore';
 import { playDiagnosticExample } from '../diagnostics/playback';
+import { learningProfileStore } from '../profiles/learningProfileStore';
 import { BATCH_COUNT } from './generator';
 import PlayingQuestion from './PlayingQuestion';
 import type { SessionEvent } from './engine';
@@ -56,8 +57,17 @@ export default function StationPractice({ store, topic, need, definition, select
 
   // A batch opens directly on its question. This initializes telemetry, not audio playback.
   useEffect(() => {
-    if (session && q && phase === 'ready') void store.dispatch(session.id, q.id, { type: 'start', now: Date.now() });
-  }, [store, session?.id, q?.id, phase]);
+    if (session && q && phase === 'ready') {
+      void store.dispatch(session.id, q.id, { type: 'start', now: Date.now() });
+      learningProfileStore.recordActivity('exercise.started', {
+        topic,
+        batch,
+        questionIndex: session.results.length + 1,
+        questionId: q.id,
+        kind: q.kind,
+      });
+    }
+  }, [store, session?.id, q?.id, phase, topic, batch]);
 
   // Only visible decision time counts. Persist checkpoints so reload never makes a slow attempt fast.
   useEffect(() => {
@@ -102,8 +112,28 @@ export default function StationPractice({ store, topic, need, definition, select
 
   const guiding = phase === 'clue' || phase === 'clue-feedback';
   const advance = async () => {
+    const completedIndex = (session?.results.length ?? 0) + 1;
+    const passed = session && q ? session.run.finalChoice === q.correct : false;
+    const firstAttemptCorrect = session ? session.run.firstChoice === q?.correct : false;
+    const elapsedMs = Math.round(session?.run.responseMs ?? 0);
     if (!await emit({ type: 'record', now: Date.now() })) return;
-    if (session?.results.length === 2) { if (batch < BATCH_COUNT) onNextBatch(); else onStandard(); }
+    learningProfileStore.recordActivity('exercise.completed', {
+      topic,
+      batch,
+      questionIndex: completedIndex,
+      questionId: q?.id ?? null,
+      passed,
+      firstAttemptCorrect,
+      responseMs: elapsedMs,
+    });
+    if (session?.results.length === 2) {
+      learningProfileStore.recordActivity('session.completed', {
+        topic,
+        batch,
+        questionsCompleted: 3,
+      });
+      if (batch < BATCH_COUNT) onNextBatch(); else onStandard();
+    }
   };
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={Math.min((session?.results.length ?? 0) + 1, 3)} questionsInLoop={3}
     lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel={`Batch ${batch} of ${BATCH_COUNT}`}>
