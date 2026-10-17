@@ -197,6 +197,24 @@ export interface AcousticResult {
   retry: () => void;
 }
 
+const FIFTHS_TO_MAJOR_KEY: Record<number, string> = {
+  [-7]: 'Cb major',
+  [-6]: 'Gb major',
+  [-5]: 'Db major',
+  [-4]: 'Ab major',
+  [-3]: 'Eb major',
+  [-2]: 'Bb major',
+  [-1]: 'F major',
+  0: 'C major',
+  1: 'G major',
+  2: 'D major',
+  3: 'A major',
+  4: 'E major',
+  5: 'B major',
+  6: 'F# major',
+  7: 'C# major',
+};
+
 export default function AcousticDrill({ question, notation, onPassed, onNeedsReview, transfer, skipProof, forcedErrorMessage, mistakePitches, diagnosticId, musicXML, renderResult }: {
   question: Question; notation: DiagnosticNotation; onPassed: () => void; transfer: boolean;
   skipProof?: boolean; forcedErrorMessage?: string; mistakePitches?: readonly string[]; diagnosticId?: string;
@@ -217,7 +235,37 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
   const [profNotified, setProfNotified] = useState(false);
   const scoreRef = useRef<StaffCueHandle>(null), viewRef = useRef<ExerciseViewHandle>(null);
   const playStart = useRef(0), alive = useRef(true), busy = useRef(false), mode = useRef<'proof' | 'take' | null>(null);
-  const plan = useMemo(() => planForQuestion(question, 75), [question]);
+  const plan = useMemo(() => {
+    const base = planForQuestion(question, 75);
+    const keySignature =
+      typeof notation.fifths === 'number' ? FIFTHS_TO_MAJOR_KEY[notation.fifths] : undefined;
+    const rawHands: Array<{ beat: number; staffIndex: number; hand: 'right' | 'left' }> = [];
+    question.cue.staves.forEach((staff, staffIndex) => {
+      let beat = 0;
+      const hand: 'right' | 'left' = staff.hand === 'left' ? 'left' : 'right';
+      staff.notes.forEach((note) => {
+        const isRest = note.duration.endsWith('r');
+        const duration =
+          note.duration === 'w' ? 4 : note.duration === 'h' ? 2 : note.duration === '8' ? 0.5 : note.duration === '16' ? 0.25 : 1;
+        if (!isRest) {
+          for (let k = 0; k < Math.max(1, note.keys.length); k++) {
+            rawHands.push({ beat, staffIndex, hand });
+          }
+        }
+        beat += duration;
+      });
+    });
+    rawHands.sort((a, b) => a.beat - b.beat || a.staffIndex - b.staffIndex);
+    const slotHands =
+      rawHands.length === base.expectedNotes.length
+        ? rawHands.map((entry) => entry.hand)
+        : base.expectedNotes.map(() => (question.handScope === 'left' ? 'left' : 'right'));
+    return {
+      ...base,
+      ...(keySignature ? { keySignature } : {}),
+      slotHands,
+    };
+  }, [question, notation.fifths]);
   const audio = useDrillAudio({
     onProofListenStart: () => { if (alive.current && mode.current === 'proof') setStatus('proving'); },
     onProofSuccess: () => { if (alive.current && mode.current === 'proof') { mode.current = null; setStatus('prompt'); } },

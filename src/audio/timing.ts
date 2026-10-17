@@ -90,6 +90,10 @@ export interface DrillPlan {
    * for five beats". The metronome still runs; the line stays hidden.
    */
   guideNote: boolean;
+  /** Optional key signature name (e.g. 'G major') for Oclef's /grade endpoint. */
+  keySignature?: string;
+  /** Optional hand assignment ('right' | 'left') per expectedNotes slot for Oclef's /grade endpoint. */
+  slotHands?: Array<'right' | 'left'>;
 }
 
 function parseBeatsPerBar(timeSignature?: string): number {

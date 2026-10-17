@@ -624,19 +624,22 @@ export async function gradeRecordingWithOclef(
 
   const tempo_bpm = Math.min(300, Math.max(20, Math.round(60 / Math.max(0.2, plan.secondsPerBeat))));
   const beats_per_bar = Math.min(16, Math.max(1, Math.round(plan.beatsPerBar || 4)));
-  const getSlotHand = (slot: unknown): 'right' | 'left' | undefined => {
+  const getSlotHand = (slot: unknown, idx: number): 'right' | 'left' | undefined => {
+    const fromPlan = plan.slotHands?.[idx];
+    if (fromPlan === 'right' || fromPlan === 'left') return fromPlan;
     if (!isRecord(slot)) return undefined;
     return slot.hand === 'right' || slot.hand === 'left' ? slot.hand : undefined;
   };
-  const allHaveHand = plan.expectedNotes.every((n) => getSlotHand(n) !== undefined);
+  const allHaveHand = plan.expectedNotes.every((n, idx) => getSlotHand(n, idx) !== undefined);
+  const keySig = options?.keySignature ?? plan.keySignature;
   const reference = options?.musicxml
     ? { musicxml: options.musicxml, tempo_bpm }
     : {
         tempo_bpm,
         beats_per_bar,
-        ...(options?.keySignature ? { key_signature: options.keySignature } : {}),
-        notes: plan.expectedNotes.slice(0, 1000).map((slot) => {
-          const hand = getSlotHand(slot);
+        ...(keySig ? { key_signature: keySig } : {}),
+        notes: plan.expectedNotes.slice(0, 1000).map((slot, idx) => {
+          const hand = getSlotHand(slot, idx);
           return {
             pitch: slot.pitch,
             onset_beats: Number(slot.beat.toFixed(4)),
@@ -703,6 +706,11 @@ export function reconcileOclefEarNotes(
     if (!duplicate) recognized.push(candidate);
   };
 
+  const firstSoundOffsetSec =
+    hear?.ok && Array.isArray(hear.notes) && hear.notes.length > 0 && Number.isFinite(hear.notes[0].onset_s)
+      ? Math.max(0, hear.notes[0].onset_s)
+      : 0;
+
   if (grade?.ok) {
     for (const item of grade.matched ?? []) {
       const slot = plan.expectedNotes[item.index];
@@ -747,7 +755,8 @@ export function reconcileOclefEarNotes(
     for (const item of grade.extra ?? []) {
       const midi = Number.isFinite(item.midi) ? item.midi : pitchToMidi(item.pitch);
       if (midi === null) continue;
-      const time = wavStartTime + (Number.isFinite(item.at_s) ? item.at_s : 0);
+      // KEYSTANCE.md Section 10: at_s is in seconds from the first sound in the recording
+      const time = wavStartTime + firstSoundOffsetSec + (Number.isFinite(item.at_s) ? item.at_s : 0);
       pushUnique({
         midi,
         time,
@@ -839,7 +848,7 @@ export async function evaluateTakeWithOclefEar(
         : playStartTime;
 
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timeoutMs = options?.timeoutMs ?? 2000;
+  const timeoutMs = options?.timeoutMs ?? 6500;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
   try {
@@ -847,7 +856,7 @@ export async function evaluateTakeWithOclefEar(
       hearRecordingWithOclef(capture, { trimBeforeTimeSec, signal: controller?.signal }),
       gradeRecordingWithOclef(capture, plan, {
         rhythm: true,
-        keySignature: options?.keySignature,
+        keySignature: options?.keySignature ?? plan.keySignature,
         musicxml: options?.musicxml,
         trimBeforeTimeSec,
         signal: controller?.signal,
