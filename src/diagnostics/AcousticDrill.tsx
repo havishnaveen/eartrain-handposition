@@ -11,6 +11,7 @@ import type { Question } from '../curriculum/types';
 import type { DiagnosticNotation } from './registry';
 import { DiagnosticScore } from './DiagnosticScore';
 import { prepareProfessorNotification } from './professorNotifications';
+import type { OclefEarDiagnosis } from '../integration/oclefBridge';
 
 const RecordDot = () => (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -99,6 +100,7 @@ export function detectDiagnosticMistake({
   mistakePitches,
   forcedErrorMessage,
   diagnosticId,
+  oclefDiagnosis,
 }: {
   expectedSequence: string[];
   detected: readonly Pick<DetectedNote, 'midi'>[];
@@ -106,28 +108,56 @@ export function detectDiagnosticMistake({
   mistakePitches?: readonly string[];
   forcedErrorMessage?: string;
   diagnosticId?: string;
+  oclefDiagnosis?: OclefEarDiagnosis | null;
 }): boolean {
-  if (!detected.length || !expectedSequence.length || !forcedErrorMessage) return false;
+  if (!expectedSequence.length || !forcedErrorMessage) return false;
 
-  // 1. Clef transposition check (reading opposite clef)
-  if (isClefTranspositionMistake(expectedSequence, detected, notation.clef ?? 'bass')) {
-    return true;
-  }
-
-  // 2. Octave displacement check: played 1 octave too low
-  if (notation.octaveUp || diagnosticId === 'octave-displacement' || forcedErrorMessage.toLowerCase().includes('octave')) {
-    const expectedMidi = expectedSequence.map(pitchToMidi).filter((m): m is number => m !== null);
-    const oneOctaveDown = expectedMidi.map(m => m - 12);
-    const octaveDownMatches = alignPitchSequences(oneOctaveDown, detected, m => m)
-      .filter(op => op.kind === 'match').length;
-    const exactMatches = alignPitchSequences(expectedMidi, detected, m => m)
-      .filter(op => op.kind === 'match').length;
-    if (octaveDownMatches >= 2 && octaveDownMatches / expectedSequence.length >= 0.40 && octaveDownMatches > exactMatches) {
+  if (oclefDiagnosis && oclefDiagnosis.kind !== 'none') {
+    if (
+      (diagnosticId === 'clef-transposition' || diagnosticId === 'mid-line-clef-change') &&
+      oclefDiagnosis.kind === 'clef-confusion'
+    ) {
+      return true;
+    }
+    if (diagnosticId === 'octave-displacement' && oclefDiagnosis.kind === 'wrong-register') {
+      return true;
+    }
+    if (diagnosticId === 'key-signature' && oclefDiagnosis.kind === 'key-signature') {
+      return true;
+    }
+    if (diagnosticId === 'hand-position' && oclefDiagnosis.kind === 'wrong-start') {
       return true;
     }
   }
 
-  // 3. Known mistakePitches check (accidental carryover, mid-line clef change, etc.)
+  if (!detected.length) return false;
+
+  // 1. Clef transposition check (reading opposite clef)
+  if (
+    (!diagnosticId ||
+      diagnosticId === 'clef-transposition' ||
+      forcedErrorMessage.toLowerCase().includes('clef')) &&
+    isClefTranspositionMistake(expectedSequence, detected, notation.clef ?? 'bass')
+  ) {
+    return true;
+  }
+
+  // 2. Octave displacement check: played 1 or 2 octaves off
+  if (notation.octaveUp || diagnosticId === 'octave-displacement' || forcedErrorMessage.toLowerCase().includes('octave')) {
+    const expectedMidi = expectedSequence.map(pitchToMidi).filter((m): m is number => m !== null);
+    const exactMatches = alignPitchSequences(expectedMidi, detected, m => m)
+      .filter(op => op.kind === 'match').length;
+    for (const shift of [-12, -24, 12]) {
+      const shifted = expectedMidi.map(m => m + shift);
+      const shiftedMatches = alignPitchSequences(shifted, detected, m => m)
+        .filter(op => op.kind === 'match').length;
+      if (shiftedMatches >= 2 && shiftedMatches / expectedSequence.length >= 0.40 && shiftedMatches > exactMatches) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Known mistakePitches check (accidental carryover, mid-line clef change, key signature, etc.)
   if (mistakePitches && mistakePitches.length > 0) {
     const mistakeMidi = mistakePitches.map(pitchToMidi).filter((m): m is number => m !== null);
     const expectedMidi = expectedSequence.map(pitchToMidi).filter((m): m is number => m !== null);
@@ -159,7 +189,12 @@ export function passesDiagnosticDrill(report: GradeResult, question: Question): 
 }
 
 export interface AcousticResult {
-  report: GradeResult; detected: DetectedNote[]; passed: boolean; failedTakes: number; retry: () => void;
+  report: GradeResult;
+  detected: DetectedNote[];
+  passed: boolean;
+  failedTakes: number;
+  oclefDiagnosis?: OclefEarDiagnosis | null;
+  retry: () => void;
 }
 
 export default function AcousticDrill({ question, notation, onPassed, onNeedsReview, transfer, skipProof, forcedErrorMessage, mistakePitches, diagnosticId, musicXML, renderResult }: {
@@ -173,6 +208,7 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
   const [status, setStatus] = useState<ExerciseStatus>(noProof ? 'prompt' : 'position-prompt');
   const [report, setReport] = useState<GradeResult | null>(null);
   const [detected, setDetected] = useState<DetectedNote[]>([]);
+  const [oclefDiagnosis, setOclefDiagnosis] = useState<OclefEarDiagnosis | null>(null);
   const [progress, setProgress] = useState(0), [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const [forcedDismissed, setForcedDismissed] = useState(false);
@@ -189,9 +225,11 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
     onFrame: beat => { if (mode.current === 'take') { scoreRef.current?.seekToBeat(beat); viewRef.current?.seekToProgress(Math.max(0, beat / plan.totalBeats)); } },
     onAnalysisStart: () => { if (alive.current && mode.current === 'take') setStatus('grading'); },
     onAnalysisProgress: value => { if (alive.current && mode.current === 'take') setProgress(value); },
-    onFinish: notes => {
+    onFinish: (notes, diagnostics) => {
       if (!alive.current || mode.current !== 'take') return;
       mode.current = null;
+      const earDiag = diagnostics?.oclefDiagnosis ?? null;
+      setOclefDiagnosis(earDiag);
       const result = gradeSequence(question.expectedSequence, notes, { plan, playStartTime: playStart.current,
         exerciseMode: question.exerciseMode, anchorShift: question.anchorShift });
       const passedDrill = passesDiagnosticDrill(result, question);
@@ -202,6 +240,7 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
         mistakePitches,
         forcedErrorMessage,
         diagnosticId: diagnosticId || question.conceptId,
+        oclefDiagnosis: earDiag,
       });
       setIsDiagnosticError(diagError);
       if (!passedDrill) {
@@ -227,7 +266,7 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
   useEffect(() => { alive.current = true; return () => { alive.current = false; mode.current = null; }; }, []);
   const start = async () => {
     if (busy.current || !['position-prompt', 'prompt'].includes(status)) return;
-    busy.current = true; setStarting(true); setError(''); setForcedDismissed(false); setIsDiagnosticError(false);
+    busy.current = true; setStarting(true); setError(''); setForcedDismissed(false); setIsDiagnosticError(false); setOclefDiagnosis(null);
     const proof = status === 'position-prompt';
     mode.current = proof ? 'proof' : 'take';
     try {
@@ -240,8 +279,8 @@ export default function AcousticDrill({ question, notation, onPassed, onNeedsRev
   };
   const passed = report ? passesDiagnosticDrill(report, question) : false;
   const needsReview = Boolean(onNeedsReview && failedTakes >= 2);
-  if (status === 'report' && report && renderResult) return <>{renderResult({ report, detected, passed, failedTakes,
-    retry: () => { audio.abort(); setReport(null); setIsDiagnosticError(false); setStatus(noProof ? 'prompt' : 'position-prompt'); } })}</>;
+  if (status === 'report' && report && renderResult) return <>{renderResult({ report, detected, passed, failedTakes, oclefDiagnosis,
+    retry: () => { audio.abort(); setReport(null); setIsDiagnosticError(false); setOclefDiagnosis(null); setStatus(noProof ? 'prompt' : 'position-prompt'); } })}</>;
   return <>
     {error && <p role="alert" className="diagnostic-feedback">{error}</p>}
     {status === 'report' && !passed && (profNotified || needsReview) && (

@@ -202,6 +202,27 @@ export function spotifyPianoConsensus(
       endTime: Math.max((note.time + modelNote.time) / 2, modelNote.endTime),
     };
   });
+  if (transcript && transcript.length > 0) {
+    for (const live of realtime) {
+      if (
+        live.detectorLane !== 'strict' ||
+        live.voiceVeto === true ||
+        live.voiceBurst === true ||
+        (Number(live.pianoAttackConfidence) || 0) < 0.45
+      ) {
+        continue;
+      }
+      const alreadyPresent = notes.some(
+        (existing) =>
+          existing.midi === live.midi && Math.abs(existing.time - live.time) <= 0.22,
+      );
+      if (alreadyPresent) continue;
+      if (hasTranscriptMatch(live)) {
+        notes.push({ ...live });
+      }
+    }
+    notes.sort((a, b) => a.time - b.time);
+  }
   const expectedSlots = new Set(
     notes.flatMap((note) => note.expectedSlot === undefined ? [] : [note.expectedSlot]),
   );

@@ -1,5 +1,6 @@
 import type { CapturedPcm } from '../audio/scoreAnalysis';
-import type { DrillPlan } from '../audio/timing';
+import { pitchToMidi } from '../audio/timing';
+import type { DetectedNote, DrillPlan } from '../audio/timing';
 import { openingLessonForProblem } from '../curriculum/progressiveCurriculum';
 import { REMEDIATION_PROBLEMS } from '../curriculum/types';
 import type { RemediationProblem } from '../curriculum/types';
@@ -68,6 +69,14 @@ export interface OclefHearResponse {
   retryAfterSeconds?: number;
 }
 
+export interface OclefEarDiagnosis {
+  kind: 'clef-confusion' | 'wrong-register' | 'wrong-start' | 'key-signature' | 'none';
+  reason: string | null;
+  confidence: number | null;
+  detail: Record<string, unknown>;
+  because?: string;
+}
+
 export interface OclefGradeResponse {
   ok: boolean;
   engine?: string | null;
@@ -94,14 +103,15 @@ export interface OclefGradeResponse {
   }>;
   extra?: Array<{ pitch: string; midi: number; at_s: number }>;
   rhythm_grade?: { stars: number; label: string } | null;
-  diagnosis?: {
-    kind: 'clef-confusion' | 'wrong-register' | 'wrong-start' | 'key-signature' | 'none';
-    reason: string | null;
-    confidence: number | null;
-    detail: Record<string, unknown>;
-    because?: string;
-  };
+  diagnosis?: OclefEarDiagnosis;
   retryAfterSeconds?: number;
+}
+
+export interface OclefEarEvaluation {
+  notes: DetectedNote[];
+  diagnosis: OclefEarDiagnosis | null;
+  grade: OclefGradeResponse | null;
+  hear: OclefHearResponse | null;
 }
 
 function sessionStorageSafe(): Storage | null {
@@ -134,9 +144,12 @@ export function sanitizeReturnUrl(value: unknown): string | undefined {
     const url = new URL(value, baseOrigin);
     const isSameOrigin = typeof window !== 'undefined' && url.origin === window.location.origin;
     const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+    const hostLower = url.hostname.toLowerCase();
     const isOclef =
       url.protocol === 'https:' &&
-      (url.hostname === 'reading.oclef.com' || url.hostname.endsWith('.oclef.com'));
+      (hostLower === 'reading.oclef.com' ||
+        hostLower.endsWith('.oclef.com') ||
+        hostLower.endsWith('.up.railway.app'));
     if (!isOclef && !isSameOrigin && !isLocal) return undefined;
     // Return the exact string as given if it is already an absolute URL
     if (/^https?:\/\//i.test(value)) {
@@ -152,10 +165,12 @@ function sanitizeApiUrl(value: unknown, fallback: string): string {
   if (typeof window === 'undefined' || typeof value !== 'string') return fallback;
   try {
     const url = new URL(value, window.location.origin);
+    const hostLower = url.hostname.toLowerCase();
     const approvedHost =
       url.origin === window.location.origin ||
-      url.hostname === 'reading.oclef.com' ||
-      url.hostname.endsWith('.oclef.com');
+      hostLower === 'reading.oclef.com' ||
+      hostLower.endsWith('.oclef.com') ||
+      hostLower.endsWith('.up.railway.app');
     if (!approvedHost || (url.protocol !== 'https:' && url.origin !== window.location.origin)) {
       return fallback;
     }
@@ -331,7 +346,6 @@ let currentSession: OclefIntegrationSession | null = null;
 const visitLessons = new Map<string, OclefVisitLessonSummary>();
 let lastEarDiagnosisNote = '';
 let earCooldownUntilMs = 0;
-let hearCalledThisVisit = false;
 
 export function getOclefIntegrationSession(): OclefIntegrationSession | null {
   if (currentSession && currentSession.expiresAt > Date.now() + 5_000) return currentSession;
@@ -392,7 +406,6 @@ async function initializeOclefIntegrationOnce(): Promise<IntegrationBootstrap> {
           currentSession = session;
           visitLessons.clear();
           lastEarDiagnosisNote = '';
-          hearCalledThisVisit = false;
           cacheSession(session);
           learningProfileStore.activateResolvedLaunch(launch);
           return { mode: 'oclef', session };
@@ -452,24 +465,48 @@ async function initializeOclefIntegrationOnce(): Promise<IntegrationBootstrap> {
  * Encodes captured mono PCM float32 chunks into a 16-bit mono WAV at 22.05 kHz
  * (or 16 kHz if longer than 45s), bounded to <= 60 seconds and <= 4 MB
  * per KEYSTANCE.md Sections 9 & 10.
+ * When trimBeforeTimeSec is provided, strips count-in audio before that timestamp
+ * so Oclef's ear starts its clock at the student's first piano note.
  */
 export function encodeCapturedPcmToWav(
-  captureInput: Pick<CapturedPcm, 'chunks' | 'sampleRate'> | Float32Array,
+  captureInput: (Pick<CapturedPcm, 'chunks' | 'sampleRate'> & Partial<Pick<CapturedPcm, 'startTime'>>) | Float32Array,
   preferredSampleRate = 22050,
+  trimBeforeTimeSec?: number,
 ): Uint8Array {
-  const capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'> =
+  const capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'> & Partial<Pick<CapturedPcm, 'startTime'>> =
     captureInput instanceof Float32Array
       ? { chunks: [captureInput], sampleRate: preferredSampleRate }
       : captureInput;
   const totalInputSamples = capture.chunks.reduce((sum, c) => sum + c.length, 0);
   const inputRate = Number.isFinite(capture.sampleRate) && capture.sampleRate >= 8000 ? capture.sampleRate : 48000;
-  const maxInputSamples = Math.min(totalInputSamples, Math.floor(inputRate * 60));
+  const rawSkipSamples =
+    typeof trimBeforeTimeSec === 'number' &&
+    Number.isFinite(trimBeforeTimeSec) &&
+    typeof capture.startTime === 'number' &&
+    Number.isFinite(capture.startTime) &&
+    trimBeforeTimeSec > capture.startTime
+      ? Math.max(0, Math.floor((trimBeforeTimeSec - capture.startTime) * inputRate))
+      : 0;
+  const skipSamples =
+    rawSkipSamples > 0 && totalInputSamples - rawSkipSamples >= Math.floor(inputRate * 0.25)
+      ? rawSkipSamples
+      : 0;
+  const availableSamples = Math.max(0, totalInputSamples - skipSamples);
+  const maxInputSamples = Math.min(availableSamples, Math.floor(inputRate * 60));
 
   const combined = new Float32Array(maxInputSamples);
   let offset = 0;
+  let remainingSkip = skipSamples;
   for (const chunk of capture.chunks) {
     if (offset >= maxInputSamples) break;
-    const slice = offset + chunk.length > maxInputSamples ? chunk.subarray(0, maxInputSamples - offset) : chunk;
+    if (remainingSkip >= chunk.length) {
+      remainingSkip -= chunk.length;
+      continue;
+    }
+    const startIdx = remainingSkip;
+    remainingSkip = 0;
+    const usable = chunk.subarray(startIdx);
+    const slice = offset + usable.length > maxInputSamples ? usable.subarray(0, maxInputSamples - offset) : usable;
     combined.set(slice, offset);
     offset += slice.length;
   }
@@ -534,12 +571,13 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
  * Calls KeyStance's server adapter for /api/stations/keystance/hear (KEYSTANCE.md Section 9).
  */
 export async function hearRecordingWithOclef(
-  capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'>,
+  capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'> & Partial<Pick<CapturedPcm, 'startTime'>>,
+  options?: { trimBeforeTimeSec?: number; signal?: AbortSignal },
 ): Promise<OclefHearResponse | null> {
   const session = getOclefIntegrationSession();
   if (!session || Date.now() < earCooldownUntilMs) return null;
 
-  const wavBytes = encodeCapturedPcmToWav(capture);
+  const wavBytes = encodeCapturedPcmToWav(capture, 22050, options?.trimBeforeTimeSec);
   if (wavBytes.byteLength <= 44 || wavBytes.byteLength > 4 * 1024 * 1024) return null;
 
   try {
@@ -551,6 +589,7 @@ export async function hearRecordingWithOclef(
       },
       credentials: 'same-origin',
       cache: 'no-store',
+      signal: options?.signal,
       body: JSON.stringify({
         audioBase64: uint8ArrayToBase64(wavBytes),
       }),
@@ -573,14 +612,14 @@ export async function hearRecordingWithOclef(
  * Calls KeyStance's server adapter for /api/stations/keystance/grade (KEYSTANCE.md Section 10).
  */
 export async function gradeRecordingWithOclef(
-  capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'>,
+  capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'> & Partial<Pick<CapturedPcm, 'startTime'>>,
   plan: DrillPlan,
-  options?: { rhythm?: boolean; keySignature?: string; musicxml?: string },
+  options?: { rhythm?: boolean; keySignature?: string; musicxml?: string; trimBeforeTimeSec?: number; signal?: AbortSignal },
 ): Promise<OclefGradeResponse | null> {
   const session = getOclefIntegrationSession();
   if (!session || Date.now() < earCooldownUntilMs) return null;
 
-  const wavBytes = encodeCapturedPcmToWav(capture);
+  const wavBytes = encodeCapturedPcmToWav(capture, 22050, options?.trimBeforeTimeSec);
   if (wavBytes.byteLength <= 44 || wavBytes.byteLength > 4 * 1024 * 1024) return null;
 
   const tempo_bpm = Math.min(300, Math.max(20, Math.round(60 / Math.max(0.2, plan.secondsPerBeat))));
@@ -616,6 +655,7 @@ export async function gradeRecordingWithOclef(
       },
       credentials: 'same-origin',
       cache: 'no-store',
+      signal: options?.signal,
       body: JSON.stringify({
         audioBase64: uint8ArrayToBase64(wavBytes),
         reference,
@@ -642,22 +682,197 @@ export async function gradeRecordingWithOclef(
 }
 
 /**
+ * Converts Oclef's /hear and /grade note detections into KeyStance DetectedNote events
+ * aligned to the drill's AudioContext clock.
+ */
+export function reconcileOclefEarNotes(
+  plan: DrillPlan,
+  playStartTime: number,
+  wavStartTime: number,
+  hear: OclefHearResponse | null,
+  grade: OclefGradeResponse | null,
+): DetectedNote[] {
+  const recognized: DetectedNote[] = [];
+  const pushUnique = (candidate: DetectedNote) => {
+    if (!Number.isFinite(candidate.midi) || !Number.isFinite(candidate.time)) return;
+    const duplicate = recognized.some(
+      (existing) =>
+        existing.midi === candidate.midi &&
+        Math.abs(existing.time - candidate.time) <= 0.16,
+    );
+    if (!duplicate) recognized.push(candidate);
+  };
+
+  if (grade?.ok) {
+    for (const item of grade.matched ?? []) {
+      const slot = plan.expectedNotes[item.index];
+      const midi = Number.isFinite(item.midi) ? item.midi : pitchToMidi(item.pitch);
+      if (midi === null) continue;
+      const slotTime = slot ? playStartTime + slot.beat * plan.secondsPerBeat : playStartTime;
+      const time = slotTime + (Number.isFinite(item.timing_error_s) ? Number(item.timing_error_s) : 0);
+      const duration = slot ? Math.max(0.15, slot.beats * plan.secondsPerBeat * 0.85) : 0.35;
+      pushUnique({
+        midi,
+        time,
+        endTime: time + duration,
+        clarity: 0.96,
+        strength: 1.9,
+        expectedSlot: item.index,
+        scoreContextAccepted: true,
+        detectorLane: 'strict',
+        pianoAttackConfidence: 0.9,
+        frameAttackRatio: 1.28,
+        novelty: 0.65,
+      });
+    }
+    for (const item of grade.wrong ?? []) {
+      const slot = plan.expectedNotes[item.index];
+      const midi = Number.isFinite(item.played_midi) ? item.played_midi : pitchToMidi(item.played);
+      if (midi === null) continue;
+      const slotTime = slot ? playStartTime + slot.beat * plan.secondsPerBeat : playStartTime;
+      const time = slotTime + (Number.isFinite(item.timing_error_s) ? Number(item.timing_error_s) : 0);
+      const duration = slot ? Math.max(0.15, slot.beats * plan.secondsPerBeat * 0.85) : 0.35;
+      pushUnique({
+        midi,
+        time,
+        endTime: time + duration,
+        clarity: 0.94,
+        strength: 1.8,
+        detectorLane: 'strict',
+        pianoAttackConfidence: 0.88,
+        frameAttackRatio: 1.25,
+        novelty: 0.6,
+      });
+    }
+    for (const item of grade.extra ?? []) {
+      const midi = Number.isFinite(item.midi) ? item.midi : pitchToMidi(item.pitch);
+      if (midi === null) continue;
+      const time = wavStartTime + (Number.isFinite(item.at_s) ? item.at_s : 0);
+      pushUnique({
+        midi,
+        time,
+        endTime: time + 0.28,
+        clarity: 0.9,
+        strength: 1.5,
+        detectorLane: 'strict',
+        pianoAttackConfidence: 0.84,
+        frameAttackRatio: 1.2,
+        novelty: 0.55,
+      });
+    }
+  }
+
+  if (hear?.ok && Array.isArray(hear.notes)) {
+    for (const item of hear.notes) {
+      const midi = Number.isFinite(item.midi) ? item.midi : pitchToMidi(item.pitch);
+      if (midi === null || !Number.isFinite(item.onset_s)) continue;
+      const time = wavStartTime + item.onset_s;
+      const duration = Math.max(0.12, Number.isFinite(item.duration_s) ? item.duration_s : 0.3);
+      pushUnique({
+        midi,
+        time,
+        endTime: time + duration,
+        clarity: 0.94,
+        strength: 1.8,
+        detectorLane: 'strict',
+        pianoAttackConfidence: 0.88,
+        frameAttackRatio: 1.25,
+        novelty: 0.6,
+      });
+    }
+  }
+
+  return recognized.sort((a, b) => a.time - b.time);
+}
+
+/**
+ * Merges locally analyzed piano notes with Oclef's sound recognition notes,
+ * deduplicating notes of the same MIDI pitch within 180ms so wrong-clef,
+ * wrong-register, and missed-accidental notes heard by Oclef are preserved.
+ */
+export function mergeDetectedNotesWithOclef(
+  localNotes: readonly DetectedNote[],
+  oclefNotes: readonly DetectedNote[],
+): DetectedNote[] {
+  if (!oclefNotes.length) return [...localNotes];
+  if (!localNotes.length) return [...oclefNotes];
+  const merged: DetectedNote[] = localNotes.map((n) => ({ ...n }));
+  for (const oclefNote of oclefNotes) {
+    const duplicate = merged.some(
+      (local) =>
+        local.midi === oclefNote.midi &&
+        Math.abs(local.time - oclefNote.time) <= 0.18,
+    );
+    if (!duplicate) {
+      merged.push({ ...oclefNote });
+    }
+  }
+  return merged.sort((a, b) => a.time - b.time);
+}
+
+/**
+ * Evaluates a captured piano take against Oclef's /hear and /grade endpoints
+ * with a strict timeout so local grading never stalls if the network is slow or 503.
+ */
+export async function evaluateTakeWithOclefEar(
+  capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'> & Partial<Pick<CapturedPcm, 'startTime'>>,
+  plan: DrillPlan,
+  playStartTime: number,
+  options?: { timeoutMs?: number; keySignature?: string; musicxml?: string },
+): Promise<OclefEarEvaluation> {
+  const session = getOclefIntegrationSession();
+  if (!session || Date.now() < earCooldownUntilMs) {
+    return { notes: [], diagnosis: null, grade: null, hear: null };
+  }
+
+  const leadInSec = Math.min(0.22, Math.max(0.08, plan.secondsPerBeat * 0.25));
+  const trimBeforeTimeSec =
+    Number.isFinite(playStartTime) && playStartTime > 0 ? playStartTime - leadInSec : undefined;
+  const wavStartTime =
+    typeof trimBeforeTimeSec === 'number' &&
+    typeof capture.startTime === 'number' &&
+    Number.isFinite(capture.startTime) &&
+    trimBeforeTimeSec > capture.startTime
+      ? trimBeforeTimeSec
+      : typeof capture.startTime === 'number' && Number.isFinite(capture.startTime)
+        ? capture.startTime
+        : playStartTime;
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutMs = options?.timeoutMs ?? 2000;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  try {
+    const [hear, grade] = await Promise.all([
+      hearRecordingWithOclef(capture, { trimBeforeTimeSec, signal: controller?.signal }),
+      gradeRecordingWithOclef(capture, plan, {
+        rhythm: true,
+        keySignature: options?.keySignature,
+        musicxml: options?.musicxml,
+        trimBeforeTimeSec,
+        signal: controller?.signal,
+      }),
+    ]);
+    const notes = reconcileOclefEarNotes(plan, playStartTime, wavStartTime, hear, grade);
+    const diagnosis = grade?.ok && grade.diagnosis ? grade.diagnosis : null;
+    return { notes, diagnosis, grade, hear };
+  } catch {
+    return { notes: [], diagnosis: null, grade: null, hear: null };
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+  }
+}
+
+/**
  * Invoked automatically when a student completes an acoustic piano take during an Oclef visit.
  * Runs non-blocking so local grading never stalls if Oclef's ear is busy (503).
  */
 export function submitTakeToOclefEar(
-  capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'>,
+  capture: Pick<CapturedPcm, 'chunks' | 'sampleRate'> & Partial<Pick<CapturedPcm, 'startTime'>>,
   plan: DrillPlan,
+  playStartTime = 0,
 ): void {
-  const session = getOclefIntegrationSession();
-  if (!session || Date.now() < earCooldownUntilMs) return;
-  void (async () => {
-    if (!hearCalledThisVisit) {
-      hearCalledThisVisit = true;
-      await hearRecordingWithOclef(capture);
-    }
-    await gradeRecordingWithOclef(capture, plan, { rhythm: true });
-  })();
+  void evaluateTakeWithOclefEar(capture, plan, playStartTime);
 }
 
 export function recordOclefVisitLesson(lesson: OclefVisitLessonSummary): void {

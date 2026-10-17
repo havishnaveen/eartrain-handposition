@@ -7,7 +7,7 @@ try {
   const { STATION_TOPICS, isStationTopic } = await server.ssrLoadModule('/src/stations/types.ts');
   const { StationStore, decodeSnapshot } = await server.ssrLoadModule('/src/stations/store.ts');
   const { planForQuestion, gradeSequence, pitchToMidi } = await server.ssrLoadModule('/src/audio/timing.ts');
-  const { passesDiagnosticDrill } = await server.ssrLoadModule('/src/diagnostics/AcousticDrill.tsx');
+  const { passesDiagnosticDrill, transposeToOppositeClef } = await server.ssrLoadModule('/src/diagnostics/AcousticDrill.tsx');
   const { playingFollowUp } = await server.ssrLoadModule('/src/stations/playingFeedback.ts');
   assert.equal(isStationTopic('clef-transposition'), true);
   let examples = 0;
@@ -56,9 +56,38 @@ try {
           const notes = plan.expectedNotes.map((n, i) => ({ midi: pitchToMidi(n.pitch), time: 10 + n.beat * .8, endTime: 10 + (n.beat + n.beats * .9) * .8, clarity: 1, strength: 1, expectedSlot: i }));
           const report = gradeSequence(q.question.expectedSequence, notes, { plan, playStartTime: 10, exerciseMode: 'standard' });
           assert(passesDiagnosticDrill(report, q.question), `Correct playing should pass: ${topic}/${batch}: ${report.detail}`);
+          if (topic === 'clef-transposition') {
+            const writtenClef = q.notation.clef ?? 'bass';
+            const wrongClefNotes = notes.map((n, i) => ({ ...n, midi: pitchToMidi(transposeToOppositeClef(q.question.expectedSequence[i], writtenClef)), expectedSlot: undefined }));
+            const wrongClefReport = gradeSequence(q.question.expectedSequence, wrongClefNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert(!passesDiagnosticDrill(wrongClefReport, q.question));
+            assert.ok(playingFollowUp(q, wrongClefReport, wrongClefNotes), `Wrong clef must trigger follow-up: ${topic}/${batch}`);
+            const minorSlipNotes = notes.filter((_, i) => i !== 2);
+            const minorSlipReport = gradeSequence(q.question.expectedSequence, minorSlipNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert(!passesDiagnosticDrill(minorSlipReport, q.question));
+            assert.equal(playingFollowUp(q, minorSlipReport, minorSlipNotes), null, `Right clef with 1 missed note must NOT trigger follow-up: ${topic}/${batch}`);
+          }
+          if (topic === 'octave-displacement') {
+            const wrongOctaveNotes = notes.map(n => ({ ...n, midi: n.midi - 12, expectedSlot: undefined }));
+            const wrongOctaveReport = gradeSequence(q.question.expectedSequence, wrongOctaveNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert(!passesDiagnosticDrill(wrongOctaveReport, q.question));
+            assert.ok(playingFollowUp(q, wrongOctaveReport, wrongOctaveNotes), `Wrong octave must trigger follow-up: ${topic}/${batch}`);
+            const minorSlipNotes = notes.filter((_, i) => i !== 2);
+            const minorSlipReport = gradeSequence(q.question.expectedSequence, minorSlipNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.equal(playingFollowUp(q, minorSlipReport, minorSlipNotes), null, `Right octave with 1 missed note must NOT trigger follow-up: ${topic}/${batch}`);
+          }
           if (topic === 'mid-line-clef-change') {
             const oneHand = gradeSequence(q.question.expectedSequence, notes.filter((_, i) => i % 2 === 0), { plan, playStartTime: 10, exerciseMode: 'standard' });
             assert(!passesDiagnosticDrill(oneHand, q.question), 'Playing only the upper staff must not pass a two-hand exercise');
+            const changeIdx = q.notation.clefChange?.index ?? 4;
+            const oldBassNotes = notes.map((n, i) => (i % 2 === 1 && Math.floor(i / 2) >= changeIdx)
+              ? { ...n, midi: pitchToMidi(transposeToOppositeClef(q.question.expectedSequence[i], 'treble')), expectedSlot: undefined }
+              : n);
+            const oldBassReport = gradeSequence(q.question.expectedSequence, oldBassNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.ok(playingFollowUp(q, oldBassReport, oldBassNotes), `Staying in old bass clef after mid-line change must trigger follow-up: ${topic}/${batch}`);
+            const minorSlipNotes = notes.filter((_, i) => i !== 0);
+            const minorSlipReport = gradeSequence(q.question.expectedSequence, minorSlipNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.equal(playingFollowUp(q, minorSlipReport, minorSlipNotes), null, `Correct mid-line clef change with 1 missed RH note must NOT trigger follow-up: ${topic}/${batch}`);
           }
           if (topic === 'key-signature') {
             const wrong = notes.map((n, i) => i === 0 ? { ...n, midi: pitchToMidi(q.question.expectedSequence[0].replace(/[#b]/, '')) } : n);
@@ -67,6 +96,42 @@ try {
             const clue = playingFollowUp(q, failed);
             assert(clue.prompt.includes('Note 1')); assert(!clue.prompt.includes('barline'));
             assert(clue.explanation.includes('key signature'));
+            const nonSigIdx = q.question.expectedSequence.findIndex((p, i) => i > 0 && !/[#b]/.test(p));
+            if (nonSigIdx >= 0) {
+              const minorSlipNotes = notes.filter((_, i) => i !== nonSigIdx);
+              const minorSlipReport = gradeSequence(q.question.expectedSequence, minorSlipNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+              assert.equal(playingFollowUp(q, minorSlipReport, minorSlipNotes), null, `Playing key-signature notes accurately while omitting 1 natural note must NOT trigger follow-up: ${topic}/${batch}`);
+            }
+          }
+          if (topic === 'accidental-carryover') {
+            const openPitch = q.question.expectedSequence[0];
+            const targetPitch = q.question.expectedSequence[q.targetIndex];
+            const trapPitch = /[#b]/.test(targetPitch) ? targetPitch.replace(/[#b]/, '') : openPitch;
+            const trapNotes = notes.map((n, i) => i === q.targetIndex ? { ...n, midi: pitchToMidi(trapPitch), expectedSlot: undefined } : n);
+            const trapReport = gradeSequence(q.question.expectedSequence, trapNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.ok(playingFollowUp(q, trapReport, trapNotes), `Accidental carryover/reset mistake must trigger follow-up: ${topic}/${batch}`);
+            const nonTargetIdx = q.question.expectedSequence.findIndex((p, i) => i > 0 && i !== q.targetIndex && p[0] !== openPitch[0]);
+            if (nonTargetIdx >= 0) {
+              const minorSlipNotes = notes.filter((_, i) => i !== nonTargetIdx);
+              const minorSlipReport = gradeSequence(q.question.expectedSequence, minorSlipNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+              assert.equal(playingFollowUp(q, minorSlipReport, minorSlipNotes), null, `Correct accidental carryover with 1 unrelated missed note must NOT trigger follow-up: ${topic}/${batch}`);
+            }
+          }
+          if (topic === 'hand-position') {
+            const shiftedNotes = notes.map(n => ({ ...n, midi: n.midi + 2, expectedSlot: undefined }));
+            const shiftedReport = gradeSequence(q.question.expectedSequence, shiftedNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.ok(playingFollowUp(q, shiftedReport, shiftedNotes), `Shifted hand position must trigger follow-up: ${topic}/${batch}`);
+            const minorSlipNotes = notes.filter((_, i) => i !== 1);
+            const minorSlipReport = gradeSequence(q.question.expectedSequence, minorSlipNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.equal(playingFollowUp(q, minorSlipReport, minorSlipNotes), null, `Correct hand position with 1 missed interior note must NOT trigger follow-up: ${topic}/${batch}`);
+          }
+          if (topic === 'cross-over-under') {
+            const missedCrossingNotes = notes.filter((_, i) => i !== q.targetIndex);
+            const missedCrossingReport = gradeSequence(q.question.expectedSequence, missedCrossingNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.ok(playingFollowUp(q, missedCrossingReport, missedCrossingNotes), `Missing the thumb crossing note must trigger follow-up: ${topic}/${batch}`);
+            const minorSlipNotes = notes.slice(0, -1);
+            const minorSlipReport = gradeSequence(q.question.expectedSequence, minorSlipNotes, { plan, playStartTime: 10, exerciseMode: 'standard' });
+            assert.equal(playingFollowUp(q, minorSlipReport, minorSlipNotes), null, `Smooth thumb crossing with only the final note omitted must NOT trigger follow-up: ${topic}/${batch}`);
           }
         }
         examples++;

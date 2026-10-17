@@ -8,19 +8,25 @@ import { playingFollowUp } from './playingFeedback';
 
 export interface PerformanceResult { correct: boolean; firstAttemptCorrect: boolean; attempts: number; guidedCorrect: boolean | null }
 
-function PerformanceReview({ q, result, onGuided, onComplete, label, disabled }: {
-  q: StationQuestion; result: AcousticResult; onGuided: (correct: boolean) => void;
+function PerformanceReview({ q, result, alreadyGuided, onGuided, onComplete, label, disabled }: {
+  q: StationQuestion; result: AcousticResult; alreadyGuided: boolean; onGuided: (correct: boolean) => void;
   onComplete: () => void; label: string; disabled: boolean;
 }) {
   const [choice, setChoice] = useState<number | null>(null);
-  const clue = playingFollowUp(q, result.report);
-  const guiding = !result.passed && result.failedTakes === 1 && clue;
-  const explanation = result.passed ? 'You played the written notes with a steady beat.'
-    : clue?.explanation ?? (result.report.hardExtras ? 'Extra notes were heard. Play only the written notes.' : 'Keep the written rhythm steady through the phrase.');
+  const clue = playingFollowUp(q, result.report, result.detected, result.oclefDiagnosis);
+  const guiding = !result.passed && !alreadyGuided && Boolean(clue);
+  const fallbackWrongExplanation = result.report.hardExtras
+    ? 'Extra notes were heard. Play only the written notes.'
+    : result.report.missed > 0
+      ? 'Check the missed notes in this phrase and try again with a steady beat.'
+      : 'Keep the written rhythm steady through the phrase.';
+  const explanation = result.passed
+    ? 'You played the written notes with a steady beat.'
+    : clue?.explanation ?? fallbackWrongExplanation;
   return <>
     <DiagnosticScore question={q.question} notation={q.notation} musicXML={q.musicXML} wrapSystems />
     <h2 className="diagnostic-prompt">{q.prompt}</h2>
-    {guiding ? <>
+    {guiding && clue ? <>
       <p className="diagnostic-brief-badge diagnostic-brief-badge--wrong">Incorrect</p>
       <h2 className="diagnostic-prompt">{clue.prompt}</h2>
       <div className="diagnostic-choices">{clue.choices.map((text, i) => <button key={text} disabled={choice !== null} aria-pressed={choice === i}
@@ -40,6 +46,7 @@ export default function PlayingQuestion({ q, onComplete, label, disabled }: {
   return <AcousticDrill question={q.question} notation={q.notation} musicXML={q.musicXML}
     diagnosticId={q.topic} transfer={false} skipProof onPassed={() => {}}
     renderResult={result => <PerformanceReview key={`${result.failedTakes}/${result.passed}`} q={q} result={result} label={label} disabled={disabled}
+      alreadyGuided={guided.current !== null}
       onGuided={correct => { guided.current = correct; }}
       onComplete={() => onComplete({ correct: result.passed, firstAttemptCorrect: result.passed && result.failedTakes === 0,
         attempts: result.failedTakes + (result.passed ? 1 : 0), guidedCorrect: guided.current })} />} />;

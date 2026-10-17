@@ -620,8 +620,97 @@ try {
     scanDirForSecret(path.resolve(process.cwd(), dir));
   }
 
+  // 10. Staging return_url support, count-in WAV trimming, and Oclef sound recognition -> follow-up integration:
+  const stagingReturnUrl = 'https://oclef-SightReading-staging.up.railway.app/practice/session?visit=ks_stage_1';
+  assert.equal(
+    bridge.sanitizeReturnUrl(stagingReturnUrl),
+    stagingReturnUrl,
+    'Staging .up.railway.app return_url must be accepted and preserved character-for-character',
+  );
+
+  // Verify count-in WAV trimming strips count-in samples before playStartTime lead-in
+  const sampleRate = 22050;
+  const twoSecChunks = [new Float32Array(sampleRate), new Float32Array(sampleRate)];
+  const fullWav = bridge.encodeCapturedPcmToWav({
+    chunks: twoSecChunks,
+    sampleRate,
+    startTime: 10,
+  });
+  const trimmedWav = bridge.encodeCapturedPcmToWav(
+    {
+      chunks: twoSecChunks,
+      sampleRate,
+      startTime: 10,
+    },
+    22050,
+    11,
+  );
+  assert.ok(
+    trimmedWav.byteLength < fullWav.byteLength &&
+      Math.abs((fullWav.byteLength - trimmedWav.byteLength) - sampleRate * 2) <= 4,
+    'Trimming 1s of count-in clicks must reduce WAV payload by ~1s of PCM samples',
+  );
+
+  // Verify reconcileOclefEarNotes + mergeDetectedNotesWithOclef + playingFollowUp with Oclef ear output
+  const { fixedBatch } = await vite.ssrLoadModule('/src/stations/generator.ts');
+  const { planForQuestion, gradeSequence } = await vite.ssrLoadModule('/src/audio/timing.ts');
+  const { playingFollowUp } = await vite.ssrLoadModule('/src/stations/playingFeedback.ts');
+  const clefPlayQ = fixedBatch('clef-transposition', 1)[2];
+  const clefPlan = planForQuestion(clefPlayQ.question, 75);
+  const oclefHeardWrongClef = {
+    ok: true,
+    engine: 'onsets_and_frames',
+    notes: [
+      { pitch: 'E4', midi: 64, onset_s: 0.1, duration_s: 0.4 },
+      { pitch: 'F4', midi: 65, onset_s: 0.9, duration_s: 0.4 },
+      { pitch: 'G4', midi: 67, onset_s: 1.7, duration_s: 0.4 },
+      { pitch: 'A4', midi: 69, onset_s: 2.5, duration_s: 0.4 },
+    ],
+  };
+  const oclefGradeWrongClef = {
+    ok: true,
+    engine: 'onsets_and_frames',
+    pitch_accuracy: 0,
+    matched: [],
+    wrong: [
+      { index: 0, pitch: 'G2', midi: 43, bar: 1, beat: 1, played: 'E4', played_midi: 64, timing_error_s: 0.01 },
+      { index: 1, pitch: 'A2', midi: 45, bar: 1, beat: 2, played: 'F4', played_midi: 65, timing_error_s: 0.01 },
+    ],
+    diagnosis: {
+      kind: 'clef-confusion',
+      reason: 'clef-confusion',
+      confidence: 0.92,
+      detail: { expected_clef: 'bass', played_clef: 'treble' },
+    },
+  };
+  const reconciledNotes = bridge.reconcileOclefEarNotes(
+    clefPlan,
+    10,
+    9.9,
+    oclefHeardWrongClef,
+    oclefGradeWrongClef,
+  );
+  assert.ok(reconciledNotes.length >= 4, 'Oclef ear notes must reconcile into DetectedNote[]');
+  const mergedNotes = bridge.mergeDetectedNotesWithOclef([], reconciledNotes);
+  assert.equal(mergedNotes.length, reconciledNotes.length);
+  const oclefReport = gradeSequence(clefPlayQ.question.expectedSequence, mergedNotes, {
+    plan: clefPlan,
+    playStartTime: 10,
+    exerciseMode: 'standard',
+  });
+  const oclefFollowUp = playingFollowUp(
+    clefPlayQ,
+    oclefReport,
+    mergedNotes,
+    oclefGradeWrongClef.diagnosis,
+  );
+  assert.ok(
+    oclefFollowUp && oclefFollowUp.prompt.toLowerCase().includes('clef'),
+    'Oclef sound recognition clef-confusion diagnosis/notes must trigger the clef follow-up question',
+  );
+
   console.log(
-    'OCLEF PARTNER AUDIT PASSED: /oclef/launch HS256 verification, 24h+ jti replay guard, 303 redirect, all 6 reasons + unknown fallback, exact return_url, /api/stations/keystance/results, /hear, /grade, 503 Retry-After backoff, and strict student privacy verified.',
+    'OCLEF PARTNER AUDIT PASSED: /oclef/launch HS256 verification, 24h+ jti replay guard, 303 redirect, all 6 reasons + unknown fallback, exact return_url (prod + staging), /api/stations/keystance/results, /hear, /grade, sound recognition reconciliation, 503 Retry-After backoff, and strict student privacy verified.',
   );
 } finally {
   await vite.close();

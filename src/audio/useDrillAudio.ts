@@ -18,7 +18,11 @@ import {
   type ScoreAnalysisResult,
 } from './scoreAnalysis';
 import { warmBasicPitch } from './basicPitchTranscription';
-import { submitTakeToOclefEar } from '../integration/oclefBridge';
+import {
+  evaluateTakeWithOclefEar,
+  mergeDetectedNotesWithOclef,
+  type OclefEarDiagnosis,
+} from '../integration/oclefBridge';
 import {
   getAudioContext as getPianoAudioContext,
   initAudio as initPianoAudio,
@@ -87,6 +91,10 @@ export interface RecognitionDiagnostics {
   offlineExpectedCount: number;
   /** Why the final analyzer completed or fell back to the live stream. */
   offlineReason: string;
+  /** Diagnosis returned by Oclef's sound recognition endpoint when active. */
+  oclefDiagnosis?: OclefEarDiagnosis | null;
+  /** Recognition engine reported by Oclef (/hear or /grade). */
+  oclefEngine?: string | null;
 }
 
 const EMPTY_DIAGNOSTICS: RecognitionDiagnostics = {
@@ -101,6 +109,8 @@ const EMPTY_DIAGNOSTICS: RecognitionDiagnostics = {
   offlineExpectedAccepted: 0,
   offlineExpectedCount: 0,
   offlineReason: 'not-run',
+  oclefDiagnosis: null,
+  oclefEngine: null,
 };
 
 /** Prove It must not reset from a weak, ambiguous decay estimate. */
@@ -3184,15 +3194,28 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                   reason: 'capture-unavailable',
                 };
                 if (capture) {
-                  submitTakeToOclefEar(capture, currentPlan);
                   cbRef.current.onAnalysisProgress?.(48);
-                  analysis = await analyzeCapturedTake(
-                    capture,
-                    currentPlan,
-                    playStartRef.current,
-                    realtime,
-                    (percent) => cbRef.current.onAnalysisProgress?.(percent),
-                  );
+                  const [localAnalysis, oclefEar] = await Promise.all([
+                    analyzeCapturedTake(
+                      capture,
+                      currentPlan,
+                      playStartRef.current,
+                      realtime,
+                      (percent) => cbRef.current.onAnalysisProgress?.(percent),
+                    ),
+                    evaluateTakeWithOclefEar(capture, currentPlan, playStartRef.current),
+                  ]);
+                  analysis = {
+                    ...localAnalysis,
+                    notes: mergeDetectedNotesWithOclef(localAnalysis.notes, oclefEar.notes),
+                    reason:
+                      oclefEar.notes.length > 0
+                        ? `${localAnalysis.reason}+oclef-ear`
+                        : localAnalysis.reason,
+                  };
+                  diagnosticsRef.current.oclefDiagnosis = oclefEar.diagnosis;
+                  diagnosticsRef.current.oclefEngine =
+                    oclefEar.grade?.engine ?? oclefEar.hear?.engine ?? null;
                 }
                 cbRef.current.onAnalysisProgress?.(92);
                 if (!mountedRef.current || runTokenRef.current !== runToken) return;
