@@ -7,7 +7,7 @@ const record = (value: unknown): Record<string, unknown> => value && typeof valu
 export function diagnosticReferral(launch: unknown, search: string): DiagnosticReferral | null {
   const params = new URLSearchParams(search);
   const info = record(launch), assignment = record(info.assignment);
-  const indicators = [params.get('diagnosis'), assignment.problem, info.diagnosticReason, info.diagnosticCode];
+  const indicators = [params.get('diagnosis'), assignment.problem, info.reason, info.diagnosticReason, info.diagnosticCode];
   const definition = indicators.map(resolveDiagnostic).find(Boolean);
   const keyValue = params.get('key') ?? assignment.key ?? info.key;
   const key = resolveDiagnosticKey(keyValue);

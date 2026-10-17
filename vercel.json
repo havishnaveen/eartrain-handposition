@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/oclef/launch",
+      "destination": "/api/oclef/launch"
+    },
+    {
+      "source": "/((?!api/|oclef/launch).*)",
       "destination": "/index.html"
     }
   ]

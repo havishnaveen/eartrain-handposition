@@ -73,8 +73,6 @@ function freshState(): LearningDataState {
   const now = Date.now();
   const student: LearnerProfile = {
     id: makeUuid(),
-    instructorId: null,
-    displayName: 'Local learner',
     status: 'active',
     createdAt: now,
     updatedAt: now,
@@ -119,7 +117,16 @@ function loadState(): LearningDataState {
     if (!raw) return freshState();
     const parsed: unknown = JSON.parse(raw);
     return isState(parsed)
-      ? { ...parsed, activities: parsed.activities ?? [] }
+      ? {
+          ...parsed,
+          students: parsed.students.map((s) => ({
+            id: s.id,
+            status: s.status ?? 'active',
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+          })),
+          activities: parsed.activities ?? [],
+        }
       : freshState();
   } catch {
     return freshState();
@@ -166,8 +173,6 @@ class LearningProfileStore {
     const now = Date.now();
     const fallback: LearnerProfile = {
       id: makeUuid(),
-      instructorId: null,
-      displayName: 'Local learner',
       status: 'active',
       createdAt: now,
       updatedAt: now,
@@ -244,12 +249,14 @@ class LearningProfileStore {
     return this.ensureActiveStudent();
   }
 
-  createStudent(displayName: string, instructorId: string | null): LearnerProfile {
+  getProfile(studentId: string): LearnerProfile | undefined {
+    return this.state.students.find((student) => student.id === studentId);
+  }
+
+  createStudent(): LearnerProfile {
     const now = Date.now();
     const student: LearnerProfile = {
       id: makeUuid(),
-      instructorId,
-      displayName: displayName.trim() || 'Student',
       status: 'active',
       createdAt: now,
       updatedAt: now,
@@ -302,30 +309,23 @@ class LearningProfileStore {
     return link;
   }
 
-  /** Accept only a launch context already verified by the future backend. */
+  /** Accept only a launch context already verified by the backend. */
   activateResolvedLaunch(launch: ResolvedStudentLaunch): LearnerProfile {
     let student = this.state.students.find((candidate) => candidate.id === launch.studentId);
     if (!student) {
       const now = Date.now();
       student = {
         id: launch.studentId,
-        instructorId: launch.instructorId,
-        displayName: launch.displayName,
         status: 'active',
         createdAt: now,
         updatedAt: now,
       };
       this.commit({ ...this.state, students: [...this.state.students, student] });
-    } else if (
-      student.instructorId !== launch.instructorId ||
-      student.displayName !== launch.displayName ||
-      student.status !== 'active'
-    ) {
+    } else if (student.status !== 'active') {
       student = {
-        ...student,
-        instructorId: launch.instructorId,
-        displayName: launch.displayName,
+        id: student.id,
         status: 'active',
+        createdAt: student.createdAt,
         updatedAt: Date.now(),
       };
       this.commit({
@@ -337,26 +337,22 @@ class LearningProfileStore {
     }
     this.linkExternalIdentity(student.id, launch.provider, launch.externalSubject);
     this.setActiveStudent(student.id);
-    this.ensureSession(launch.sourceApp, launch);
+    this.ensureSession(launch.sourceApp ?? 'reading.oclef.com', launch);
     return student;
   }
 
-  /**
-   * Claims an anonymous local learner for an instructor without changing its
-   * ID or losing any existing attempts. Instructor profile creation can call
-   * this before the first sync.
-   */
-  attachInstructor(
-    studentId: string,
-    instructorId: string,
-    displayName?: string,
-  ): LearnerProfile | null {
+  resolveExternalLaunch(launch: ResolvedStudentLaunch): { studentId: string; profile: LearnerProfile } {
+    const profile = this.activateResolvedLaunch(launch);
+    return { studentId: profile.id, profile };
+  }
+
+  attachInstructor(studentId: string): LearnerProfile | null {
     const existing = this.state.students.find((student) => student.id === studentId);
     if (!existing) return null;
     const updated: LearnerProfile = {
-      ...existing,
-      instructorId,
-      displayName: displayName?.trim() || existing.displayName,
+      id: existing.id,
+      status: existing.status,
+      createdAt: existing.createdAt,
       updatedAt: Date.now(),
     };
     this.commit({

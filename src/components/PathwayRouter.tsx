@@ -48,6 +48,7 @@ import type {
 import { CURRICULUM_VERSION } from '../profiles/types';
 import type { ResolvedStudentLaunch } from '../profiles/types';
 import { learningProfileStore } from '../profiles/learningProfileStore';
+import { finishOclefVisitAndReturn, flushOclefResults } from '../integration/oclefBridge';
 
 const MAX_ATTEMPTS = 1;
 const REPS_ADDED_PER_MISS = 0;
@@ -1046,6 +1047,20 @@ export function PathwayRouter({
         },
         externalLaunchRef.current ? 'reading.oclef.com' : 'keystance-web',
       );
+      if (externalLaunchRef.current?.provider === 'reading.oclef.com') {
+        void flushOclefResults({
+          completed: false,
+          lessons: [
+            {
+              id: state.pendingRecord.conceptId,
+              title: state.pendingRecord.conceptTitle,
+              completed: state.pendingRecord.passed,
+              score: Math.round((state.pendingRecord.scores.overall / 5) * 100),
+            },
+          ],
+          note: `Pathway lesson ${state.pendingRecord.conceptIndex} (${state.pendingRecord.conceptTitle}), drill ${state.pendingRecord.questionNumber}: ${state.pendingRecord.passed ? 'passed' : 'practiced'}.`,
+        });
+      }
     }
   }, [state.recordSeq, state.pendingRecord]);
 
@@ -1169,6 +1184,9 @@ export function PathwayRouter({
       externalLaunchRef.current ? 'reading.oclef.com' : 'keystance-web',
     );
     learningProfileStore.endActiveSession();
+    if (externalLaunchRef.current?.provider === 'reading.oclef.com') {
+      void flushOclefResults({ completed: true });
+    }
   }, [state.endedOnCap, state.finished, state.lessonsReached, state.questionsServed]);
 
   useEffect(() => () => {
@@ -1192,6 +1210,11 @@ export function PathwayRouter({
     dispatch({ type: 'START_CANCEL', questionId });
   }, [state.status]);
 
+  const handleReturnToOclef = useCallback(() => {
+    if (!returnUrl) return;
+    void finishOclefVisitAndReturn(returnUrl);
+  }, [returnUrl]);
+
   if (state.finished) {
     return (
       <main className="et-stage">
@@ -1207,7 +1230,18 @@ export function PathwayRouter({
         </div>
         <section className="et-cue" aria-label="Practice complete">
           <div><h1>Practice complete</h1><p>Choose another lesson whenever you’re ready.</p>
-            {returnUrl ? <a className="et-start" href={returnUrl}>Back to sight-reading</a> : null}
+            {returnUrl ? (
+              <a
+                className="et-start"
+                href={returnUrl}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleReturnToOclef();
+                }}
+              >
+                Back to sight-reading
+              </a>
+            ) : null}
           </div>
         </section>
       </main>
@@ -1223,6 +1257,8 @@ export function PathwayRouter({
       lessonTitle={concept.title}
       lessonFocus={concept.focus}
       phaseLabel={concept.phaseLabel}
+      returnUrl={returnUrl}
+      onReturn={handleReturnToOclef}
     >
       <ExerciseView
         ref={exerciseViewRef}

@@ -14,6 +14,7 @@
     "audit:production": "node scripts/audit-production.mjs",
     "audit:diagnostics": "node scripts/audit-diagnostics.mjs",
     "audit:stations": "node scripts/audit-stations.mjs",
+    "audit:oclef": "node scripts/audit-oclef-partner.mjs",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -33,6 +34,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.3",
+    "jose": "^6.2.12",
     "jpeg-js": "^0.4.4",
     "lucide-react": "^0.323.0",
     "nodemailer": "^9.0.6",

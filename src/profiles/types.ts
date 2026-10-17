@@ -14,8 +14,8 @@ export type IdentityProvider = 'keystance' | 'eartrain' | 'reading.oclef.com';
  */
 export interface LearnerProfile {
   id: string;
-  instructorId: string | null;
-  displayName: string;
+  instructorId?: string | null;
+  displayName?: string;
   status: LearnerStatus;
   createdAt: number;
   updatedAt: number;
@@ -133,11 +133,14 @@ export interface RemediationAssignment {
 export interface ResolvedStudentLaunch {
   launchId: string;
   studentId: string;
-  instructorId: string;
-  displayName: string;
+  instructorId?: string;
+  displayName?: string;
   provider: IdentityProvider;
   externalSubject: string;
   sourceApp: PracticeSessionRecord['sourceApp'];
+  stage?: string | null;
+  reason?: string;
+  return_url?: string;
   assignment: RemediationAssignment | null;
   diagnosticReason?: string;
   diagnosticCode?: string;

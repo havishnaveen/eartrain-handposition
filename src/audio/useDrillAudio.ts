@@ -18,6 +18,7 @@ import {
   type ScoreAnalysisResult,
 } from './scoreAnalysis';
 import { warmBasicPitch } from './basicPitchTranscription';
+import { submitTakeToOclefEar } from '../integration/oclefBridge';
 import {
   getAudioContext as getPianoAudioContext,
   initAudio as initPianoAudio,
@@ -3183,6 +3184,7 @@ export function useDrillAudio(options: UseDrillAudioOptions = {}): DrillAudio {
                   reason: 'capture-unavailable',
                 };
                 if (capture) {
+                  submitTakeToOclefEar(capture, currentPlan);
                   cbRef.current.onAnalysisProgress?.(48);
                   analysis = await analyzeCapturedTake(
                     capture,

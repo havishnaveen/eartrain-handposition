@@ -16,6 +16,9 @@ export interface ExerciseLayoutProps {
   lessonFocus?: string;
   /** Phase name, e.g. "Anchor plants". */
   phaseLabel?: string;
+  /** Optional partner return URL (e.g. Oclef return_url). */
+  returnUrl?: string;
+  onReturn?: () => void;
   children: ReactNode;
 }
 
@@ -40,6 +43,8 @@ export function ExerciseLayout({
   lessonTitle,
   lessonFocus,
   phaseLabel,
+  returnUrl,
+  onReturn,
   children,
 }: ExerciseLayoutProps) {
   const loopSize = Math.max(1, questionsInLoop);
@@ -218,6 +223,30 @@ export function ExerciseLayout({
               })}
             </div>
           </section>
+
+          {returnUrl ? (
+            <div className="et-sidebar__return" style={{ marginTop: 12 }}>
+              <a
+                href={returnUrl}
+                onClick={(event) => {
+                  if (!onReturn) return;
+                  event.preventDefault();
+                  onReturn();
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  fontWeight: 650,
+                  color: '#ef6a47',
+                  textDecoration: 'none',
+                }}
+              >
+                ← Return to Oclef
+              </a>
+            </div>
+          ) : null}
 
           <footer className="et-sidebar__credit">
             <span>Created by <strong>Havish Naveen</strong></span>

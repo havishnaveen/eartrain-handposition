@@ -7,7 +7,7 @@ import { isStationTopic } from '../stations/types';
 import PathwayRouter from '../components/PathwayRouter';
 import DiagnosticNavigator from '../dev/DiagnosticNavigator';
 import type { DiagnosticSelection } from '../dev/DiagnosticNavigator';
-import type { OclefIntegrationSession } from '../integration/oclefBridge';
+import { finishOclefVisitAndReturn, type OclefIntegrationSession } from '../integration/oclefBridge';
 import { DIAGNOSTIC_KEYS, DIAGNOSTIC_REGISTRY } from './registry';
 import type { DiagnosticStage } from './registry';
 import DiagnosticLessonView from './DiagnosticLessonView';
@@ -119,7 +119,13 @@ export default function DiagnosticRouter({
     }
   };
 
+  const returnUrl = launch?.return_url ?? launch?.assignment?.returnUrl;
+
   const standard = () => {
+    if (returnUrl) {
+      void finishOclefVisitAndReturn();
+      return;
+    }
     setSelection(null);
     setKeyError(undefined);
     setStandardRevision(value => value + 1);
@@ -156,6 +162,7 @@ export default function DiagnosticRouter({
             definition={definition ?? DIAGNOSTIC_REGISTRY.find(d => d.id === 'mid-line-clef-change')!}
             selectedKey={selectedKey}
             batch={currentBatch}
+            returnUrl={returnUrl}
             onNextBatch={() => handleSelectDiagnostic({
               ...selection,
               problem: stationTopic,
@@ -180,7 +187,7 @@ export default function DiagnosticRouter({
           initialQuestion={standardState ? standardState.question : initialQuestion}
           initialProofCompleted={standardState ? standardState.proofCompleted : initialProofCompleted}
           sessionQuestionCap={launch?.assignment?.questionCap}
-          returnUrl={launch?.assignment?.returnUrl}
+          returnUrl={returnUrl}
           externalLaunch={launch}
         />
       )}

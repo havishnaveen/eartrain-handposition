@@ -21,9 +21,19 @@ export default function BugReportButton({
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const diagnostic = useMemo(() => {
     if (typeof window === 'undefined') return '';
+    let safePage = window.location.origin + window.location.pathname;
+    try {
+      const parsed = new URL(window.location.href);
+      parsed.searchParams.delete('token');
+      parsed.searchParams.delete('handoff');
+      parsed.searchParams.delete('launch_code');
+      safePage = parsed.toString();
+    } catch {
+      // Fall back to origin + pathname
+    }
     return [
       `KeyStance issue — Lesson ${lessonNumber}: ${lessonTitle}, drill ${questionNumber}`,
-      `Page: ${window.location.href}`,
+      `Page: ${safePage}`,
       `Viewport: ${window.innerWidth}×${window.innerHeight}`,
       `Browser: ${window.navigator.userAgent}`,
     ].join('\n');

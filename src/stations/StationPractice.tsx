@@ -4,6 +4,11 @@ import AnswerFeedback from '../diagnostics/AnswerFeedback';
 import type { DiagnosticDefinition, DiagnosticKey } from '../diagnostics/registry';
 import { DiagnosticScore } from '../diagnostics/DiagnosticScore';
 import { playDiagnosticExample } from '../diagnostics/playback';
+import {
+  finishOclefVisitAndReturn,
+  flushOclefResults,
+  recordOclefVisitLesson,
+} from '../integration/oclefBridge';
 import { learningProfileStore } from '../profiles/learningProfileStore';
 import { BATCH_COUNT } from './generator';
 import PlayingQuestion from './PlayingQuestion';
@@ -21,10 +26,10 @@ export function StationControls({ mode, onMode }: {
     </select></label></div>;
 }
 
-export default function StationPractice({ store, topic, need, definition, selectedKey, batch, onNextBatch, onStandard }: {
+export default function StationPractice({ store, topic, need, definition, selectedKey, batch, returnUrl, onNextBatch, onStandard }: {
   store: StationStore; topic: StationTopic; need: StationNeed;
   definition: DiagnosticDefinition; selectedKey: DiagnosticKey;
-  batch: number; onNextBatch: () => void; onStandard: () => void;
+  batch: number; returnUrl?: string; onNextBatch: () => void; onStandard: () => void;
 }) {
   const [, redraw] = useState(0);
   const lesson = useMemo(() => definition.create(selectedKey), [definition, selectedKey]);
@@ -127,23 +132,71 @@ export default function StationPractice({ store, topic, need, definition, select
       responseMs: elapsedMs,
     });
     if (session?.results.length === 2) {
+      const priorCorrect = session.results.filter(r => r.firstAttemptCorrect).length + (firstAttemptCorrect ? 1 : 0);
+      const score = Math.round((priorCorrect / 3) * 100);
+      recordOclefVisitLesson({
+        id: `${topic}-batch-${batch}`,
+        title: `${lesson.title} · Batch ${batch}`,
+        completed: true,
+        score,
+      });
       learningProfileStore.recordActivity('session.completed', {
         topic,
         batch,
         questionsCompleted: 3,
+        score,
       });
+      void flushOclefResults({ completed: true });
       if (batch < BATCH_COUNT) onNextBatch(); else onStandard();
     }
   };
   return <ExerciseLayout lessonNumber={1} totalLessons={1} questionNumber={Math.min((session?.results.length ?? 0) + 1, 3)} questionsInLoop={3}
     lessonTitle={lesson.title} lessonFocus={lesson.focus} phaseLabel={`Batch ${batch} of ${BATCH_COUNT}`}>
     <div className="diagnostic-flow diagnostic-flow--batch" data-diagnostic={topic}>
+    {returnUrl ? (
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+        <a
+          href={returnUrl}
+          onClick={(e) => {
+            e.preventDefault();
+            void finishOclefVisitAndReturn();
+          }}
+          style={{
+            fontSize: '13px',
+            fontWeight: 700,
+            color: '#ef6a47',
+            textDecoration: 'none',
+            padding: '6px 14px',
+            borderRadius: '999px',
+            border: '1px solid rgba(239, 106, 71, 0.35)',
+            background: '#fffaf7',
+          }}
+        >
+          ← Back to Oclef
+        </a>
+      </div>
+    ) : null}
     <section className="diagnostic-card" aria-label={session?.completedAt ? 'Batch complete' : `Question ${(session?.results.length ?? 0) + 1} of 3`}>
       {store.warning && <p role="status" className="diagnostic-feedback">{store.warning}</p>}
       {error && <p role="alert">{error}</p>}
-      {q && session && (q.kind === 'play' ? <PlayingQuestion key={q.id} q={q} disabled={busy || phase === 'ready'} label={batch < BATCH_COUNT ? 'Next batch' : 'Finish'}
+      {q && session && (q.kind === 'play' ? <PlayingQuestion key={q.id} q={q} disabled={busy || phase === 'ready'} label={batch < BATCH_COUNT ? 'Next batch' : (returnUrl ? 'Back to Oclef' : 'Finish')}
         onComplete={async result => {
+          const priorCorrect = session.results.filter(r => r.firstAttemptCorrect).length + (result.firstAttemptCorrect ? 1 : 0);
+          const score = Math.round((priorCorrect / 3) * 100);
           if (!await emit({ type: 'performance', ...result, now: Date.now() })) return;
+          recordOclefVisitLesson({
+            id: `${topic}-batch-${batch}`,
+            title: `${lesson.title} · Batch ${batch}`,
+            completed: true,
+            score,
+          });
+          learningProfileStore.recordActivity('session.completed', {
+            topic,
+            batch,
+            questionsCompleted: 3,
+            score,
+          });
+          void flushOclefResults({ completed: true });
           if (batch < BATCH_COUNT) onNextBatch(); else onStandard();
         }} /> : <>
               <div ref={scoreHost}><DiagnosticScore question={q.question} notation={q.notation} musicXML={q.musicXML} wrapSystems /></div>
@@ -158,7 +211,7 @@ export default function StationPractice({ store, topic, need, definition, select
                 answer={q.clue.choices[q.clue.correct]} disabled={busy || playing} label="Retry" onContinue={() => void emit({ type: 'retry' })} />}
             </div> : <>
               {phase === 'feedback' && <AnswerFeedback correct={session.run.finalChoice === q.correct} explanation={stationExplanation(q)} answer={q.choices[q.correct]}
-                disabled={busy || playing} label={session.results.length === 2 ? batch < BATCH_COUNT ? 'Next batch' : 'Finish' : 'Continue'} onContinue={() => void advance()} />}
+                disabled={busy || playing} label={session.results.length === 2 ? batch < BATCH_COUNT ? 'Next batch' : (returnUrl ? 'Back to Oclef' : 'Finish') : 'Continue'} onContinue={() => void advance()} />}
             </>}
         </>)}
     </section>

@@ -752,9 +752,9 @@ function crossing(): DiagnosticLesson {
 export const DIAGNOSTIC_REGISTRY: readonly DiagnosticDefinition[] = [
   { id: 'key-signature', label: 'Key Signature Reading', aliases: ['key-signatures', 'key-signature-reading', 'key-signature-carryover', 'missed-key-signature', 'key-signature-rule', 'key-signature-unmarked'], create: createKeySignatureLesson },
   { id: 'clef-transposition', label: 'Clef Confusion', aliases: ['clef-confusion', 'clef-swap', 'treble-for-bass', 'clef-differentiation', 'bass-clef-recognition'], create: clefSwap },
-  { id: 'octave-displacement', label: 'High Register', aliases: ['8va', '8va-blindspot', 'register-placement', 'octave-register', 'octave'], create: octave },
-  { id: 'accidental-carryover', label: 'Accidental Carryover', aliases: ['accidental-carry-over', 'accidental-carry-over-failure', 'measure-long-amnesia'], create: accidental },
-  { id: 'hand-position', label: 'Hand Position', aliases: ['hand-position-weakness', 'hand-position-weaknesses', 'right-hand-position', 'key-signature-orientation'], usesKey: true, create: handPosition },
+  { id: 'octave-displacement', label: 'High Register', aliases: ['wrong-register', '8va', '8va-blindspot', 'register-placement', 'octave-register', 'octave'], create: octave },
+  { id: 'accidental-carryover', label: 'Accidental Carryover', aliases: ['accidental-persistence', 'accidental-carry-over', 'accidental-carry-over-failure', 'measure-long-amnesia'], create: accidental },
+  { id: 'hand-position', label: 'Hand Position', aliases: ['starting-position', 'wrong-start', 'hand-position-weakness', 'hand-position-weaknesses', 'right-hand-position', 'key-signature-orientation'], usesKey: true, create: handPosition },
   { id: 'mid-line-clef-change', label: 'Mid-Line Clef Change', aliases: ['mid-line-clef-change-blindness', 'clef-change'], create: clefChange },
   { id: 'cross-over-under', label: 'Cross-Over/Under', aliases: ['cross-over', 'cross-under', 'thumb-under', 'finger-over', 'hand-shift', 'right-hand-shift'], create: crossing },
 ];

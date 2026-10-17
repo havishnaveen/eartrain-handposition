@@ -5,9 +5,7 @@ export interface ProfessorNotification {
   timestamp: string;
   epochMs: number;
   studentId?: string;
-  instructorId?: string;
   launchId?: string;
-  displayName?: string;
   diagnosticId: string;
   lessonTitle: string;
   stage: number;
@@ -47,9 +45,7 @@ export function prepareProfessorNotification(params: {
     timestamp: new Date(now).toISOString(),
     epochMs: now,
     studentId: session?.launch.studentId,
-    instructorId: session?.launch.instructorId,
     launchId: session?.launch.launchId,
-    displayName: session?.launch.displayName,
     diagnosticId: params.diagnosticId,
     lessonTitle: params.lessonTitle,
     stage: params.stage,
@@ -82,7 +78,6 @@ export function prepareProfessorNotification(params: {
     }
   }
 
-  console.warn('[PROFESSOR NOTIFICATION PREPARED]', notification);
   return notification;
 }
 
